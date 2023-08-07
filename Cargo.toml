@@ -1,0 +1,341 @@
+[package]
+name = "polymesh-private"
+version = "6.0.0"
+authors = ["PolymeshAssociation"]
+build = "build.rs"
+edition = "2021"
+
+[[bin]]
+name = "polymesh-private"
+path = "src/main.rs"
+
+[patch.crates-io]
+# Path build to use our Substrate version from github.
+frame-benchmarking = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-benchmarking-cli = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-executive = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-support = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-election-provider-support = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-system = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-system-benchmarking = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+frame-system-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-authority-discovery = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-authorship = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-babe = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-balances = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-contracts = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-contracts-primitives = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-grandpa = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-im-online = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-indices = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-offences = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-preimage = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-insecure-randomness-collective-flip = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-scheduler = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-session = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-staking-reward-curve = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+pallet-timestamp = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-authority-discovery = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-basic-authorship = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-block-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-chain-spec = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-cli = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-client-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-client-db = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-babe = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-babe-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-epochs = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-slots = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-executor = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-grandpa = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-grandpa-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-keystore = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-network = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-network-common = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-rpc-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-rpc-spec-v2 = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-service = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-telemetry = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-transaction-pool = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-transaction-pool-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sc-sync-state-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-application-crypto = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-arithmetic = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-authority-discovery = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-block-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-blockchain = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-consensus = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-consensus-babe = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-consensus-slots = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-core = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-externalities = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-consensus-grandpa = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-inherents = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-io = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-keystore = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-keyring = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-npos-elections = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-offchain = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-runtime = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-weights = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-runtime-interface = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-session = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-staking = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-state-machine = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-std = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-storage = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-timestamp = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-tracing = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-transaction-pool = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-transaction-storage-proof = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-trie = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+sp-version = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+substrate-frame-rpc-system = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+substrate-state-trie-migration-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+substrate-prometheus-endpoint = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+
+[workspace]
+members = [
+    "runtime/develop",
+    "runtime/mainnet",
+]
+exclude = [
+    "contracts",
+]
+
+## Keep common dependencies here.
+[workspace.dependencies]
+# Our pallets
+pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+
+# Common
+polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+
+# RPC
+node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+
+# Build tool
+polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+
+# Substrate
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+frame-support = { version = "4.0.0-dev", default-features = false }
+frame-system = { version = "4.0.0-dev", default-features = false }
+frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false }
+pallet-authority-discovery = { version = "4.0.0-dev", default-features = false }
+pallet-authorship = { version = "4.0.0-dev", default-features = false }
+pallet-babe = { version = "4.0.0-dev", default-features = false }
+pallet-contracts = { version = "4.0.0-dev", default-features = false }
+pallet-contracts-primitives = { version = "7.0.0", default-features = false}
+pallet-executive = { package = "frame-executive", version = "4.0.0-dev", default-features = false }
+pallet-grandpa = { version = "4.0.0-dev", default-features = false }
+pallet-im-online = { version = "4.0.0-dev", default-features = false }
+pallet-indices = { version = "4.0.0-dev", default-features = false }
+pallet-offences = { version = "4.0.0-dev", default-features = false }
+pallet-preimage = { version = "4.0.0-dev", default-features = false }
+pallet-insecure-randomness-collective-flip = { version = "4.0.0-dev", default-features = false }
+pallet-scheduler = { version = "4.0.0-dev", default-features = false }
+pallet-session = { version = "4.0.0-dev", default-features = false }
+pallet-staking-reward-curve = { version = "4.0.0-dev", default-features = false }
+pallet-timestamp = { version = "4.0.0-dev", default-features = false }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+sp-api = { version = "4.0.0-dev", default-features = false }
+sp-arithmetic = { version = "6.0.0", default-features = false }
+sp-authority-discovery = { version = "4.0.0-dev", default-features = false }
+sp-block-builder = { version = "4.0.0-dev", default-features = false }
+sp-blockchain = { version = "4.0.0-dev", default-features = false }
+sp-consensus = { version = "0.10.0-dev", default-features = false }
+sp-consensus-babe = { version = "0.10.0-dev", default-features = false }
+sp-consensus-slots = { version = "0.10.0-dev", default-features = false }
+sp-consensus-grandpa = { version = "4.0.0-dev", default-features = false }
+sp-keyring = { version = "7.0.0", default-features = false }
+sp-core = { version = "7.0.0", default-features = false }
+sp-inherents = { version = "4.0.0-dev", default-features = false }
+sp-transaction-storage-proof = { version = "4.0.0-dev", default-features = false }
+sp-io = { version = "7.0.0", default-features = false }
+sp-offchain = { version = "4.0.0-dev", default-features = false }
+sp-runtime = { version = "7.0.0", default-features = false }
+sp-timestamp = { version = "4.0.0-dev", default-features = false }
+sp-session = { version = "4.0.0-dev", default-features = false }
+sp-staking = { version = "4.0.0-dev", default-features = false }
+sp-std = { version = "5.0.0", default-features = false }
+sp-transaction-pool = { version = "4.0.0-dev", default-features = false }
+sp-version = { version = "5.0.0", default-features = false }
+
+[dependencies]
+# Our pallets
+pallet-asset = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+pallet-base = { workspace = true, default-features = false }
+pallet-bridge = { workspace = true, default-features = false }
+pallet-committee = { workspace = true, default-features = false }
+pallet-compliance-manager = { workspace = true, default-features = false }
+pallet-corporate-actions = { workspace = true, default-features = false }
+pallet-external-agents = { workspace = true, default-features = false }
+pallet-group = { workspace = true, default-features = false }
+pallet-identity = { workspace = true, default-features = false }
+pallet-multisig = { workspace = true, default-features = false }
+pallet-nft = { workspace = true, default-features = false }
+pallet-permissions = { workspace = true, default-features = false }
+pallet-pips = { workspace = true, default-features = false }
+pallet-portfolio = { workspace = true, default-features = false }
+pallet-protocol-fee = { workspace = true, default-features = false }
+pallet-relayer = { workspace = true, default-features = false }
+pallet-sto = { workspace = true, default-features = false }
+pallet-settlement = { workspace = true, default-features = false }
+pallet-staking = { workspace = true, default-features = false }
+pallet-staking-reward-curve = { workspace = true, default-features = false }
+pallet-statistics = { workspace = true, default-features = false }
+pallet-test-utils = { workspace = true, default-features = false }
+pallet-transaction-payment = { workspace = true, default-features = false }
+pallet-treasury = { workspace = true, default-features = false }
+pallet-utility = { workspace = true, default-features = false }
+pallet-sudo = { workspace = true, default-features = false }
+polymesh-contracts = { workspace = true, default-features = false }
+
+# Common
+polymesh-common-utilities = { workspace = true, default-features = false }
+polymesh-runtime-common = { workspace = true, default-features = false }
+polymesh-primitives = { workspace = true, default-features = false }
+polymesh-weights = { workspace = true, default-features = false }
+polymesh-extensions = { workspace = true, default-features = false }
+
+# RPC
+node-rpc = { workspace = true }
+node-rpc-runtime-api = { workspace = true }
+pallet-group-rpc = { workspace = true }
+pallet-group-rpc-runtime-api = { workspace = true }
+pallet-protocol-fee-rpc = { workspace = true }
+pallet-protocol-fee-rpc-runtime-api = { workspace = true }
+pallet-staking-rpc-runtime-api = { workspace = true }
+polymesh-node-rpc = { workspace = true }
+
+# Runtimes
+polymesh-runtime-develop = { path = "runtime/develop" }
+polymesh-runtime-mainnet = { path = "runtime/mainnet" }
+
+## General
+futures = "0.3.21"
+jsonrpsee = { version = "0.16.2", features = ["server"] }
+log = "0.4"
+serde = { version = "1.0.136", default-features = false }
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
+clap = { version = "4.0.9", features = ["derive"] }
+rustc-hex = "2.1.0"
+
+## Pin version to work around substrate logging issue.
+#tracing-core = "0.1.30"
+
+# Substrate client deps.
+sc-authority-discovery = "0.10.0-dev"
+sc-basic-authorship = "0.10.0-dev"
+sc-chain-spec = "4.0.0-dev"
+sc-cli = { version = "0.10.0-dev" }
+sc-client-api = "4.0.0-dev"
+sc-client-db = { version = "0.10.0-dev", default-features = false }
+sc-consensus = "0.10.0-dev"
+sc-consensus-babe = "0.10.0-dev"
+sc-consensus-slots = "0.10.0-dev"
+sc-executor = { version = "0.10.0-dev" }
+sc-network = "0.10.0-dev"
+sc-network-common = { version = "0.10.0-dev" }
+sc-rpc = "4.0.0-dev"
+sc-service = { version = "0.10.0-dev" }
+sc-telemetry = "4.0.0-dev"
+sc-transaction-pool = "4.0.0-dev"
+sc-sync-state-rpc = { version = "0.10.0-dev" }
+grandpa = { package = "sc-consensus-grandpa", version = "0.10.0-dev" }
+
+# Substrate
+codec = { workspace = true, package = "parity-scale-codec" }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-system-rpc-runtime-api = { workspace = true }
+pallet-babe = { workspace = true }
+pallet-im-online = { workspace = true }
+pallet-indices = { workspace = true }
+pallet-session = { workspace = true }
+prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.10.0-dev" }
+sp-api = { workspace = true }
+sp-authority-discovery = { workspace = true }
+sp-block-builder = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-consensus = { workspace = true }
+sp-consensus-babe = { workspace = true }
+sp-consensus-slots = { workspace = true }
+sp-keyring = { workspace = true }
+sp-core = { workspace = true }
+sp-inherents = { workspace = true }
+sp-transaction-storage-proof = { workspace = true }
+sp-offchain = { workspace = true }
+sp-runtime = { workspace = true }
+sp-timestamp = { workspace = true }
+sp-session = { workspace = true }
+sp-transaction-pool = { workspace = true }
+
+# These dependencies are used for runtime benchmarking
+frame-benchmarking = "4.0.0-dev"
+frame-benchmarking-cli = "4.0.0-dev"
+
+[build-dependencies]
+substrate-build-script-utils = { version = "3.0.0" }
+
+[features]
+default = ["std"]
+running-ci = [ "polymesh-runtime-develop/running-ci" ]
+default_identity = [ "polymesh-common-utilities/default_identity" ]
+runtime-benchmarks = [
+    #"sc-client-db/runtime-benchmarks",
+    "polymesh-runtime-develop/runtime-benchmarks",
+]
+
+# Only build a "ci" runtime.
+ci-runtime = [ "polymesh-runtime-develop/ci-runtime" ]
+
+std = [
+    "polymesh-common-utilities/std",
+    "serde/std"
+]
