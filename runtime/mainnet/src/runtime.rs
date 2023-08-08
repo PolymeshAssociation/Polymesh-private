@@ -135,6 +135,10 @@ parameter_types! {
     // Portfolio:
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
+
+    // Confidential asset.
+    pub const MaxTotalSupply: Balance = 10_000_000_000_000;
+    pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
 
 /// 100% goes to the block author.
@@ -220,6 +224,14 @@ impl pallet_group::Config<pallet_group::Instance1> for Runtime {
     type MembershipInitialized = PolymeshCommittee;
     type MembershipChanged = PolymeshCommittee;
     type WeightInfo = polymesh_weights::pallet_group::SubstrateWeight;
+}
+
+impl pallet_confidential_asset::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+    type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
+    type MaxTotalSupply = MaxTotalSupply;
+    type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
 }
 
 macro_rules! committee_config {
@@ -368,6 +380,9 @@ construct_runtime!(
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
 
         Nft: pallet_nft::{Pallet, Call, Storage, Event},
+
+        // Confidential Asset pallets.
+        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event, Config} = 60,
     }
 );
 

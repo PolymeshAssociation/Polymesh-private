@@ -643,6 +643,7 @@ pub mod general {
             },
             corporate_action: corporate_actions!(),
             polymesh_contracts: polymesh_contracts!(),
+            ..Default::default()
         }
     }
 
@@ -797,6 +798,7 @@ pub mod mainnet {
             },
             corporate_action: corporate_actions!(),
             polymesh_contracts: polymesh_contracts!(),
+            ..Default::default()
         }
     }
 

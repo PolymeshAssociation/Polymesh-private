@@ -516,15 +516,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "binary-merkle-tree"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "hash-db",
- "log",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -633,6 +624,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
+ "block-padding 0.2.1",
  "generic-array 0.14.7",
 ]
 
@@ -705,6 +697,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bdce191bf3fa4995ce948c8c83b4640a1745457a149e73c6db75b4ffe36aad5f"
 dependencies = [
  "semver 0.6.0",
+]
+
+[[package]]
+name = "bulletproofs"
+version = "4.0.0"
+source = "git+https://github.com/PolymeshAssociation/bulletproofs?branch=polymesh#b8670ba8905d4e5d5c204677c4b391eea5d4b158"
+dependencies = [
+ "byteorder",
+ "curve25519-dalek-ng",
+ "digest 0.9.0",
+ "merlin 3.0.0",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_derive",
+ "sha3 0.9.1",
+ "subtle-ng",
+ "thiserror",
 ]
 
 [[package]]
@@ -785,6 +795,12 @@ dependencies = [
  "serde_json",
  "thiserror",
 ]
+
+[[package]]
+name = "cast"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
@@ -915,15 +931,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ckb-merkle-mountain-range"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56ccb671c5921be8a84686e6212ca184cb1d7c51cadcdbfcbd1cc3f042f5dfb8"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "clang-sys"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -932,6 +939,17 @@ dependencies = [
  "glob",
  "libc",
  "libloading",
+]
+
+[[package]]
+name = "clap"
+version = "2.34.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
+dependencies = [
+ "bitflags",
+ "textwrap",
+ "unicode-width",
 ]
 
 [[package]]
@@ -1010,6 +1028,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62ec6771ecfa0762d24683ee5a32ad78487a3d3afdc0fb8cae19d2c5deb50b7c"
 dependencies = [
  "crossbeam-utils",
+]
+
+[[package]]
+name = "confidential_identity_core"
+version = "1.1.2"
+source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
+dependencies = [
+ "blake2",
+ "bulletproofs",
+ "byteorder",
+ "criterion",
+ "curve25519-dalek-ng",
+ "merlin 3.0.0",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "scale-info",
+ "serde",
+ "sha3 0.9.1",
+ "sp-std",
+ "zeroize",
 ]
 
 [[package]]
@@ -1191,6 +1230,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "criterion"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b01d6de93b2b6c65e17c634a26653a29d107b3c98c607c765bf38d041531cd8f"
+dependencies = [
+ "atty",
+ "cast",
+ "clap 2.34.0",
+ "criterion-plot",
+ "csv",
+ "itertools",
+ "lazy_static",
+ "num-traits",
+ "oorandom",
+ "plotters",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_cbor",
+ "serde_derive",
+ "serde_json",
+ "tinytemplate",
+ "walkdir",
+]
+
+[[package]]
+name = "criterion-plot"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2673cc8207403546f45f5fd319a974b1e6983ad1a3ee7e6041650013be041876"
+dependencies = [
+ "cast",
+ "itertools",
+]
+
+[[package]]
 name = "crossbeam-channel"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1283,6 +1358,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "csv"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "626ae34994d3d8d668f4269922248239db4ae42d538b14c398b74a52208e8086"
+dependencies = [
+ "csv-core",
+ "itoa",
+ "ryu",
+ "serde",
+]
+
+[[package]]
+name = "csv-core"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "ctr"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1348,7 +1444,9 @@ checksum = "1c359b7249347e46fb28804470d071c921156ad62b3eef5d34e2ba867533dec8"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
+ "packed_simd_2",
  "rand_core 0.6.4",
+ "serde",
  "subtle-ng",
  "zeroize",
 ]
@@ -1827,6 +1925,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "failure"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
+dependencies = [
+ "backtrace",
+ "failure_derive",
+]
+
+[[package]]
+name = "failure_derive"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "synstructure",
+]
+
+[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2010,7 +2130,7 @@ dependencies = [
  "Inflector",
  "array-bytes",
  "chrono",
- "clap",
+ "clap 4.3.2",
  "comfy-table",
  "frame-benchmarking",
  "frame-support",
@@ -2512,6 +2632,12 @@ dependencies = [
  "tokio-util",
  "tracing",
 ]
+
+[[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "handlebars"
@@ -3932,6 +4058,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
+name = "mercat"
+version = "1.1.2"
+source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
+dependencies = [
+ "byteorder",
+ "confidential_identity_core",
+ "criterion",
+ "failure",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "serde",
+ "serde_json",
+ "sha3 0.9.1",
+ "sp-std",
+ "zeroize",
+]
+
+[[package]]
 name = "merlin"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4078,7 +4223,7 @@ dependencies = [
  "digest 0.10.7",
  "multihash-derive",
  "sha2 0.10.6",
- "sha3",
+ "sha3 0.10.8",
  "unsigned-varint",
 ]
 
@@ -4244,7 +4389,7 @@ dependencies = [
 [[package]]
 name = "node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4270,7 +4415,7 @@ dependencies = [
 [[package]]
 name = "node-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4427,6 +4572,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
+name = "oorandom"
+version = "11.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
+
+[[package]]
 name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4479,7 +4630,7 @@ dependencies = [
 [[package]]
 name = "pallet-asset"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "arrayvec 0.7.2",
  "frame-benchmarking",
@@ -4572,7 +4723,7 @@ dependencies = [
 [[package]]
 name = "pallet-balances"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4593,7 +4744,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-version",
- "substrate-test-runtime-client",
 ]
 
 [[package]]
@@ -4614,7 +4764,7 @@ dependencies = [
 [[package]]
 name = "pallet-base"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4632,52 +4782,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-beefy"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-authorship",
- "pallet-session",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-consensus-beefy",
- "sp-runtime",
- "sp-session",
- "sp-staking",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-beefy-mmr"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "array-bytes",
- "binary-merkle-tree",
- "frame-support",
- "frame-system",
- "log",
- "pallet-beefy",
- "pallet-mmr",
- "pallet-session",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-consensus-beefy",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-bridge"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4701,7 +4808,7 @@ dependencies = [
 [[package]]
 name = "pallet-committee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4726,7 +4833,7 @@ dependencies = [
 [[package]]
 name = "pallet-compliance-manager"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "either",
  "frame-benchmarking",
@@ -4751,6 +4858,30 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-version",
+]
+
+[[package]]
+name = "pallet-confidential-asset"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "mercat",
+ "pallet-balances 0.1.0",
+ "pallet-base",
+ "pallet-identity",
+ "pallet-portfolio",
+ "pallet-statistics",
+ "parity-scale-codec",
+ "polymesh-common-utilities",
+ "polymesh-primitives",
+ "polymesh-runtime-common",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -4808,7 +4939,7 @@ dependencies = [
 [[package]]
 name = "pallet-corporate-actions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4841,7 +4972,7 @@ dependencies = [
 [[package]]
 name = "pallet-external-agents"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4885,7 +5016,7 @@ dependencies = [
 [[package]]
 name = "pallet-group"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4909,7 +5040,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4930,7 +5061,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -4943,7 +5074,7 @@ dependencies = [
 [[package]]
 name = "pallet-identity"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "either",
  "frame-benchmarking",
@@ -5022,26 +5153,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-mmr"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-multisig"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5064,7 +5178,7 @@ dependencies = [
 [[package]]
 name = "pallet-nft"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5101,7 +5215,7 @@ dependencies = [
 [[package]]
 name = "pallet-permissions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5118,7 +5232,7 @@ dependencies = [
 [[package]]
 name = "pallet-pips"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5153,7 +5267,7 @@ dependencies = [
 [[package]]
 name = "pallet-portfolio"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5191,7 +5305,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5211,7 +5325,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5232,7 +5346,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -5244,7 +5358,7 @@ dependencies = [
 [[package]]
 name = "pallet-relayer"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5254,26 +5368,6 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-rewards"
-version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
-dependencies = [
- "frame-support",
- "frame-system",
- "log",
- "pallet-identity",
- "pallet-staking",
- "parity-scale-codec",
- "polymesh-common-utilities",
- "polymesh-primitives",
- "scale-info",
- "serde",
- "sp-core",
  "sp-runtime",
  "sp-std",
 ]
@@ -5319,7 +5413,7 @@ dependencies = [
 [[package]]
 name = "pallet-settlement"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5355,7 +5449,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -5396,7 +5490,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5416,7 +5510,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "sp-api",
@@ -5426,7 +5520,7 @@ dependencies = [
 [[package]]
 name = "pallet-statistics"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5448,13 +5542,12 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "substrate-test-runtime-client",
 ]
 
 [[package]]
 name = "pallet-sto"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5487,7 +5580,7 @@ dependencies = [
 [[package]]
 name = "pallet-sudo"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5502,7 +5595,7 @@ dependencies = [
 [[package]]
 name = "pallet-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5539,7 +5632,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5558,7 +5651,7 @@ dependencies = [
 [[package]]
 name = "pallet-treasury"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5583,7 +5676,7 @@ dependencies = [
 [[package]]
 name = "pallet-utility"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5888,6 +5981,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3d7ddaed09e0eb771a79ab0fd64609ba0afb0a8366421957936ad14cbd13630"
 
 [[package]]
+name = "plotters"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2c224ba00d7cadd4d5c660deaf2098e5e80e07846537c51f9cfa4be50c1fd45"
+dependencies = [
+ "num-traits",
+ "plotters-backend",
+ "plotters-svg",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "plotters-backend"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e76628b4d3a7581389a35d5b6e2139607ad7c75b17aed325f210aa91f4a9609"
+
+[[package]]
+name = "plotters-svg"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f6d39893cca0701371e3c27294f09797214b86f1fb951b89ade8ec04e2abab"
+dependencies = [
+ "plotters-backend",
+]
+
+[[package]]
 name = "polling"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5917,7 +6038,7 @@ dependencies = [
 [[package]]
 name = "polymesh-build-tool"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "substrate-wasm-builder",
 ]
@@ -5925,7 +6046,7 @@ dependencies = [
 [[package]]
 name = "polymesh-common-utilities"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5950,7 +6071,7 @@ dependencies = [
 [[package]]
 name = "polymesh-contracts"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5975,7 +6096,7 @@ dependencies = [
 [[package]]
 name = "polymesh-extensions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5992,7 +6113,7 @@ dependencies = [
 [[package]]
 name = "polymesh-node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "jsonrpsee",
  "node-rpc",
@@ -6026,7 +6147,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "chrono",
  "either",
@@ -6054,7 +6175,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives-derive"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6065,7 +6186,7 @@ dependencies = [
 name = "polymesh-private"
 version = "6.0.0"
 dependencies = [
- "clap",
+ "clap 4.3.2",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-support",
@@ -6083,6 +6204,7 @@ dependencies = [
  "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
+ "pallet-confidential-asset",
  "pallet-corporate-actions",
  "pallet-external-agents",
  "pallet-group",
@@ -6128,7 +6250,6 @@ dependencies = [
  "sc-chain-spec",
  "sc-cli",
  "sc-client-api",
- "sc-client-db",
  "sc-consensus",
  "sc-consensus-babe",
  "sc-consensus-grandpa",
@@ -6166,7 +6287,7 @@ dependencies = [
 [[package]]
 name = "polymesh-runtime-common"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6210,6 +6331,7 @@ dependencies = [
  "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
+ "pallet-confidential-asset",
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-corporate-actions",
@@ -6291,6 +6413,7 @@ dependencies = [
  "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
+ "pallet-confidential-asset",
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-corporate-actions",
@@ -6355,7 +6478,7 @@ dependencies = [
 [[package]]
 name = "polymesh-weights"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#7db6e8db0363fb02f612b03ebf375dd8f06a7fc1"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=remove_dead_code#07d4a608c5c7da28e63b106588e90acd9f03e696"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6378,7 +6501,6 @@ dependencies = [
  "pallet-preimage",
  "pallet-protocol-fee",
  "pallet-relayer",
- "pallet-rewards",
  "pallet-scheduler",
  "pallet-session",
  "pallet-settlement",
@@ -7325,7 +7447,7 @@ source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v
 dependencies = [
  "array-bytes",
  "chrono",
- "clap",
+ "clap 4.3.2",
  "fdlimit",
  "futures",
  "libp2p",
@@ -8092,7 +8214,7 @@ name = "sc-storage-monitor"
 version = "0.1.0"
 source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
 dependencies = [
- "clap",
+ "clap 4.3.2",
  "fs4",
  "futures",
  "log",
@@ -8498,6 +8620,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_cbor"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
+dependencies = [
+ "half",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.163"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8577,6 +8709,18 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest 0.10.7",
+]
+
+[[package]]
+name = "sha3"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f81199417d4e5de3f04b1e871023acea7389672c4135918f05aa9cbf2f2fa809"
+dependencies = [
+ "block-buffer 0.9.0",
+ "digest 0.9.0",
+ "keccak",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -8842,24 +8986,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-consensus-aura"
-version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "async-trait",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-application-crypto",
- "sp-consensus",
- "sp-consensus-slots",
- "sp-inherents",
- "sp-runtime",
- "sp-std",
- "sp-timestamp",
-]
-
-[[package]]
 name = "sp-consensus-babe"
 version = "0.10.0-dev"
 source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
@@ -8880,25 +9006,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
-]
-
-[[package]]
-name = "sp-consensus-beefy"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "lazy_static",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-core",
- "sp-io",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-std",
- "strum",
 ]
 
 [[package]]
@@ -8996,7 +9103,7 @@ dependencies = [
  "byteorder",
  "digest 0.10.7",
  "sha2 0.10.6",
- "sha3",
+ "sha3 0.10.8",
  "sp-std",
  "twox-hash",
 ]
@@ -9117,24 +9224,6 @@ source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v
 dependencies = [
  "thiserror",
  "zstd",
-]
-
-[[package]]
-name = "sp-mmr-primitives"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "ckb-merkle-mountain-range",
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-debug-derive",
- "sp-runtime",
- "sp-std",
- "thiserror",
 ]
 
 [[package]]
@@ -9625,95 +9714,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-test-client"
-version = "2.0.1"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "array-bytes",
- "async-trait",
- "futures",
- "parity-scale-codec",
- "sc-client-api",
- "sc-client-db",
- "sc-consensus",
- "sc-executor",
- "sc-offchain",
- "sc-service",
- "serde",
- "serde_json",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-state-machine",
-]
-
-[[package]]
-name = "substrate-test-runtime"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "cfg-if",
- "frame-support",
- "frame-system",
- "frame-system-rpc-runtime-api",
- "log",
- "memory-db",
- "pallet-babe",
- "pallet-beefy-mmr",
- "pallet-timestamp",
- "parity-scale-codec",
- "sc-service",
- "scale-info",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-consensus-babe",
- "sp-consensus-beefy",
- "sp-consensus-grandpa",
- "sp-core",
- "sp-externalities",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-offchain",
- "sp-runtime",
- "sp-runtime-interface",
- "sp-session",
- "sp-state-machine",
- "sp-std",
- "sp-transaction-pool",
- "sp-trie",
- "sp-version",
- "substrate-wasm-builder",
- "trie-db",
-]
-
-[[package]]
-name = "substrate-test-runtime-client"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
-dependencies = [
- "futures",
- "parity-scale-codec",
- "sc-block-builder",
- "sc-chain-spec",
- "sc-client-api",
- "sc-consensus",
- "sp-api",
- "sp-blockchain",
- "sp-consensus",
- "sp-core",
- "sp-runtime",
- "substrate-test-client",
- "substrate-test-runtime",
-]
-
-[[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
 source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
@@ -9846,6 +9846,15 @@ name = "termtree"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
+
+[[package]]
+name = "textwrap"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
+dependencies = [
+ "unicode-width",
+]
 
 [[package]]
 name = "thiserror"

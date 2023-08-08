@@ -20,6 +20,7 @@ pallet-base = { workspace = true, default-features = false }
 pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
+pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -137,6 +138,7 @@ std = [
     "pallet-bridge/std",
     "pallet-committee/std",
     "pallet-compliance-manager/std",
+    "pallet-confidential-asset/std",
     "pallet-contracts/std",
     "pallet-corporate-actions/std",
     "pallet-executive/std",
@@ -209,6 +211,7 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "pallet-committee/runtime-benchmarks",
     "pallet-compliance-manager/runtime-benchmarks",
+    "pallet-confidential-asset/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
     "pallet-corporate-actions/runtime-benchmarks",
     "pallet-external-agents/runtime-benchmarks",

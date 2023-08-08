@@ -100,65 +100,71 @@ substrate-prometheus-endpoint = { git = "https://github.com/PolymeshAssociation/
 substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 
+bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
+mercat = { version = "1.1.0", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
+confidential_identity_core = { version = "1.1", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
+
 [workspace]
 members = [
-    "runtime/develop",
-    "runtime/mainnet",
+  "pallets/confidential-asset",
+  "runtime/develop",
+  "runtime/mainnet",
 ]
 exclude = [
-    "contracts",
+  "contracts",
 ]
 
 ## Keep common dependencies here.
 [workspace.dependencies]
 # Our pallets
-pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
+pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
 
 # Common
-polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
 
 # RPC
-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
+polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
 
 # Build tool
-polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "remove_dead_code", default-features = false }
 
 # Substrate
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
@@ -213,6 +219,7 @@ pallet-base = { workspace = true, default-features = false }
 pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
+pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -266,16 +273,12 @@ serde_json = { version = "1.0", features = ["arbitrary_precision"] }
 clap = { version = "4.0.9", features = ["derive"] }
 rustc-hex = "2.1.0"
 
-## Pin version to work around substrate logging issue.
-#tracing-core = "0.1.30"
-
 # Substrate client deps.
 sc-authority-discovery = "0.10.0-dev"
 sc-basic-authorship = "0.10.0-dev"
 sc-chain-spec = "4.0.0-dev"
 sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
-sc-client-db = { version = "0.10.0-dev", default-features = false }
 sc-consensus = "0.10.0-dev"
 sc-consensus-babe = "0.10.0-dev"
 sc-consensus-slots = "0.10.0-dev"
@@ -328,14 +331,13 @@ default = ["std"]
 running-ci = [ "polymesh-runtime-develop/running-ci" ]
 default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [
-    #"sc-client-db/runtime-benchmarks",
-    "polymesh-runtime-develop/runtime-benchmarks",
+  "polymesh-runtime-develop/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.
 ci-runtime = [ "polymesh-runtime-develop/ci-runtime" ]
 
 std = [
-    "polymesh-common-utilities/std",
-    "serde/std"
+  "polymesh-common-utilities/std",
+  "serde/std"
 ]
