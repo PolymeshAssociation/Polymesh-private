@@ -1,0 +1,66 @@
+[package]
+name = "pallet-confidential-asset"
+version = "0.1.0"
+authors = ["Polymath"]
+edition = "2021"
+
+[dependencies]
+# Common
+polymesh-primitives = { workspace = true, default-features = false }
+polymesh-common-utilities = { workspace = true, default-features = false }
+polymesh-runtime-common = { workspace = true, default-features = false }
+
+# Our Pallets
+pallet-base = { workspace = true, default-features = false  }
+pallet-balances = { workspace = true, default-features = false  }
+pallet-identity = { workspace = true, default-features = false }
+pallet-portfolio = { workspace = true, default-features = false }
+pallet-statistics = { workspace = true, default-features = false }
+
+# Crypto
+rand_core = { version = "0.6", default-features = false }
+rand_chacha = { version = "0.3", default-features = false }
+mercat = { version = "1.1.2", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0", default-features = false, features = [ "balance_64" ] }
+
+# Substrate
+codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+frame-system = { workspace = true, default-features = false }
+frame-support = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+
+# Only Benchmarking
+frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true }
+
+[features]
+equalize = []
+default = ["std", "equalize", "u64_backend"]
+
+# Backends
+u64_backend = ["mercat/u64_backend"]
+avx2_backend = ["mercat/avx2_backend"]
+
+no_std = ["mercat/no_std", "u64_backend"]
+only-staking = []
+std = [
+    "rand_core/std",
+    "rand_chacha/std",
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "mercat/std",
+    "pallet-balances/std",
+    "pallet-identity/std",
+    "pallet-portfolio/std",
+    "pallet-statistics/std",
+    "polymesh-common-utilities/std",
+    "polymesh-runtime-common/std",
+    "polymesh-primitives/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "polymesh-common-utilities/runtime-benchmarks",
+]
