@@ -68,7 +68,7 @@ pub struct MercatUser<T: Config + TestUtilsFn<AccountIdOf<T>>> {
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
     /// Creates a mercat user.
-    pub fn new(name: &str, rng: &mut StdRng) -> Self {
+    pub fn new(name: &'static str, rng: &mut StdRng) -> Self {
         let user = user::<T>(name, SEED);
         Self::new_from_user(user, rng)
     }
@@ -164,7 +164,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
 
 /// Create issuer's mercat account, create asset and mint.
 pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
-    name: &str,
+    name: &'static str,
     total_supply: u128,
     token_name: &[u8],
     rng: &mut StdRng,
@@ -586,7 +586,7 @@ benchmarks! {
     }: _(tx.issuer.origin(), tx.id, l)
 
     reject_transaction {
-        let l in 0..T::MaxNumberOfLegs::get();
+        let l in 1..T::MaxNumberOfLegs::get();
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -594,5 +594,5 @@ benchmarks! {
         let mut tx = TransactionState::<T>::new_legs(l, &mut rng);
         tx.add_transaction();
         tx.affirm_legs(&mut rng);
-    }: _(tx.issuer.origin(), tx.id, l)
+    }: _(tx.mediator.origin(), tx.id, l)
 }
