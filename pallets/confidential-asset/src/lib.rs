@@ -162,7 +162,7 @@ pub trait WeightInfo {
     fn receiver_unaffirm_transaction() -> Weight;
     fn mediator_unaffirm_transaction() -> Weight;
     fn execute_transaction(l: u32) -> Weight;
-    fn revert_transaction(l: u32) -> Weight;
+    fn reject_transaction(l: u32) -> Weight;
 
     fn affirm_transaction(affirm: &AffirmLeg) -> Weight {
         match affirm.party {
@@ -280,16 +280,14 @@ impl_wrapper!(MercatPubAccountTx, PubAccountTx);
 impl_wrapper!(MercatMintAssetTx, InitializedAssetTx);
 
 /// A global and unique confidential transaction ID.
-#[derive(Encode, Decode, TypeInfo)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
+#[derive(Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
 pub struct TransactionId(#[codec(compact)] pub u64);
 impl_checked_inc!(TransactionId);
 
 /// Transaction leg ID.
 ///
 /// The leg ID is it's index position (i.e. the first leg is 0).
-#[derive(Encode, Decode, TypeInfo)]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
+#[derive(Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
 pub struct TransactionLegId(#[codec(compact)] pub u64);
 
 /// A mercat account consists of the public key that is used for encryption purposes.
@@ -353,7 +351,7 @@ impl TransactionLeg {
 }
 
 /// Mercat sender proof.
-#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, Eq, PartialEq)]
 pub struct SenderProof(Vec<u8>);
 
 impl SenderProof {
@@ -458,8 +456,7 @@ pub struct ConfidentialAssetDetails {
 }
 
 /// Transaction information.
-#[derive(Encode, Decode, TypeInfo)]
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Transaction<BlockNumber> {
     /// Id of the venue this instruction belongs to
     pub venue_id: VenueId,
@@ -470,8 +467,7 @@ pub struct Transaction<BlockNumber> {
 }
 
 /// Status of a transaction.
-#[derive(Encode, Decode, TypeInfo)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, TypeInfo, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TransactionStatus<BlockNumber> {
     /// Pending affirmation and execution.
     Pending,
@@ -590,12 +586,6 @@ decl_storage! {
         /// party identity -> (transaction_id, leg_id, leg_party) -> Option<bool>
         UserAffirmations get(fn user_affirmations):
             double_map hasher(twox_64_concat) IdentityId, hasher(twox_64_concat) (TransactionId, TransactionLegId, LegParty) => Option<bool>;
-
-        /// The storage for mercat sender proofs.
-        ///
-        /// transaction_id -> leg_id -> Option<SenderProof>
-        SenderProofs get(fn sender_proofs):
-            double_map hasher(twox_64_concat) TransactionId, hasher(twox_64_concat) TransactionLegId => Option<SenderProof>;
 
         /// Transaction statuses.
         ///
@@ -813,13 +803,13 @@ decl_module! {
 
         /// Revert pending transaction.
         #[weight = <T as Config>::WeightInfo::execute_transaction(*leg_count)]
-        pub fn revert_transaction(
+        pub fn reject_transaction(
             origin,
             transaction_id: TransactionId,
             leg_count: u32,
         ) {
             let did = Identity::<T>::ensure_perms(origin)?;
-            Self::base_revert_transaction(did, transaction_id, leg_count as usize)?;
+            Self::base_reject_transaction(did, transaction_id, leg_count as usize)?;
         }
     }
 }
@@ -1206,8 +1196,7 @@ impl<T: Config> Module<T> {
                 TxLegSenderAmount::insert(&(id, leg_id), init_tx.memo.enc_amount_using_sender);
                 TxLegReceiverAmount::insert(&(id, leg_id), init_tx.memo.enc_amount_using_receiver);
 
-                // Store the sender's proof.
-                SenderProofs::insert(id, leg_id, proof);
+                Self::deposit_event(Event::TransactionAffirmed(caller_did, id, leg_id, *proof));
             }
             AffirmParty::Receiver => {
                 let receiver_did = Self::mercat_account_did(&leg.receiver);
@@ -1282,9 +1271,6 @@ impl<T: Config> Module<T> {
                 let sender_amount = TxLegSenderAmount::take((id, leg_id))
                     .ok_or(Error::<T>::TransactionNotAffirmed)?;
                 TxLegReceiverAmount::remove((id, leg_id));
-
-                // Remove the sender proof.
-                SenderProofs::remove(id, leg_id);
 
                 // Deposit the transaction amount back into the sender's account.
                 Self::mercat_account_deposit_amount(&leg.sender, leg.ticker, sender_amount)?;
@@ -1390,15 +1376,12 @@ impl<T: Config> Module<T> {
         let receiver_amount = TxLegReceiverAmount::take((transaction_id, leg_id))
             .ok_or(Error::<T>::TransactionNotAffirmed)?;
 
-        // Remove the sender proof.
-        SenderProofs::remove(transaction_id, leg_id);
-
         // Deposit the transaction amount into the receiver's account.
         Self::mercat_account_deposit_amount_incoming(&leg.receiver, ticker, receiver_amount);
         Ok(())
     }
 
-    fn base_revert_transaction(
+    fn base_reject_transaction(
         caller_did: IdentityId,
         transaction_id: TransactionId,
         leg_count: usize,
@@ -1406,6 +1389,11 @@ impl<T: Config> Module<T> {
         // Take transaction legs.
         let legs = TransactionLegs::drain_prefix(transaction_id).collect::<Vec<_>>();
         ensure!(legs.len() <= leg_count, Error::<T>::LegCountTooSmall);
+
+        ensure!(
+            Self::is_caller_in_transaction(caller_did, &legs),
+            Error::<T>::Unauthorized
+        );
 
         // Remove the pending affirmation count.
         PendingAffirms::remove(transaction_id);
@@ -1460,9 +1448,6 @@ impl<T: Config> Module<T> {
             }
             TxLegSenderBalance::remove((transaction_id, leg_id));
             TxLegReceiverAmount::remove((transaction_id, leg_id));
-
-            // Remove the sender proof.
-            SenderProofs::remove(transaction_id, leg_id);
         }
 
         Ok(())
@@ -1537,6 +1522,32 @@ impl<T: Config> Module<T> {
         ));
     }
 
+    /// Returns `true` if the `caller_did` is one the `sender`, `receiver` or `mediator` across any of the legs.
+    fn is_caller_in_transaction(
+        caller_did: IdentityId,
+        legs: &[(TransactionLegId, TransactionLeg)],
+    ) -> bool {
+        for (_, leg) in legs {
+            // Returns true if the caller is one of the senders
+            if let Ok(sender_did) = Self::get_mercat_account_did(&leg.sender) {
+                if sender_did == caller_did {
+                    return true;
+                }
+            }
+            // Returns true if the caller is one of the receivers
+            if let Ok(sender_did) = Self::get_mercat_account_did(&leg.receiver) {
+                if sender_did == caller_did {
+                    return true;
+                }
+            }
+            // Returns true if the caller is one of the mediators
+            if caller_did == leg.mediator {
+                return true;
+            }
+        }
+        false
+    }
+
     fn get_rng() -> Rng {
         // Increase the nonce each time.
         let nonce = RngNonce::get();
@@ -1597,6 +1608,9 @@ decl_event! {
             TransactionId,
             Option<Memo>,
         ),
+        /// Confidential transaction leg affirmed.
+        /// (caller DID, TransactionId, TransactionLegId, SenderProof)
+        TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, SenderProof),
         /// Mercat account balance decreased.
         /// This happens when the sender affirms the transaction.
         /// (mercat account, ticker, new encrypted balance)

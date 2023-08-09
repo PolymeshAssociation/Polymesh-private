@@ -361,7 +361,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegSenderBalance (r:0 w:10)
     // Proof Skipped: ConfidentialAsset TxLegSenderBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[0, 10]`.
-    fn revert_transaction(l: u32) -> Weight {
+    fn reject_transaction(l: u32) -> Weight {
         // Minimum execution time: 133_383 nanoseconds.
         Weight::from_ref_time(119_266_722)
             // Standard Error: 1_962_585

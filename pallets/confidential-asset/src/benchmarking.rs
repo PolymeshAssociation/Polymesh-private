@@ -585,7 +585,7 @@ benchmarks! {
         tx.affirm_legs(&mut rng);
     }: _(tx.issuer.origin(), tx.id, l)
 
-    revert_transaction {
+    reject_transaction {
         let l in 0..T::MaxNumberOfLegs::get();
 
         let mut rng = StdRng::from_seed([10u8; 32]);
