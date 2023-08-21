@@ -583,9 +583,9 @@ decl_storage! {
 
         /// Track pending transaction affirmations.
         ///
-        /// party identity -> (transaction_id, leg_id, leg_party) -> Option<bool>
+        /// party (identity, transaction_id) -> (leg_id, leg_party) -> Option<bool>
         UserAffirmations get(fn user_affirmations):
-            double_map hasher(twox_64_concat) IdentityId, hasher(twox_64_concat) (TransactionId, TransactionLegId, LegParty) => Option<bool>;
+            double_map hasher(twox_64_concat) (IdentityId, TransactionId), hasher(twox_64_concat) (TransactionLegId, LegParty) => Option<bool>;
 
         /// Transaction statuses.
         ///
@@ -1097,18 +1097,18 @@ impl<T: Config> Module<T> {
             let sender_did = Self::get_mercat_account_did(&leg.sender)?;
             let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
             UserAffirmations::insert(
-                sender_did,
-                (transaction_id, leg_id, LegParty::Sender),
+                (sender_did, transaction_id),
+                (leg_id, LegParty::Sender),
                 false,
             );
             UserAffirmations::insert(
-                receiver_did,
-                (transaction_id, leg_id, LegParty::Receiver),
+                (receiver_did, transaction_id),
+                (leg_id, LegParty::Receiver),
                 false,
             );
             UserAffirmations::insert(
-                &leg.mediator,
-                (transaction_id, leg_id, LegParty::Mediator),
+                (&leg.mediator, transaction_id),
+                (leg_id, LegParty::Mediator),
                 false,
             );
             TransactionLegs::insert(transaction_id, leg_id, leg.clone());
@@ -1146,7 +1146,7 @@ impl<T: Config> Module<T> {
 
         // Ensure the caller hasn't already affirmed this leg.
         let party = affirm.leg_party();
-        let caller_affirm = UserAffirmations::get(caller_did, (id, leg_id, party));
+        let caller_affirm = UserAffirmations::get((caller_did, id), (leg_id, party));
         ensure!(
             caller_affirm == Some(false),
             Error::<T>::TransactionAlreadyAffirmed
@@ -1207,7 +1207,7 @@ impl<T: Config> Module<T> {
             }
         }
         // Update affirmations.
-        UserAffirmations::insert(caller_did, (id, leg_id, party), true);
+        UserAffirmations::insert((caller_did, id), (leg_id, party), true);
         PendingAffirms::try_mutate(id, |pending| -> DispatchResult {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_sub(1);
@@ -1228,7 +1228,7 @@ impl<T: Config> Module<T> {
         let leg_id = unaffirm.leg_id;
 
         // Ensure the caller has affirmed this leg.
-        let caller_affirm = UserAffirmations::get(caller_did, (id, leg_id, unaffirm.party));
+        let caller_affirm = UserAffirmations::get((caller_did, id), (leg_id, unaffirm.party));
         ensure!(
             caller_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
@@ -1245,8 +1245,8 @@ impl<T: Config> Module<T> {
                 let receiver_did = Self::mercat_account_did(&leg.receiver)
                     .ok_or(Error::<T>::MercatAccountMissing)?;
                 UserAffirmations::mutate(
-                    receiver_did,
-                    (id, leg_id, LegParty::Receiver),
+                    (receiver_did, id),
+                    (leg_id, LegParty::Receiver),
                     |affirmed| {
                         if *affirmed == Some(true) {
                             pending_affirms += 1;
@@ -1256,8 +1256,8 @@ impl<T: Config> Module<T> {
                 );
                 // If the mediator has affirmed the leg, then we need to invalid their affirmation.
                 UserAffirmations::mutate(
-                    leg.mediator,
-                    (id, leg_id, LegParty::Mediator),
+                    (leg.mediator, id),
+                    (leg_id, LegParty::Mediator),
                     |affirmed| {
                         if *affirmed == Some(true) {
                             pending_affirms += 1;
@@ -1290,7 +1290,7 @@ impl<T: Config> Module<T> {
             }
         };
         // Update affirmations.
-        UserAffirmations::insert(caller_did, (id, leg_id, unaffirm.party), false);
+        UserAffirmations::insert((caller_did, id), (leg_id, unaffirm.party), false);
         PendingAffirms::try_mutate(id, |pending| -> DispatchResult {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_add(pending_affirms);
@@ -1351,20 +1351,20 @@ impl<T: Config> Module<T> {
         // Check affirmations and remove them.
         let sender_did = Self::get_mercat_account_did(&leg.sender)?;
         let sender_affirm =
-            UserAffirmations::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
+            UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
         ensure!(
             sender_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
         let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
         let receiver_affirm =
-            UserAffirmations::take(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
+            UserAffirmations::take((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
         ensure!(
             receiver_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
         let mediator_affirm =
-            UserAffirmations::take(leg.mediator, (transaction_id, leg_id, LegParty::Mediator));
+            UserAffirmations::take((leg.mediator, transaction_id), (leg_id, LegParty::Mediator));
         ensure!(
             mediator_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
@@ -1391,7 +1391,7 @@ impl<T: Config> Module<T> {
         ensure!(legs.len() <= leg_count, Error::<T>::LegCountTooSmall);
 
         ensure!(
-            Self::is_caller_in_transaction(caller_did, &legs),
+            UserAffirmations::contains_prefix((caller_did, transaction_id)),
             Error::<T>::Unauthorized
         );
 
@@ -1428,10 +1428,10 @@ impl<T: Config> Module<T> {
         // Remove user affirmations.
         let sender_did = Self::get_mercat_account_did(&leg.sender)?;
         let sender_affirm =
-            UserAffirmations::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
+            UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
         let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
-        UserAffirmations::remove(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
-        UserAffirmations::remove(leg.mediator, (transaction_id, leg_id, LegParty::Mediator));
+        UserAffirmations::remove((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
+        UserAffirmations::remove((leg.mediator, transaction_id), (leg_id, LegParty::Mediator));
 
         if sender_affirm == Some(true) {
             // Take the transaction leg's pending state.
@@ -1520,32 +1520,6 @@ impl<T: Config> Module<T> {
             ticker,
             amount,
         ));
-    }
-
-    /// Returns `true` if the `caller_did` is one the `sender`, `receiver` or `mediator` across any of the legs.
-    fn is_caller_in_transaction(
-        caller_did: IdentityId,
-        legs: &[(TransactionLegId, TransactionLeg)],
-    ) -> bool {
-        for (_, leg) in legs {
-            // Returns true if the caller is one of the senders
-            if let Ok(sender_did) = Self::get_mercat_account_did(&leg.sender) {
-                if sender_did == caller_did {
-                    return true;
-                }
-            }
-            // Returns true if the caller is one of the receivers
-            if let Ok(sender_did) = Self::get_mercat_account_did(&leg.receiver) {
-                if sender_did == caller_did {
-                    return true;
-                }
-            }
-            // Returns true if the caller is one of the mediators
-            if caller_did == leg.mediator {
-                return true;
-            }
-        }
-        false
     }
 
     fn get_rng() -> Rng {
