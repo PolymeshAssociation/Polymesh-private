@@ -1,4 +1,10 @@
 use frame_support::dispatch::Weight;
+use sp_io::TestExternalities;
+use sp_runtime::Storage;
+use sp_std::prelude::Vec;
+use sp_std::{cell::RefCell, convert::From, iter};
+use test_client::AccountKeyring;
+
 use pallet_asset::{self as asset, TickerRegistrationConfig};
 use pallet_balances as balances;
 use pallet_bridge::BridgeTx;
@@ -12,11 +18,6 @@ use polymesh_common_utilities::{
 use polymesh_primitives::{
     identity_id::GenesisIdentityRecord, AccountId, IdentityId, PosRatio, SecondaryKey, Signatory,
 };
-use sp_io::TestExternalities;
-use sp_runtime::Storage;
-use sp_std::prelude::Vec;
-use sp_std::{cell::RefCell, convert::From, iter};
-use test_client::AccountKeyring;
 
 use crate::test_runtime::TestRuntime;
 
