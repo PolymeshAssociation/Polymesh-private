@@ -523,7 +523,10 @@ fn basic_confidential_settlement() {
             let sender_proof = {
                 match System::events().pop().unwrap().event {
                     EventTest::ConfidentialAsset(Event::TransactionAffirmed(_, _, _, proof)) => {
-                        proof.into_tx().expect("Valid sender proof")
+                        proof
+                            .expect("Expected Proof")
+                            .into_tx()
+                            .expect("Valid sender proof")
                     }
                     _ => panic!("Exepected TransactionAffirmed event"),
                 }
