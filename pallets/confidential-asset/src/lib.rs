@@ -1196,7 +1196,12 @@ impl<T: Config> Module<T> {
                 TxLegSenderAmount::insert(&(id, leg_id), init_tx.memo.enc_amount_using_sender);
                 TxLegReceiverAmount::insert(&(id, leg_id), init_tx.memo.enc_amount_using_receiver);
 
-                Self::deposit_event(Event::TransactionAffirmed(caller_did, id, leg_id, Some(*proof)));
+                Self::deposit_event(Event::TransactionAffirmed(
+                    caller_did,
+                    id,
+                    leg_id,
+                    Some(*proof),
+                ));
             }
             AffirmParty::Receiver => {
                 let receiver_did = Self::mercat_account_did(&leg.receiver);

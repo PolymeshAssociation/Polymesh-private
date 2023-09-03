@@ -1,11 +1,10 @@
 [package]
-name = "polymesh-runtime-develop"
+name = "polymesh-confidential-assets-tests"
 version = "0.1.0"
-authors = ["PolymeshAssociation"]
+authors = ["Polymesh"]
 edition = "2021"
-build = "build.rs"
 
-[dependencies]
+[dev-dependencies]
 # Common
 polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
@@ -20,7 +19,6 @@ pallet-base = { workspace = true, default-features = false }
 pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
-pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -42,9 +40,11 @@ pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
 pallet-sudo = { workspace = true, default-features = false }
 polymesh-contracts = { workspace = true, default-features = false }
+pallet-confidential-asset = { path = "../../pallets/confidential-asset", default-features = false }
 
 # Others
 log = "0.4.8"
+smallvec = "1.4.0"
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
@@ -82,6 +82,7 @@ pallet-authority-discovery = { workspace = true, default-features = false }
 pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
+test_client = { package = "substrate-test-runtime-client", git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
@@ -93,39 +94,19 @@ pallet-protocol-fee-rpc-runtime-api = { workspace = true, default-features = fal
 pallet-staking-rpc-runtime-api = { workspace = true, default-features = false }
 node-rpc-runtime-api = { workspace = true, default-features = false }
 
-# Used for runtime benchmarking
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true }
-frame-system-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true }
-hex-literal = { version = "0.3.1", optional = true }
-
-# Import 'getrandom' here to enable feature `getrandom/js` for wasm builds.
-getrandom = { version = "0.2.6", default-features = false, optional = true }
-
-[build-dependencies]
-polymesh-build-tool = { workspace = true, default-features = false }
+# Crypto
+rand = { version = "0.8", default-features = false }
+rand_core = { version = "0.6", default-features = false }
+rand_chacha = { version = "0.3", default-features = false }
+mercat = { version = "1.1.2", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0", default-features = false, features = [ "balance_64" ] }
 
 [features]
-default = ["std", "equalize"]
-equalize = []
-
-ci-runtime = []
-
-# Backends
-u64_backend = ["polymesh-primitives/u64_backend"]
-
-no_std = [
-    "polymesh-primitives/no_std",
-    "u64_backend"
-]
+default = ["std", "testing"]
 
 std = [
-	"polymesh-build-tool/std",
-    "u64_backend",
     "codec/std",
-    "frame-benchmarking?/std",
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
-    "frame-system-benchmarking?/std",
     "frame-system/std",
     "node-rpc-runtime-api/std",
     "pallet-asset/std",
@@ -195,53 +176,5 @@ std = [
     "polymesh-contracts/std",
     "polymesh-extensions/std",
 ]
-runtime-benchmarks = [
-	"getrandom/js",
-    "frame-benchmarking/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system-benchmarking/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "pallet-babe/runtime-benchmarks",
-    "pallet-indices/runtime-benchmarks",
-    "pallet-grandpa/runtime-benchmarks",
-    "pallet-preimage/runtime-benchmarks",
-    "pallet-scheduler/runtime-benchmarks",
-    "hex-literal",
-    "pallet-asset/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks",
-    "pallet-committee/runtime-benchmarks",
-    "pallet-compliance-manager/runtime-benchmarks",
-    "pallet-confidential-asset/runtime-benchmarks",
-    "pallet-contracts/runtime-benchmarks",
-    "pallet-corporate-actions/runtime-benchmarks",
-    "pallet-external-agents/runtime-benchmarks",
-    "pallet-group/runtime-benchmarks",
-    "pallet-identity/runtime-benchmarks",
-    "pallet-multisig/runtime-benchmarks",
-    "pallet-im-online/runtime-benchmarks",
-    "pallet-permissions/runtime-benchmarks",
-    "pallet-pips/runtime-benchmarks",
-    "pallet-portfolio/runtime-benchmarks",
-    "pallet-protocol-fee/runtime-benchmarks",
-    "pallet-relayer/runtime-benchmarks",
-    "pallet-settlement/runtime-benchmarks",
-    "pallet-sto/runtime-benchmarks",
-    "pallet-staking/runtime-benchmarks",
-    "pallet-statistics/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "pallet-treasury/runtime-benchmarks",
-    "pallet-utility/runtime-benchmarks",
-    "pallet-test-utils/runtime-benchmarks",
-    "pallet-staking/runtime-benchmarks",
-    "polymesh-common-utilities/runtime-benchmarks",
-    "polymesh-contracts/runtime-benchmarks",
-    "polymesh-primitives/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
-    "pallet-nft/runtime-benchmarks"
-]
-running-ci = [
-    "pallet-statistics/running-ci",
-    "pallet-pips/running-ci",
-    "pallet-identity/running-ci",
-    "pallet-test-utils/running-ci",
-]
+
+testing = ["polymesh-runtime-common/testing"]
