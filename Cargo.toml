@@ -101,8 +101,7 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/s
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-mercat = { version = "1.1.0", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
-confidential_identity_core = { version = "1.1", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
 
 [workspace]
 members = [
@@ -211,6 +210,12 @@ sp-staking = { version = "4.0.0-dev", default-features = false }
 sp-std = { version = "5.0.0", default-features = false }
 sp-transaction-pool = { version = "4.0.0-dev", default-features = false }
 sp-version = { version = "5.0.0", default-features = false }
+
+# Crypto
+rand = { version = "0.8", default-features = false }
+rand_core = { version = "0.6", default-features = false }
+rand_chacha = { version = "0.3", default-features = false }
+confidential_assets = { version = "1.0.0", default-features = false }
 
 [dependencies]
 # Our pallets

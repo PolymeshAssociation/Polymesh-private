@@ -16,20 +16,14 @@
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use sp_runtime::traits::Zero;
+use sp_std::collections::btree_map::BTreeMap;
 
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::SeedableRng;
 
-use mercat::{
-    account::AccountCreator,
-    asset::AssetIssuer,
-    confidential_identity_core::{
-        asset_proofs::{Balance as MercatBalance, ElgamalSecretKey},
-        curve25519_dalek::scalar::Scalar,
-    },
-    transaction::CtxSender,
-    Account, AccountCreatorInitializer, AssetTransactionIssuer, EncryptedAmount, EncryptionKeys,
-    EncryptionPubKey, PubAccount, PubAccountTx, SecAccount, TransferTransactionSender,
+use confidential_assets::{
+    transaction::{AuditorId, ConfidentialTransferProof},
+    Balance as MercatBalance, CipherText, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 use polymesh_common_utilities::{
@@ -63,7 +57,7 @@ fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 #[derive(Clone, Debug)]
 pub struct MercatUser<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub user: User<T>,
-    pub sec: SecAccount,
+    pub sec: ElgamalKeys,
 }
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
@@ -78,31 +72,22 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
         // These are the encryptions keys used by MERCAT and are different from the signing keys
         // that Polymesh uses.
         let elg_secret = ElgamalSecretKey::new(Scalar::random(rng));
-        let elg_pub = elg_secret.get_public_key();
 
         Self {
             user,
-            sec: SecAccount {
-                enc_keys: EncryptionKeys {
-                    public: elg_pub.into(),
-                    secret: elg_secret.into(),
-                },
+            sec: ElgamalKeys {
+                public: elg_secret.get_public_key(),
+                secret: elg_secret,
             },
         }
     }
 
-    pub fn pub_account(&self) -> PubAccount {
-        PubAccount {
-            owner_enc_pub_key: self.sec.enc_keys.public,
-        }
-    }
-
-    pub fn pub_key(&self) -> EncryptionPubKey {
-        self.sec.enc_keys.public
+    pub fn pub_key(&self) -> ElgamalPublicKey {
+        self.sec.public
     }
 
     pub fn mercat(&self) -> MercatAccount {
-        MercatAccount(self.sec.enc_keys.public.into())
+        self.sec.public.into()
     }
 
     pub fn did(&self) -> IdentityId {
@@ -113,42 +98,22 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
         self.user.origin()
     }
 
-    /// Create account initial proof.
-    pub fn account_tx(&self, rng: &mut StdRng) -> PubAccountTx {
-        AccountCreator.create(&self.sec, rng).unwrap()
-    }
-
-    /// Create asset mint proof.
-    pub fn mint_tx(&self, amount: MercatBalance, rng: &mut StdRng) -> MercatMintAssetTx {
-        let issuer_account = Account {
-            secret: self.sec.clone(),
-            public: self.pub_account(),
-        };
-
-        let initialized_asset_tx = AssetIssuer
-            .initialize_asset_transaction(&issuer_account, &[], amount, rng)
-            .unwrap();
-        MercatMintAssetTx::from(initialized_asset_tx)
-    }
-
     /// Initialize a new mercat account on-chain for `ticker`.
-    pub fn init_account(&self, ticker: Ticker, rng: &mut StdRng) {
-        let mercat_account_tx = self.account_tx(rng);
+    pub fn init_account(&self, ticker: Ticker) {
         assert_ok!(Module::<T>::validate_mercat_account(
             self.origin().into(),
             ticker,
-            MercatPubAccountTx::from(mercat_account_tx.clone())
+            self.mercat(),
         ));
     }
 
-    pub fn mercat_enc_balance(&self, ticker: Ticker) -> EncryptedAmount {
+    pub fn mercat_enc_balance(&self, ticker: Ticker) -> CipherText {
         Module::<T>::mercat_account_balance(self.mercat(), ticker).expect("mercat account balance")
     }
 
     pub fn ensure_mercat_balance(&self, ticker: Ticker, balance: MercatBalance) {
         let enc_balance = self.mercat_enc_balance(ticker);
         self.sec
-            .enc_keys
             .secret
             .verify(&enc_balance, &balance.into())
             .expect("mercat balance")
@@ -190,18 +155,17 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     // ---------------- prepare for minting the asset
 
-    owner.init_account(ticker, rng);
+    owner.init_account(ticker);
 
     // ------------- Computations that will happen in owner's Wallet ----------
     let amount: MercatBalance = token.total_supply.try_into().unwrap(); // mercat amounts are 32 bit integers.
-    let mint_tx = owner.mint_tx(amount, rng);
 
     // Wallet submits the transaction to the chain for verification.
     assert_ok!(Module::<T>::mint_confidential_asset(
         owner.origin().into(),
         ticker,
         amount.into(), // convert to u128
-        mint_tx,
+        owner.mercat(),
     ));
 
     // ------------------------- Ensuring that the asset details are set correctly
@@ -264,7 +228,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
         // Setup investor.
         let investor = MercatUser::<T>::new("investor", rng);
-        investor.init_account(ticker, rng);
+        investor.init_account(ticker);
 
         let legs = (0..leg_count)
             .into_iter()
@@ -299,25 +263,20 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
     }
 
     pub fn sender_proof(&self, leg_id: u64, rng: &mut StdRng) -> AffirmLeg {
-        let issuer_account = Account {
-            secret: self.issuer.sec.clone(),
-            public: self.issuer.pub_account(),
-        };
-        let investor_pub_account = self.investor.pub_account();
+        let investor_pub_account = self.investor.pub_key();
         let issuer_balance = self.issuer_balance - (leg_id as MercatBalance * self.amount);
         let issuer_enc_balance = self.issuer.mercat_enc_balance(self.ticker);
-        let sender_tx = CtxSender
-            .create_transaction(
-                &issuer_account,
-                &issuer_enc_balance,
-                issuer_balance,
-                &investor_pub_account,
-                Some(&self.mediator.pub_key()),
-                &[],
-                self.amount,
-                rng,
-            )
-            .unwrap();
+        let auditor_keys = BTreeMap::from([(AuditorId(0), self.mediator.pub_key())]);
+        let sender_tx = ConfidentialTransferProof::new(
+            &self.issuer.sec,
+            &issuer_enc_balance,
+            issuer_balance,
+            &investor_pub_account,
+            &auditor_keys,
+            self.amount,
+            rng,
+        )
+        .unwrap();
         AffirmLeg::sender(TransactionLegId(leg_id as _), sender_tx)
     }
 
@@ -398,10 +357,7 @@ benchmarks! {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         let user = MercatUser::<T>::new("user", &mut rng);
-        let mercat_account_tx = user.account_tx(&mut rng);
-        let account_tx = MercatPubAccountTx::from(mercat_account_tx.clone());
-
-    }: _(user.origin(), ticker, account_tx)
+    }: _(user.origin(), ticker, user.mercat())
 
     add_mediator_mercat_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -423,11 +379,10 @@ benchmarks! {
             b"Name".as_slice(),
             ticker,
         );
-        issuer.init_account(ticker, &mut rng);
+        issuer.init_account(ticker);
 
         let total_supply = 4_000_000_000 as MercatBalance;
-        let mint_tx = issuer.mint_tx(total_supply, &mut rng);
-    }: _(issuer.origin(), ticker, total_supply.into(), mint_tx)
+    }: _(issuer.origin(), ticker, total_supply.into(), issuer.mercat())
 
     apply_incoming_balance {
         let mut rng = StdRng::from_seed([10u8; 32]);
