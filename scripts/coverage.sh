@@ -6,8 +6,7 @@ function run_tests() {
     SKIP_WASM_BUILD=1 RUST_BACKTRACE=1 \
     INTEGRATION_TEST=1 \
     cargo +nightly-2022-11-02 test --tests \
-        --package polymesh-private-runtime-tests \
-        --features default_identity $*
+        --package polymesh-private-runtime-tests $*
 }
 
 function get_tests_filenames() {

@@ -84,7 +84,7 @@ jobs:
           command: mkdir ./assets
       - run:
           name: Copy binary to assets
-          command: cp ./target/release/polymesh ./assets/polymesh
+          command: cp ./target/release/polymesh-private ./assets/polymesh-private
       - run:
           name: Copy wasm to assets
           command: cp ./target/release/wbuild/polymesh*/*wasm ./assets/
@@ -119,11 +119,11 @@ jobs:
           no_output_timeout: 30m
       - run:
           name: Rename the benchmarks binary.
-          command: mv ./target/release/polymesh ./polymesh-benchmarks
+          command: mv ./target/release/polymesh-private ./polymesh-private-benchmarks
       - persist_to_workspace:
           root: ./
           paths:
-            - polymesh-benchmarks
+            - polymesh-private-benchmarks
       - save_cache:
           key: v4-bench-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
           paths:
@@ -140,7 +140,7 @@ jobs:
           at: .
       - run:
           name: Run benchmarks
-          command: ./polymesh-benchmarks benchmark pallet -p=* -e=* -r 1 -s 2 --execution wasm --wasm-execution compiled --db-cache 512 --heap-pages=4096
+          command: ./polymesh-private-benchmarks benchmark pallet -p=* -e=* -r 1 -s 2 --execution wasm --wasm-execution compiled --db-cache 512 --heap-pages=4096
           no_output_timeout: 30m
   test:
     docker:
@@ -165,7 +165,6 @@ jobs:
           command: >-
             cargo test
             --package polymesh-private-runtime-tests
-            --features default_identity
           no_output_timeout: 30m
       - save_cache:
           key: v12-test-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
