@@ -825,6 +825,11 @@ impl<T: Config> Module<T> {
         let pub_key = account
             .pub_account()
             .ok_or(Error::<T>::InvalidMercatAccount)?;
+
+        // Ensure `owner_did` owns `account`.
+        let account_did = Self::mercat_account_did(&account);
+        ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
+
         // Ensure the caller is the asset owner and get the asset details.
         let mut details = Self::ensure_asset_owner(ticker, owner_did)?;
 
