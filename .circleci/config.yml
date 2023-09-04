@@ -1,0 +1,234 @@
+version: 2.1
+commands:
+  setup-sccache:
+    steps:
+      - run:
+          name: Setup sccache
+          command: |
+            # This configures Rust to use sccache.
+            echo 'export "RUSTC_WRAPPER"="/usr/local/cargo/bin/sccache"' >> $BASH_ENV
+            # This is the maximum space sccache cache will use on disk.
+            echo 'export "SCCACHE_CACHE_SIZE"="2G"' >> $BASH_ENV
+            /usr/local/cargo/bin/sccache --version
+  restore-sccache-cache:
+    steps:
+      - restore_cache:
+          name: Restore sccache cache
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
+      - run:
+          name: Show cache size
+          command: /usr/local/cargo/bin/sccache -s
+  save-sccache-cache:
+    steps:
+      - run:
+          name: Show cache size
+          command: /usr/local/cargo/bin/sccache -s
+      - save_cache:
+          name: Save sccache cache
+          # We use {{ epoch }} to always upload a fresh cache:
+          # Of course, restore_cache will not find this exact key,
+          # but it will fall back to the closest key (aka the most recent).
+          # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ epoch }}
+          paths:
+            - "/usr/local/cargo"
+            - "~/.cache/sccache"
+jobs:
+  lint:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: small
+    environment:
+      VERBOSE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Check formatting
+          command: ./scripts/rustfmt.sh
+      - run:
+          name: Check runtime spec versions and polymesh crate version.
+          command: ./scripts/check_spec_and_cargo_version.sh
+  check-storage-version:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: small
+    environment:
+      VERBOSE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Check Storage versions
+          command: ./scripts/check_storage_versions.sh
+  build:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: xlarge
+    environment:
+      - VERBOSE: "1"
+      - RUSTFLAGS: -D warnings
+      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+    steps:
+      - checkout
+      - run:
+          name: Store rust version in an environment var for cache key
+          command: rustc --version > rust.version
+      - restore_cache:
+          keys:
+            - v7-release-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+      - run:
+          name: Build release
+          command: cargo build --locked --release
+          no_output_timeout: 30m
+      - run:
+          name: Create assets directory for releases
+          command: mkdir ./assets
+      - run:
+          name: Copy binary to assets
+          command: cp ./target/release/polymesh ./assets/polymesh
+      - run:
+          name: Copy wasm to assets
+          command: cp ./target/release/wbuild/polymesh*/*wasm ./assets/
+      - persist_to_workspace:
+          root: ./assets
+          paths:
+              - .
+      - save_cache:
+          key: v7-release-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo"
+            - "~/.cache/sccache"
+  benchmark-build:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: xlarge
+    environment:
+      - VERBOSE: "1"
+      - RUSTFLAGS: -D warnings
+      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+    steps:
+      - checkout
+      - run:
+          name: Store rust version in an environment var for cache key
+          command: rustc --version > rust.version
+      - restore_cache:
+          keys:
+            - v4-bench-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+      - run:
+          name: Build binary with runtime-benchmarks
+          command: cargo build --locked --release --features=runtime-benchmarks,running-ci
+          no_output_timeout: 30m
+      - run:
+          name: Rename the benchmarks binary.
+          command: mv ./target/release/polymesh ./polymesh-benchmarks
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - polymesh-benchmarks
+      - save_cache:
+          key: v4-bench-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo"
+            - "~/.cache/sccache"
+  benchmark:
+    docker:
+      - image: debian:stable
+    resource_class: small
+    environment:
+      - VERBOSE: "1"
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run benchmarks
+          command: ./polymesh-benchmarks benchmark pallet -p=* -e=* -r 1 -s 2 --execution wasm --wasm-execution compiled --db-cache 512 --heap-pages=4096
+          no_output_timeout: 30m
+  test:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: large
+    environment:
+      - VERBOSE: "1"
+      - RUSTFLAGS: -D warnings
+      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+      - SKIP_WASM_BUILD: "1"
+      - RUST_BACKTRACE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Store rust version in a file for cache key
+          command: rustc --version > rust.version
+      - restore_cache:
+          keys:
+            - v12-test-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+      - run:
+          name: Tests
+          command: >-
+            cargo test
+            --package polymesh-runtime-tests
+            --features default_identity
+          no_output_timeout: 30m
+      - save_cache:
+          key: v12-test-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo"
+            - "~/.cache/sccache"
+  coverage:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: xlarge
+    environment:
+      - VERBOSE: "1"
+    steps:
+      - checkout
+      - run:
+          name: Store rust version in a file for cache key
+          command: rustc --version | tee rust.version
+      - restore_cache:
+          keys:
+            - v7-coverage-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+      - run:
+          name: Coverage
+          command: bash ./scripts/coverage.sh
+          no_output_timeout: 30m
+      - save_cache:
+          key: v7-coverage-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo"
+  clippy:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: xlarge
+    environment:
+      - VERBOSE: "1"
+      - SKIP_WASM_BUILD: "1"
+    steps:
+      - checkout
+      - run:
+          name: Store rust version in a file for cache key
+          command: rustc --version > rust.version
+      - restore_cache:
+          keys:
+            - v6-clippy-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+      - run:
+          name: run clippy
+          command: cargo clippy -- -A clippy::all -W clippy::complexity -W clippy::perf
+          no_output_timeout: 30m
+      - save_cache:
+          key: v6-clippy-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
+          paths:
+            - "/usr/local/cargo"
+
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - lint
+      - check-storage-version
+      - clippy
+      - test
+      - build
+      - benchmark-build
+      - coverage
+      - benchmark:
+          requires:
+            - benchmark-build
