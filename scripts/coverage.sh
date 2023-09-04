@@ -6,16 +6,7 @@ function run_tests() {
     SKIP_WASM_BUILD=1 RUST_BACKTRACE=1 \
     INTEGRATION_TEST=1 \
     cargo +nightly-2022-11-02 test --tests \
-        --package pallet-staking \
-        --package pallet-group \
-        --package pallet-sudo \
-        --package pallet-pips \
-        --package polymesh-primitives \
-        --package node-rpc-runtime-api \
-        --package pallet-transaction-payment \
-        --package polymesh-runtime-tests \
-        --package pallet-balances:0.1.0 \
-        --package asset-metadata \
+        --package polymesh-private-runtime-tests \
         --features default_identity $*
 }
 

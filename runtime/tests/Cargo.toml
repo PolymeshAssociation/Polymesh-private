@@ -1,5 +1,5 @@
 [package]
-name = "polymesh-confidential-assets-tests"
+name = "polymesh-private-runtime-tests"
 version = "0.1.0"
 authors = ["Polymesh"]
 edition = "2021"

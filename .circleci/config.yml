@@ -164,7 +164,7 @@ jobs:
           name: Tests
           command: >-
             cargo test
-            --package polymesh-runtime-tests
+            --package polymesh-private-runtime-tests
             --features default_identity
           no_output_timeout: 30m
       - save_cache:
