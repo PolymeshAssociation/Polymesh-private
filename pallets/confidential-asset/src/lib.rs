@@ -733,10 +733,6 @@ impl<T: Config> Module<T> {
         ticker: Ticker,
         account: MercatAccount,
     ) -> DispatchResult {
-        // Decompress the public key.
-        let pub_key = account
-            .pub_account()
-            .ok_or(Error::<T>::InvalidMercatAccount)?;
         // Ensure the mercat account's balance hasn't been initialized.
         ensure!(
             !MercatAccountBalance::contains_key(&account, ticker),
@@ -761,8 +757,7 @@ impl<T: Config> Module<T> {
         })?;
 
         // Initialize the mercat account balance to zero.
-        let witness = CommitmentWitness::new(Scalar::zero(), Scalar::zero());
-        let enc_balance = pub_key.encrypt(&witness);
+        let enc_balance = CipherText::zero();
         MercatAccountBalance::insert(&account, ticker, enc_balance.clone());
 
         Self::deposit_event(Event::AccountCreated(
@@ -821,11 +816,6 @@ impl<T: Config> Module<T> {
         amount: Balance,
         account: MercatAccount,
     ) -> DispatchResult {
-        // Decompress the public key.
-        let pub_key = account
-            .pub_account()
-            .ok_or(Error::<T>::InvalidMercatAccount)?;
-
         // Ensure `owner_did` owns `account`.
         let account_did = Self::mercat_account_did(&account);
         ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
@@ -864,8 +854,7 @@ impl<T: Config> Module<T> {
             Error::<T>::MercatAccountMissing
         );
 
-        let witness = CommitmentWitness::new(amount.into(), Scalar::zero());
-        let enc_issued_amount = pub_key.encrypt(&witness);
+        let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's mercat account.
         Self::mercat_account_deposit_amount(&account, ticker, enc_issued_amount)?;
 
