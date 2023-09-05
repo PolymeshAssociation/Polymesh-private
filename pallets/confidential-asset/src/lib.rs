@@ -105,9 +105,8 @@
 
 use codec::{Decode, Encode};
 use confidential_assets::{
-    elgamal::CommitmentWitness,
     transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as MercatBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey, Scalar,
+    Balance as MercatBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
