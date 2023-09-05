@@ -3,6 +3,10 @@ name = "integration"
 version = "0.1.0"
 edition = "2021"
 
+[patch.crates-io]
+bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
+
 [features]
 default = ["simple-nonce-server"]
 
@@ -27,6 +31,11 @@ polymesh-api = { version = "2.0.1", features = ["download_metadata"] }
 polymesh-api-client-extras = { version = "2.0" }
 
 serde = { version = "1.0.171", features = ["derive"] }
+
+# Confidential Assets
+confidential_assets = { version = "1.0.0" }
+hex = { version = "0.4" }
+rand = { version = "0.8" }
 
 # For simple-nonce server
 actix-web = { version = "4", optional = true }
