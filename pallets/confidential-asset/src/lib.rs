@@ -591,33 +591,30 @@ decl_module! {
             Self::base_create_confidential_asset(owner_did, name, ticker, asset_type)
         }
 
-        /// Verifies the proof of the asset minting, `asset_mint_proof`. If successful, it sets the total
-        /// balance of the owner to `total_supply`. This function should only be called once with a non-zero total supply,
-        /// after `create_confidential_asset` is called.
+        /// Mint more assets into the asset issuer's `account`.
         ///
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         /// * `ticker` - the ticker symbol of the token.
-        /// * `total_supply` - the total supply of the token.
+        /// * `amount` - amount of tokens to mint.
         /// * `asset_mint_proof` - The proofs that the encrypted asset id is a valid ticker name and that the `total_supply` matches encrypted value.
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
         /// - `Unauthorized` if origin is not the owner of the asset.
         /// - `CanSetTotalSupplyOnlyOnce` if this function is called more than once.
-        /// - `TotalSupplyMustBePositive` if total supply is zero.
-        /// - `TotalSupplyAboveMercatBalanceLimit` if `total_supply` exceeds the mercat balance limit. This is imposed by the MERCAT lib.
+        /// - `TotalSupplyMustBePositive` if `amount` is zero.
+        /// - `TotalSupplyAboveMercatBalanceLimit` if `total_supply` exceeds the mercat balance limit.
         /// - `UnknownConfidentialAsset` The ticker is not part of the set of confidential assets.
-        /// - `InvalidAccountMintProof` if the proofs of ticker name and total supply are incorrect.
         #[weight = <T as Config>::WeightInfo::mint_confidential_asset()]
         pub fn mint_confidential_asset(
             origin,
             ticker: Ticker,
-            total_supply: Balance,
+            amount: Balance,
             account: MercatAccount,
         ) -> DispatchResult {
             let owner_did = Identity::<T>::ensure_perms(origin)?;
-            Self::base_mint_confidential_asset(owner_did, ticker, total_supply, account)
+            Self::base_mint_confidential_asset(owner_did, ticker, amount, account)
         }
 
         /// Applies any incoming balance to the mercat account balance.
@@ -1504,10 +1501,6 @@ decl_event! {
 
 decl_error! {
     pub enum Error for Module<T: Config> {
-        /// The MERCAT account creation proofs are invalid.
-        InvalidAccountCreationProof,
-        /// The MERCAT asset issuance proofs are invalid.
-        InvalidAccountMintProof,
         /// Mercat account hasn't been created yet.
         MercatAccountMissing,
         /// Mercat account already created.

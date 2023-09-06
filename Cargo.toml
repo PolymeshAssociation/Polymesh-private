@@ -112,6 +112,7 @@ members = [
 ]
 exclude = [
   "contracts",
+	"integration",
 ]
 
 ## Keep common dependencies here.
