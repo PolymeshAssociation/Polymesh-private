@@ -2397,9 +2397,9 @@ dependencies = [
 
 [[package]]
 name = "polymesh-api-codegen"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8b232d22e256f3326c3c18c8f548f1a926456539d6827021a3b31577ced464b"
+checksum = "80b02fb08cde76dcba4d2a48e38a0cc0241fa536656a78b42147044330d841af"
 dependencies = [
  "anyhow",
  "frame-metadata",
@@ -3953,7 +3953,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

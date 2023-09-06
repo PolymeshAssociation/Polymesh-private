@@ -5,7 +5,10 @@ use polymesh_api_client_extras::*;
 pub use polymesh_api::{
     client::{AccountId, IdentityId},
     polymesh::types::{
-        polymesh_primitives::secondary_key::{KeyRecord, Permissions, SecondaryKey},
+        polymesh_primitives::{
+            secondary_key::{KeyRecord, Permissions, SecondaryKey},
+            ticker::Ticker,
+        },
         runtime::{events::*, RuntimeEvent},
     },
     Api,
@@ -234,5 +237,13 @@ impl PolymeshTester {
             }
         };
         Ok(did)
+    }
+
+    pub fn gen_ticker(&self) -> Ticker {
+        use rand::{thread_rng, Rng};
+        let mut data = [0u8; 6];
+        thread_rng().fill(&mut data[..]);
+        let name = hex::encode_upper(data);
+        Ticker(name.as_bytes().try_into().unwrap())
     }
 }
