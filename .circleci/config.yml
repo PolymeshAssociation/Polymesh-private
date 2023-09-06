@@ -209,9 +209,8 @@ jobs:
       - run:
           name: run Polymesh dev chain node for integration tests
           command: >-
-            ./target/release/polymesh-private --bob --chain dev
-              --no-prometheus --no-telemetry --tmp
-              --wasm-execution compiled
+            ./target/release/polymesh-private --dev
+              --no-mdns --no-prometheus --no-telemetry
               --pool-limit 100000
           background: true
       - run:
