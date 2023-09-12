@@ -416,7 +416,7 @@ checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -806,12 +806,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cast"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
-
-[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -961,17 +955,6 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.34.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
-dependencies = [
- "bitflags",
- "textwrap",
- "unicode-width",
-]
-
-[[package]]
-name = "clap"
 version = "4.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "401a4694d2bf92537b6867d94de48c4842089645fdcdf6c71865b175d836e9c2"
@@ -1003,7 +986,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -1049,14 +1032,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "confidential_identity_core"
-version = "1.1.2"
-source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
+name = "confidential_assets"
+version = "1.0.0"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#00d65edcf919b0af4b999e39251f8f7d2fa8ac04"
 dependencies = [
- "blake2",
  "bulletproofs",
  "byteorder",
- "criterion",
  "curve25519-dalek-ng",
  "merlin 3.0.0",
  "parity-scale-codec",
@@ -1066,6 +1047,7 @@ dependencies = [
  "serde",
  "sha3 0.9.1",
  "sp-std",
+ "thiserror",
  "zeroize",
 ]
 
@@ -1248,42 +1230,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "criterion"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b01d6de93b2b6c65e17c634a26653a29d107b3c98c607c765bf38d041531cd8f"
-dependencies = [
- "atty",
- "cast",
- "clap 2.34.0",
- "criterion-plot",
- "csv",
- "itertools",
- "lazy_static",
- "num-traits",
- "oorandom",
- "plotters",
- "rayon",
- "regex",
- "serde",
- "serde_cbor",
- "serde_derive",
- "serde_json",
- "tinytemplate",
- "walkdir",
-]
-
-[[package]]
-name = "criterion-plot"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2673cc8207403546f45f5fd319a974b1e6983ad1a3ee7e6041650013be041876"
-dependencies = [
- "cast",
- "itertools",
-]
-
-[[package]]
 name = "crossbeam-channel"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1373,27 +1319,6 @@ checksum = "b1d1a86f49236c215f271d40892d5fc950490551400b02ef360692c29815c714"
 dependencies = [
  "generic-array 0.14.7",
  "subtle",
-]
-
-[[package]]
-name = "csv"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "626ae34994d3d8d668f4269922248239db4ae42d538b14c398b74a52208e8086"
-dependencies = [
- "csv-core",
- "itoa",
- "ryu",
- "serde",
-]
-
-[[package]]
-name = "csv-core"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2466559f260f48ad25fe6317b3c8dac77b5bdb5763ac7d9d6103530663bc90"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -1493,7 +1418,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "scratch",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -1510,7 +1435,7 @@ checksum = "4a076022ece33e7686fb76513518e219cca4fce5750a8ae6d1ce6c0f48fd1af9"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -1750,7 +1675,7 @@ checksum = "487585f4d0c6655fe74905e2504d8ad6908e4db67f744eb140876906c2f3175d"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -1943,28 +1868,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "failure"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d32e9bd16cc02eae7db7ef620b392808b89f6a5e16bb3497d159c6b92a0f4f86"
-dependencies = [
- "backtrace",
- "failure_derive",
-]
-
-[[package]]
-name = "failure_derive"
-version = "0.1.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
- "synstructure",
-]
-
-[[package]]
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2095,7 +1998,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 [[package]]
 name = "fork-tree"
 version = "3.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -2118,7 +2021,7 @@ checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 [[package]]
 name = "frame-benchmarking"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-support",
  "frame-support-procedural",
@@ -2148,7 +2051,7 @@ dependencies = [
  "Inflector",
  "array-bytes",
  "chrono",
- "clap 4.3.2",
+ "clap",
  "comfy-table",
  "frame-benchmarking",
  "frame-support",
@@ -2190,7 +2093,7 @@ dependencies = [
 [[package]]
 name = "frame-election-provider-solution-type"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -2246,7 +2149,7 @@ dependencies = [
 [[package]]
 name = "frame-support"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "bitflags",
  "environmental",
@@ -2279,7 +2182,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "Inflector",
  "cfg-expr",
@@ -2294,7 +2197,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-support-procedural-tools-derive",
  "proc-macro-crate",
@@ -2306,7 +2209,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools-derive"
 version = "3.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2316,7 +2219,7 @@ dependencies = [
 [[package]]
 name = "frame-system"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-support",
  "log",
@@ -2349,7 +2252,7 @@ dependencies = [
 [[package]]
 name = "frame-system-rpc-runtime-api"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -2453,7 +2356,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -2650,12 +2553,6 @@ dependencies = [
  "tokio-util",
  "tracing",
 ]
-
-[[package]]
-name = "half"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "handlebars"
@@ -4076,25 +3973,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
-name = "mercat"
-version = "1.1.2"
-source = "git+https://github.com/PolymeshAssociation/cryptography?branch=mercat_polymesh_v6.0#ce7d9616bb0f0ea8b094fdf12791d9372fac6efd"
-dependencies = [
- "byteorder",
- "confidential_identity_core",
- "criterion",
- "failure",
- "parity-scale-codec",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "serde",
- "serde_json",
- "sha3 0.9.1",
- "sp-std",
- "zeroize",
-]
-
-[[package]]
 name = "merlin"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4407,7 +4285,7 @@ dependencies = [
 [[package]]
 name = "node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4433,7 +4311,7 @@ dependencies = [
 [[package]]
 name = "node-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4590,12 +4468,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
-name = "oorandom"
-version = "11.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
-
-[[package]]
 name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4648,7 +4520,7 @@ dependencies = [
 [[package]]
 name = "pallet-asset"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "arrayvec 0.7.2",
  "frame-benchmarking",
@@ -4703,7 +4575,7 @@ dependencies = [
 [[package]]
 name = "pallet-authorship"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4717,7 +4589,7 @@ dependencies = [
 [[package]]
 name = "pallet-babe"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4741,7 +4613,7 @@ dependencies = [
 [[package]]
 name = "pallet-balances"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4782,7 +4654,7 @@ dependencies = [
 [[package]]
 name = "pallet-base"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4845,7 +4717,7 @@ dependencies = [
 [[package]]
 name = "pallet-bridge"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4869,7 +4741,7 @@ dependencies = [
 [[package]]
 name = "pallet-committee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4894,7 +4766,7 @@ dependencies = [
 [[package]]
 name = "pallet-compliance-manager"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "either",
  "frame-benchmarking",
@@ -4925,10 +4797,10 @@ dependencies = [
 name = "pallet-confidential-asset"
 version = "0.1.0"
 dependencies = [
+ "confidential_assets",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "mercat",
  "pallet-balances 0.1.0",
  "pallet-base",
  "pallet-identity",
@@ -4990,7 +4862,7 @@ dependencies = [
 [[package]]
 name = "pallet-contracts-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5000,7 +4872,7 @@ dependencies = [
 [[package]]
 name = "pallet-corporate-actions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5033,7 +4905,7 @@ dependencies = [
 [[package]]
 name = "pallet-external-agents"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5077,7 +4949,7 @@ dependencies = [
 [[package]]
 name = "pallet-group"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5101,7 +4973,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5122,7 +4994,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -5135,7 +5007,7 @@ dependencies = [
 [[package]]
 name = "pallet-identity"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "either",
  "frame-benchmarking",
@@ -5233,7 +5105,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5256,7 +5128,7 @@ dependencies = [
 [[package]]
 name = "pallet-nft"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5293,7 +5165,7 @@ dependencies = [
 [[package]]
 name = "pallet-permissions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5310,7 +5182,7 @@ dependencies = [
 [[package]]
 name = "pallet-pips"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5345,7 +5217,7 @@ dependencies = [
 [[package]]
 name = "pallet-portfolio"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5383,7 +5255,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5403,7 +5275,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5424,7 +5296,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -5436,7 +5308,7 @@ dependencies = [
 [[package]]
 name = "pallet-relayer"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5470,7 +5342,7 @@ dependencies = [
 [[package]]
 name = "pallet-session"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5491,7 +5363,7 @@ dependencies = [
 [[package]]
 name = "pallet-settlement"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5527,7 +5399,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -5568,7 +5440,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5588,7 +5460,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "sp-api",
@@ -5598,7 +5470,7 @@ dependencies = [
 [[package]]
 name = "pallet-statistics"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5625,7 +5497,7 @@ dependencies = [
 [[package]]
 name = "pallet-sto"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5658,7 +5530,7 @@ dependencies = [
 [[package]]
 name = "pallet-sudo"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5673,7 +5545,7 @@ dependencies = [
 [[package]]
 name = "pallet-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5692,7 +5564,7 @@ dependencies = [
 [[package]]
 name = "pallet-timestamp"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5710,7 +5582,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5729,7 +5601,7 @@ dependencies = [
 [[package]]
 name = "pallet-treasury"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5754,7 +5626,7 @@ dependencies = [
 [[package]]
 name = "pallet-utility"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5968,7 +5840,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -6009,7 +5881,7 @@ checksum = "39407670928234ebc5e6e580247dd567ad73a3578460c5990f9503df207e8f07"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -6059,34 +5931,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3d7ddaed09e0eb771a79ab0fd64609ba0afb0a8366421957936ad14cbd13630"
 
 [[package]]
-name = "plotters"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2c224ba00d7cadd4d5c660deaf2098e5e80e07846537c51f9cfa4be50c1fd45"
-dependencies = [
- "num-traits",
- "plotters-backend",
- "plotters-svg",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
-name = "plotters-backend"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e76628b4d3a7581389a35d5b6e2139607ad7c75b17aed325f210aa91f4a9609"
-
-[[package]]
-name = "plotters-svg"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38f6d39893cca0701371e3c27294f09797214b86f1fb951b89ade8ec04e2abab"
-dependencies = [
- "plotters-backend",
-]
-
-[[package]]
 name = "polling"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6116,7 +5960,7 @@ dependencies = [
 [[package]]
 name = "polymesh-build-tool"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "substrate-wasm-builder",
 ]
@@ -6124,7 +5968,7 @@ dependencies = [
 [[package]]
 name = "polymesh-common-utilities"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6149,7 +5993,7 @@ dependencies = [
 [[package]]
 name = "polymesh-contracts"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -6174,7 +6018,7 @@ dependencies = [
 [[package]]
 name = "polymesh-extensions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6191,7 +6035,7 @@ dependencies = [
 [[package]]
 name = "polymesh-node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "jsonrpsee",
  "node-rpc",
@@ -6225,7 +6069,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "chrono",
  "either",
@@ -6253,7 +6097,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives-derive"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6264,7 +6108,7 @@ dependencies = [
 name = "polymesh-private"
 version = "6.0.0"
 dependencies = [
- "clap 4.3.2",
+ "clap",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-support",
@@ -6366,12 +6210,12 @@ dependencies = [
 name = "polymesh-private-runtime-tests"
 version = "0.1.0"
 dependencies = [
+ "confidential_assets",
  "frame-executive",
  "frame-support",
  "frame-system",
  "frame-system-rpc-runtime-api",
  "log",
- "mercat",
  "node-rpc-runtime-api",
  "pallet-asset",
  "pallet-authority-discovery",
@@ -6452,7 +6296,7 @@ dependencies = [
 [[package]]
 name = "polymesh-runtime-common"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6643,7 +6487,7 @@ dependencies = [
 [[package]]
 name = "polymesh-weights"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#3b5f26ae6d5145a1858b5cd6abd7785c9969cd55"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=add-pallet-contracts-to-benchmarks#040676f0a3da000a287bbfe0e931d91787b6c1f2"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6652,6 +6496,7 @@ dependencies = [
  "pallet-balances 0.1.0",
  "pallet-committee",
  "pallet-compliance-manager",
+ "pallet-contracts",
  "pallet-corporate-actions",
  "pallet-external-agents",
  "pallet-grandpa",
@@ -6806,9 +6651,9 @@ checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.59"
+version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6aeca18b86b413c660b781aa319e4e2648a3e6f9eadc9b47e9038e6fe9f3451b"
+checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
 ]
@@ -6972,9 +6817,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.28"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9ab9c7eadfd8df19006f1cf1a4aed13540ed5cbc047010ece5826e10825488"
+checksum = "5267fca4496028628a95160fc423a33e8b2e6af8a5302579e322e4b520293cae"
 dependencies = [
  "proc-macro2",
 ]
@@ -7164,7 +7009,7 @@ checksum = "8d2275aab483050ab2a7364c1a46604865ee7d6906684e08db0f090acf74f9e7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -7502,7 +7347,7 @@ dependencies = [
 [[package]]
 name = "sc-allocator"
 version = "4.1.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "log",
  "sp-core",
@@ -7563,7 +7408,7 @@ dependencies = [
 [[package]]
 name = "sc-block-builder"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "sc-client-api",
@@ -7578,7 +7423,7 @@ dependencies = [
 [[package]]
 name = "sc-chain-spec"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "memmap2",
  "sc-chain-spec-derive",
@@ -7597,7 +7442,7 @@ dependencies = [
 [[package]]
 name = "sc-chain-spec-derive"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -7612,7 +7457,7 @@ source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v
 dependencies = [
  "array-bytes",
  "chrono",
- "clap 4.3.2",
+ "clap",
  "fdlimit",
  "futures",
  "libp2p",
@@ -7648,7 +7493,7 @@ dependencies = [
 [[package]]
 name = "sc-client-api"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "fnv",
  "futures",
@@ -7700,7 +7545,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures",
@@ -7786,7 +7631,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-epochs"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "fork-tree",
  "parity-scale-codec",
@@ -7859,7 +7704,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-slots"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures",
@@ -7882,7 +7727,7 @@ dependencies = [
 [[package]]
 name = "sc-executor"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "lru",
  "parity-scale-codec",
@@ -7906,7 +7751,7 @@ dependencies = [
 [[package]]
 name = "sc-executor-common"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "sc-allocator",
  "sp-maybe-compressed-blob",
@@ -7919,7 +7764,7 @@ dependencies = [
 [[package]]
 name = "sc-executor-wasmi"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "log",
  "sc-allocator",
@@ -7932,7 +7777,7 @@ dependencies = [
 [[package]]
 name = "sc-executor-wasmtime"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -7965,7 +7810,7 @@ dependencies = [
 [[package]]
 name = "sc-keystore"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "array-bytes",
  "async-trait",
@@ -7980,7 +7825,7 @@ dependencies = [
 [[package]]
 name = "sc-network"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "array-bytes",
  "async-trait",
@@ -8042,7 +7887,7 @@ dependencies = [
 [[package]]
 name = "sc-network-common"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "bitflags",
@@ -8068,7 +7913,7 @@ dependencies = [
 [[package]]
 name = "sc-network-gossip"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "ahash 0.8.3",
  "futures",
@@ -8188,7 +8033,7 @@ dependencies = [
 [[package]]
 name = "sc-peerset"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "futures",
  "libp2p",
@@ -8210,7 +8055,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "futures",
  "jsonrpsee",
@@ -8240,7 +8085,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc-api"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "jsonrpsee",
  "parity-scale-codec",
@@ -8259,7 +8104,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc-server"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "http",
  "jsonrpsee",
@@ -8274,7 +8119,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc-spec-v2"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "array-bytes",
  "futures",
@@ -8379,7 +8224,7 @@ name = "sc-storage-monitor"
 version = "0.1.0"
 source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
 dependencies = [
- "clap 4.3.2",
+ "clap",
  "fs4",
  "futures",
  "log",
@@ -8431,7 +8276,7 @@ dependencies = [
 [[package]]
 name = "sc-telemetry"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "chrono",
  "futures",
@@ -8450,7 +8295,7 @@ dependencies = [
 [[package]]
 name = "sc-tracing"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "ansi_term",
  "atty",
@@ -8481,7 +8326,7 @@ dependencies = [
 [[package]]
 name = "sc-tracing-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -8519,7 +8364,7 @@ dependencies = [
 [[package]]
 name = "sc-transaction-pool-api"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures",
@@ -8533,7 +8378,7 @@ dependencies = [
 [[package]]
 name = "sc-utils"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "backtrace",
  "futures",
@@ -8785,16 +8630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_cbor"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
-dependencies = [
- "half",
- "serde",
-]
-
-[[package]]
 name = "serde_derive"
 version = "1.0.163"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8802,7 +8637,7 @@ checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -9035,7 +8870,7 @@ dependencies = [
 [[package]]
 name = "sp-api"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "hash-db",
  "log",
@@ -9053,7 +8888,7 @@ dependencies = [
 [[package]]
 name = "sp-api-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "blake2",
  "proc-macro-crate",
@@ -9105,7 +8940,7 @@ dependencies = [
 [[package]]
 name = "sp-block-builder"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -9117,7 +8952,7 @@ dependencies = [
 [[package]]
 name = "sp-blockchain"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "futures",
  "log",
@@ -9135,7 +8970,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures",
@@ -9171,7 +9006,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-babe"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "merlin 2.0.1",
@@ -9213,7 +9048,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-grandpa"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "finality-grandpa",
  "log",
@@ -9231,7 +9066,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-slots"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9243,7 +9078,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-vrf"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9299,7 +9134,7 @@ dependencies = [
 [[package]]
 name = "sp-core-hashing"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "blake2",
  "byteorder",
@@ -9313,7 +9148,7 @@ dependencies = [
 [[package]]
 name = "sp-core-hashing-proc-macro"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9324,7 +9159,7 @@ dependencies = [
 [[package]]
 name = "sp-database"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "kvdb",
  "parking_lot 0.12.1",
@@ -9333,7 +9168,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9343,7 +9178,7 @@ dependencies = [
 [[package]]
 name = "sp-externalities"
 version = "0.13.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "environmental",
  "parity-scale-codec",
@@ -9354,7 +9189,7 @@ dependencies = [
 [[package]]
 name = "sp-inherents"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "impl-trait-for-tuples",
@@ -9405,7 +9240,7 @@ dependencies = [
 [[package]]
 name = "sp-keystore"
 version = "0.13.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures",
@@ -9422,7 +9257,7 @@ dependencies = [
 [[package]]
 name = "sp-maybe-compressed-blob"
 version = "4.1.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "thiserror",
  "zstd",
@@ -9449,7 +9284,7 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9463,7 +9298,7 @@ dependencies = [
 [[package]]
 name = "sp-offchain"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "sp-api",
  "sp-core",
@@ -9473,7 +9308,7 @@ dependencies = [
 [[package]]
 name = "sp-panic-handler"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -9533,7 +9368,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "6.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "Inflector",
  "proc-macro-crate",
@@ -9545,7 +9380,7 @@ dependencies = [
 [[package]]
 name = "sp-session"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9559,7 +9394,7 @@ dependencies = [
 [[package]]
 name = "sp-staking"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9571,7 +9406,7 @@ dependencies = [
 [[package]]
 name = "sp-state-machine"
 version = "0.13.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "hash-db",
  "log",
@@ -9596,7 +9431,7 @@ source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v
 [[package]]
 name = "sp-storage"
 version = "7.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "impl-serde",
  "parity-scale-codec",
@@ -9609,7 +9444,7 @@ dependencies = [
 [[package]]
 name = "sp-timestamp"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "async-trait",
  "futures-timer",
@@ -9624,7 +9459,7 @@ dependencies = [
 [[package]]
 name = "sp-tracing"
 version = "6.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "sp-std",
@@ -9661,7 +9496,7 @@ dependencies = [
 [[package]]
 name = "sp-trie"
 version = "7.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "ahash 0.8.3",
  "hash-db",
@@ -9701,7 +9536,7 @@ dependencies = [
 [[package]]
 name = "sp-version-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "proc-macro2",
@@ -9712,7 +9547,7 @@ dependencies = [
 [[package]]
 name = "sp-wasm-interface"
 version = "7.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "anyhow",
  "impl-trait-for-tuples",
@@ -9726,7 +9561,7 @@ dependencies = [
 [[package]]
 name = "sp-weights"
 version = "4.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -9905,7 +9740,7 @@ dependencies = [
 [[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "hyper",
  "log",
@@ -10025,7 +9860,7 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder"
 version = "5.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#f66cfc8635c570ad9cab32fe0079ecee6d291252"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
 dependencies = [
  "ansi_term",
  "build-helper",
@@ -10073,9 +9908,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.18"
+version = "2.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d41677bcbe24c20c52e7c70b0d8db04134c5d1066bf98662e2871ad200ea3e"
+checksum = "0ddc1f908d32ec46858c2d3b3daa00cc35bf4b6841ce4355c7bb3eedf2283a68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -10157,32 +9992,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
 
 [[package]]
-name = "textwrap"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
-dependencies = [
- "unicode-width",
-]
-
-[[package]]
 name = "thiserror"
-version = "1.0.40"
+version = "1.0.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978c9a314bd8dc99be594bc3c175faaa9794be04a5a5e153caba6915336cebac"
+checksum = "9d6d7a740b8a666a7e828dd00da9c0dc290dff53154ea77ac109281de90589b7"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.40"
+version = "1.0.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
+checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -10318,7 +10144,7 @@ checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -10430,7 +10256,7 @@ checksum = "0f57e3ca2a01450b1a921183a9c9cbfda207fd822cef4ccb00a65402cbba7a74"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]
@@ -10604,7 +10430,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
@@ -10821,7 +10647,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
  "wasm-bindgen-shared",
 ]
 
@@ -10855,7 +10681,7 @@ checksum = "e128beba882dd1eb6200e1dc92ae6c5dbaa4311aa7bb211ca035779e5efc39f8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -11824,7 +11650,7 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.18",
+ "syn 2.0.30",
 ]
 
 [[package]]

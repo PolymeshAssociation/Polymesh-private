@@ -18,9 +18,9 @@ pallet-portfolio = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 
 # Crypto
-rand_core = { version = "0.6", default-features = false }
-rand_chacha = { version = "0.3", default-features = false }
-mercat = { version = "1.1.2", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0", default-features = false, features = [ "balance_64" ] }
+rand_core = { workspace = true, default-features = false }
+rand_chacha = { workspace = true, default-features = false }
+confidential_assets = { workspace = true, default-features = false }
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
@@ -38,10 +38,10 @@ equalize = []
 default = ["std", "equalize", "u64_backend"]
 
 # Backends
-u64_backend = ["mercat/u64_backend"]
-avx2_backend = ["mercat/avx2_backend"]
+u64_backend = ["confidential_assets/u64_backend"]
+avx2_backend = ["confidential_assets/avx2_backend"]
 
-no_std = ["mercat/no_std", "u64_backend"]
+no_std = ["confidential_assets/no_std", "u64_backend"]
 only-staking = []
 std = [
     "rand_core/std",
@@ -49,7 +49,7 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
-    "mercat/std",
+    "confidential_assets/std",
     "pallet-balances/std",
     "pallet-identity/std",
     "pallet-portfolio/std",

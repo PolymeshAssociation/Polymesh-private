@@ -95,10 +95,10 @@ pallet-staking-rpc-runtime-api = { workspace = true, default-features = false }
 node-rpc-runtime-api = { workspace = true, default-features = false }
 
 # Crypto
-rand = { version = "0.8", default-features = false }
-rand_core = { version = "0.6", default-features = false }
-rand_chacha = { version = "0.3", default-features = false }
-mercat = { version = "1.1.2", git = "https://github.com/PolymeshAssociation/cryptography", branch = "mercat_polymesh_v6.0", default-features = false, features = [ "balance_64" ] }
+rand = { workspace  = true, default-features = false }
+rand_core = { workspace = true, default-features = false }
+rand_chacha = { workspace = true, default-features = false }
+confidential_assets = { workspace = true, default-features = false }
 
 [features]
 default = ["std", "testing"]

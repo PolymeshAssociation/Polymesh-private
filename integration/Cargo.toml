@@ -1,0 +1,42 @@
+[package]
+name = "integration"
+version = "0.1.0"
+edition = "2021"
+
+[patch.crates-io]
+bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
+
+[features]
+default = ["simple-nonce-server"]
+
+simple-nonce-server = ["actix-web"]
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+dotenv = "0.15"
+env_logger = "0.9"
+
+thiserror = "1.0.43"
+async-trait = "0.1"
+
+tokio = { version = "1.19", features = ["full"] }
+
+sp-core = "7.0"
+sp-runtime = "7.0"
+sp-keyring = "7.0"
+
+polymesh-api = { version = "2.0.1", features = ["download_metadata"] }
+polymesh-api-client-extras = { version = "2.0" }
+
+serde = { version = "1.0.171", features = ["derive"] }
+
+# Confidential Assets
+confidential_assets = { version = "1.0.0" }
+hex = { version = "0.4" }
+rand = { version = "0.8" }
+
+# For simple-nonce server
+actix-web = { version = "4", optional = true }
+ureq = "2"

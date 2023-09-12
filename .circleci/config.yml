@@ -193,6 +193,41 @@ jobs:
           key: v7-coverage-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
           paths:
             - "/usr/local/cargo"
+  rust-integration-test:
+    docker:
+      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+    resource_class: medium+
+    environment:
+      - VERBOSE: "1"
+      - RUSTFLAGS: -D warnings
+    steps:
+      - checkout
+      - setup-sccache
+      - restore-sccache-cache
+      - attach_workspace:
+          at: ./target/release
+      - run:
+          name: run Polymesh dev chain node for integration tests
+          command: >-
+            ./target/release/polymesh-private --dev
+              --no-mdns --no-prometheus --no-telemetry
+              --pool-limit 100000
+          background: true
+      - run:
+          name: Build nonce server and tests.
+          command: cargo build --bins --tests
+          working_directory: ./integration
+      - run:
+          name: Run background nonce server.
+          command: cargo run --locked
+          working_directory: ./integration
+          background: true
+      - run:
+          name: Run polymesh-api integration tests.
+          command: cargo test --locked
+          working_directory: ./integration
+          no_output_timeout: 30m
+      - save-sccache-cache
   clippy:
     docker:
       - image: polymeshassociation/rust:debian-nightly-2022-11-02
@@ -228,6 +263,9 @@ workflows:
       - build
       - benchmark-build
       - coverage
+      - rust-integration-test:
+          requires:
+            - build
       - benchmark:
           requires:
             - benchmark-build
