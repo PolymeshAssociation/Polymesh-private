@@ -23,7 +23,8 @@ use rand_core::SeedableRng;
 
 use confidential_assets::{
     transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as MercatBalance, CipherText, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
+    Balance as ConfidentialBalance, CipherText, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey,
+    Scalar,
 };
 
 use polymesh_common_utilities::{
@@ -55,22 +56,22 @@ fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 }
 
 #[derive(Clone, Debug)]
-pub struct MercatUser<T: Config + TestUtilsFn<AccountIdOf<T>>> {
+pub struct ConfidentialUser<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub user: User<T>,
     pub sec: ElgamalKeys,
 }
 
-impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
-    /// Creates a mercat user.
+impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
+    /// Creates a confidential user.
     pub fn new(name: &'static str, rng: &mut StdRng) -> Self {
         let user = user::<T>(name, SEED);
         Self::new_from_user(user, rng)
     }
 
-    /// Creates a mercat user.
+    /// Creates a confidential user.
     pub fn new_from_user(user: User<T>, rng: &mut StdRng) -> Self {
-        // These are the encryptions keys used by MERCAT and are different from the signing keys
-        // that Polymesh uses.
+        // These are the encryptions keys used by `confidential_assets` and are different from
+        // the signing keys that Polymesh uses for singing transactions.
         let elg_secret = ElgamalSecretKey::new(Scalar::random(rng));
 
         Self {
@@ -86,7 +87,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
         self.sec.public
     }
 
-    pub fn mercat(&self) -> MercatAccount {
+    pub fn account(&self) -> ConfidentialAccount {
         self.sec.public.into()
     }
 
@@ -98,43 +99,43 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> MercatUser<T> {
         self.user.origin()
     }
 
-    /// Initialize a new mercat account on-chain for `ticker`.
+    /// Initialize a new confidential account on-chain for `ticker`.
     pub fn init_account(&self, ticker: Ticker) {
-        assert_ok!(Module::<T>::validate_mercat_account(
+        assert_ok!(Module::<T>::create_account(
             self.origin().into(),
             ticker,
-            self.mercat(),
+            self.account(),
         ));
     }
 
-    pub fn mercat_enc_balance(&self, ticker: Ticker) -> CipherText {
-        Module::<T>::mercat_account_balance(self.mercat(), ticker).expect("mercat account balance")
+    pub fn enc_balance(&self, ticker: Ticker) -> CipherText {
+        Module::<T>::account_balance(self.account(), ticker).expect("confidential account balance")
     }
 
-    pub fn ensure_mercat_balance(&self, ticker: Ticker, balance: MercatBalance) {
-        let enc_balance = self.mercat_enc_balance(ticker);
+    pub fn ensure_balance(&self, ticker: Ticker, balance: ConfidentialBalance) {
+        let enc_balance = self.enc_balance(ticker);
         self.sec
             .secret
             .verify(&enc_balance, &balance.into())
-            .expect("mercat balance")
+            .expect("verify confidential balance")
     }
 
     pub fn add_mediator(&self) {
-        assert_ok!(Module::<T>::add_mediator_mercat_account(
+        assert_ok!(Module::<T>::add_mediator_account(
             self.origin().into(),
-            self.mercat(),
+            self.account(),
         ));
     }
 }
 
-/// Create issuer's mercat account, create asset and mint.
+/// Create issuer's confidential account, create asset and mint.
 pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     name: &'static str,
     total_supply: u128,
     token_name: &[u8],
     rng: &mut StdRng,
-) -> (Ticker, MercatUser<T>, MercatBalance) {
-    let owner = MercatUser::new(name, rng);
+) -> (Ticker, ConfidentialUser<T>, ConfidentialBalance) {
+    let owner = ConfidentialUser::new(name, rng);
     let token = ConfidentialAssetDetails {
         name: AssetName(token_name.into()),
         total_supply,
@@ -158,14 +159,14 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     owner.init_account(ticker);
 
     // ------------- Computations that will happen in owner's Wallet ----------
-    let amount: MercatBalance = token.total_supply.try_into().unwrap(); // mercat amounts are 32 bit integers.
+    let amount: ConfidentialBalance = token.total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
 
     // Wallet submits the transaction to the chain for verification.
     assert_ok!(Module::<T>::mint_confidential_asset(
         owner.origin().into(),
         ticker,
         amount.into(), // convert to u128
-        owner.mercat(),
+        owner.account(),
     ));
 
     // ------------------------- Ensuring that the asset details are set correctly
@@ -179,7 +180,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     );
 
     // -------------------------- Ensure the encrypted balance matches the minted amount.
-    owner.ensure_mercat_balance(ticker, amount);
+    owner.ensure_balance(ticker, amount);
 
     (ticker, owner, amount)
 }
@@ -187,32 +188,32 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 #[derive(Clone)]
 pub struct TransactionState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub ticker: Ticker,
-    pub amount: MercatBalance,
-    pub issuer_balance: MercatBalance,
-    pub issuer: MercatUser<T>,
-    pub investor: MercatUser<T>,
-    pub mediator: MercatUser<T>,
+    pub amount: ConfidentialBalance,
+    pub issuer_balance: ConfidentialBalance,
+    pub issuer: ConfidentialUser<T>,
+    pub investor: ConfidentialUser<T>,
+    pub mediator: ConfidentialUser<T>,
     pub venue_id: VenueId,
     pub legs: Vec<TransactionLeg>,
     pub id: TransactionId,
 }
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
-    /// Create 3 mercat accounts (issuer, investor, mediator), create asset, mint.
+    /// Create 3 confidential accounts (issuer, investor, mediator), create asset, mint.
     pub fn new(rng: &mut StdRng) -> Self {
         Self::new_legs(1, rng)
     }
 
-    /// Create 3 mercat accounts (issuer, investor, mediator), create asset, mint.
+    /// Create 3 confidential accounts (issuer, investor, mediator), create asset, mint.
     pub fn new_legs(leg_count: u32, rng: &mut StdRng) -> Self {
-        let amount = 4_000_000_000 as MercatBalance;
-        let total_supply = (amount * leg_count as MercatBalance) + 100_000_000;
+        let amount = 4_000_000_000 as ConfidentialBalance;
+        let total_supply = (amount * leg_count as ConfidentialBalance) + 100_000_000;
         // Setup confidential asset.
         let (ticker, issuer, issuer_balance) =
             create_account_and_mint_token::<T>("issuer", total_supply as u128, b"A", rng);
 
         // Setup mediator.
-        let mediator = MercatUser::<T>::new("mediator", rng);
+        let mediator = ConfidentialUser::<T>::new("mediator", rng);
         mediator.add_mediator();
 
         // Setup venue.
@@ -227,15 +228,15 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         ));
 
         // Setup investor.
-        let investor = MercatUser::<T>::new("investor", rng);
+        let investor = ConfidentialUser::<T>::new("investor", rng);
         investor.init_account(ticker);
 
         let legs = (0..leg_count)
             .into_iter()
             .map(|_| TransactionLeg {
                 ticker,
-                sender: issuer.mercat(),
-                receiver: investor.mercat(),
+                sender: issuer.account(),
+                receiver: investor.account(),
                 mediator: mediator.did(),
             })
             .collect();
@@ -264,8 +265,8 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     pub fn sender_proof(&self, leg_id: u64, rng: &mut StdRng) -> AffirmLeg {
         let investor_pub_account = self.investor.pub_key();
-        let issuer_balance = self.issuer_balance - (leg_id as MercatBalance * self.amount);
-        let issuer_enc_balance = self.issuer.mercat_enc_balance(self.ticker);
+        let issuer_balance = self.issuer_balance - (leg_id as ConfidentialBalance * self.amount);
+        let issuer_enc_balance = self.issuer.enc_balance(self.ticker);
         let auditor_keys = BTreeMap::from([(AuditorId(0), self.mediator.pub_key())]);
         let sender_tx = ConfidentialTransferProof::new(
             &self.issuer.sec,
@@ -353,16 +354,16 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 benchmarks! {
     where_clause { where T: Config, T: TestUtilsFn<AccountIdOf<T>> }
 
-    validate_mercat_account {
+    create_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
-        let user = MercatUser::<T>::new("user", &mut rng);
-    }: _(user.origin(), ticker, user.mercat())
+        let user = ConfidentialUser::<T>::new("user", &mut rng);
+    }: _(user.origin(), ticker, user.account())
 
-    add_mediator_mercat_account {
+    add_mediator_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let mediator = MercatUser::<T>::new("mediator", &mut rng);
-        let account = mediator.mercat();
+        let mediator = ConfidentialUser::<T>::new("mediator", &mut rng);
+        let account = mediator.account();
     }: _(mediator.origin(), account)
 
     create_confidential_asset {
@@ -372,7 +373,7 @@ benchmarks! {
 
     mint_confidential_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let issuer = MercatUser::<T>::new("issuer", &mut rng);
+        let issuer = ConfidentialUser::<T>::new("issuer", &mut rng);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         create_confidential_token(
             &issuer.user,
@@ -381,8 +382,8 @@ benchmarks! {
         );
         issuer.init_account(ticker);
 
-        let total_supply = 4_000_000_000 as MercatBalance;
-    }: _(issuer.origin(), ticker, total_supply.into(), issuer.mercat())
+        let total_supply = 4_000_000_000 as ConfidentialBalance;
+    }: _(issuer.origin(), ticker, total_supply.into(), issuer.account())
 
     apply_incoming_balance {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -392,7 +393,7 @@ benchmarks! {
         tx.add_transaction();
         tx.affirm_legs(&mut rng);
         tx.execute();
-    }: _(tx.issuer.origin(), tx.issuer.mercat(), tx.ticker)
+    }: _(tx.issuer.origin(), tx.issuer.account(), tx.ticker)
 
     create_venue {
         let issuer = user::<T>("issuer", SEED);
@@ -403,7 +404,7 @@ benchmarks! {
         let v in 0 .. 100;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let issuer = MercatUser::<T>::new("issuer", &mut rng);
+        let issuer = ConfidentialUser::<T>::new("issuer", &mut rng);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         create_confidential_token(
             &issuer.user,
@@ -427,7 +428,7 @@ benchmarks! {
         let v in 0 .. 100;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let issuer = MercatUser::<T>::new("issuer", &mut rng);
+        let issuer = ConfidentialUser::<T>::new("issuer", &mut rng);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         create_confidential_token(
             &issuer.user,

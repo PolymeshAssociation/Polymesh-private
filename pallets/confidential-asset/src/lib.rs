@@ -1,4 +1,4 @@
-// This file is part of the Polymesh distribution (https://github.com/PolymathNetwork/Polymesh).
+// This file is part of the Polymesh distribution (https://github.com/PolymeshAssociation/Polymesh).
 // Copyright (c) 2023 Polymesh
 
 //! # Confidential Asset Pallet
@@ -11,85 +11,13 @@
 //! [MERCAT whitepaper](https://info.polymath.network/hubfs/PDFs/Polymath-MERCAT-Whitepaper-Mediated-Encrypted-Reversible-SeCure-Asset-Transfers.pdf).
 //!
 //!
-//! ### Terminology
-//!
-//! - The parties:
-//!   - Sender: The party who is sending assets out of her account. We refer to her as Alice in the
-//!     examples.
-//!   - Receiver: The party who is receiving some assets to his account. We refer to him as Bob in
-//!     the examples.
-//!   - Mediator: Also known as the exchange, is the party that preforms compliance checks and
-//!     approves/rejects the transaction. We refer to him as Charlie in the examples.
-//!   - Issuer: The party that mints the assets into her account.
-//!
-//! - Phases of a successful transfer:
-//!   - Mint/issue: deposit assets to an account.
-//!   - Initialize a transfer: Alice indicates that she wants to transfer some assets to Bob.
-//!   - Finalize a transfer: Bob acknowledges that he expects to receive assets from Alice.
-//!   - Justify a transfer: Charlie approves the transfer.
-//!   - Verification: the chain verifies all the data and updates the encrypted balance of Alice and Bob.
-//!
-//! - The workflow: the overall workflow is that at different phases of the transaction, each party
-//!   generates a cryptographic proof in their wallet, and submits the proof to the chain for
-//!   verification.
-//!
-//!   There are 8 different phases for a transaction
-//!     1. Create a confidential asset using `create_confidential_asset()` dispatchable. Note that
-//!        unlike `create_asset()`, the minting is performed separately (in step 3).
-//!     2. Different parties can create confidential accounts to manage the confidential asset in
-//!        their wallets and submit the proof of correctness to the chain.
-//!        - The chain verifies the proofs and stores the confidential accounts on the chain.
-//!        - NB - The parties can create their accounts in any order, but each can only create
-//!               their account for the MERCAT asset AFTER the MERCAT asset is created in step 1.
-//!     3. The issuer issues assets of a confidential asset using `mint_confidential_asset()`
-//!        dispatchable and submits the proof of correctness to the chain.
-//!        - The chain verifies the proofs and updates the encrypted balance on the chain.
-//!        - NB - The issuer can mint an asset only after she has created an account for that asset
-//!               in step 2.
-//!     4. The mediator creates a venue and an instruction with a `settlement::ConfidentialLeg`.
-//!     5. The sender initiates a transfer in her wallet and submits the proof of correctness to the
-//!        chain using `settlement::authorize_confidential_instruction()` dispatchable.
-//!     6. The receiver finalizes the transfer in her wallet and submits the proof of correctness to
-//!        the chain using `settlement::authorize_confidential_instruction()` dispatchable.
-//!     7. The mediator justifies the transfer in her wallet and submits the proof of correctness to
-//!        the chain using `settlement::authorize_confidential_instruction()` dispatchable.
-//!     8. Once all proofs of steps 4-7 are gathered, the chain verifies them and updates the
-//!        encrypted balance of the Sender and the Receiver.
-//!
-//!     NB - The steps 4-7 must be performed sequentially by each party since they all need information
-//!          from the chain that is only available after the previous party authorizes the
-//!          instruction.
-//!
-//!
-//! ### Goals
-//!
-//! The main goal is to enable the confidential transfer of assets such that the amount and the
-//! asset type of the transfer remain hidden from anyone who has access to the chain. But at the
-//! same time, enable certain stakeholders (issuers, mediators, and auditors) to view both the asset
-//! and transfer amount for reporting, compliance checking, and auditing purposes.
-//!
-//!
-//! ## Limitations
-//!
-//! - In the current implementation, you can have only one confidential leg per instruction. This restriction
-//!   might be lifted in future versions: CRYP-1333.
-//!
-//!
-//! ## Implementation Details
-//!
-//! - The proofs should be SCALE-encoded before getting passed to the chain.
-//!
-//! ## Related Modules
-//!
-//! - [settlement module](../pallet_settlement/index.html): Handles both plain and confidential transfers.
-//!
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
 use confidential_assets::{
     transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as MercatBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey,
+    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
@@ -126,8 +54,8 @@ pub mod benchmarking;
 pub mod weights;
 
 pub trait WeightInfo {
-    fn validate_mercat_account() -> Weight;
-    fn add_mediator_mercat_account() -> Weight;
+    fn create_account() -> Weight;
+    fn add_mediator_account() -> Weight;
     fn create_confidential_asset() -> Weight;
     fn mint_confidential_asset() -> Weight;
     fn apply_incoming_balance() -> Weight;
@@ -191,12 +119,12 @@ impl_checked_inc!(TransactionId);
 #[derive(Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Debug)]
 pub struct TransactionLegId(#[codec(compact)] pub u64);
 
-/// A mercat account consists of the public key that is used for encryption purposes.
+/// A confidential account that can hold confidential assets.
 #[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
-pub struct MercatAccount(CompressedElgamalPublicKey);
+pub struct ConfidentialAccount(CompressedElgamalPublicKey);
 
-impl MercatAccount {
-    pub fn pub_account(&self) -> Option<ElgamalPublicKey> {
+impl ConfidentialAccount {
+    pub fn into_inner(&self) -> Option<ElgamalPublicKey> {
         self.0.into_public_key()
     }
 
@@ -205,15 +133,31 @@ impl MercatAccount {
     }
 }
 
-impl From<ElgamalPublicKey> for MercatAccount {
+impl From<ElgamalPublicKey> for ConfidentialAccount {
     fn from(data: ElgamalPublicKey) -> Self {
         Self(data.into())
     }
 }
 
-impl From<&ElgamalPublicKey> for MercatAccount {
+impl From<&ElgamalPublicKey> for ConfidentialAccount {
     fn from(data: &ElgamalPublicKey) -> Self {
         Self(data.into())
+    }
+}
+
+/// A mediator account.
+///
+/// Mediator accounts can't hold confidential assets.
+#[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
+pub struct MediatorAccount(CompressedElgamalPublicKey);
+
+impl MediatorAccount {
+    pub fn into_inner(&self) -> Option<ElgamalPublicKey> {
+        self.0.into_public_key()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.0.into_public_key().is_some()
     }
 }
 
@@ -222,30 +166,34 @@ impl From<&ElgamalPublicKey> for MercatAccount {
 pub struct TransactionLeg {
     /// Asset ticker.
     pub ticker: Ticker,
-    /// Mercat account of the sender.
-    pub sender: MercatAccount,
-    /// Mercat account of the receiver.
-    pub receiver: MercatAccount,
+    /// Confidential account of the sender.
+    pub sender: ConfidentialAccount,
+    /// Confidential account of the receiver.
+    pub receiver: ConfidentialAccount,
     /// Mediator.
-    pub mediator: IdentityId,
+    pub mediator: MediatorAccount,
 }
 
 impl TransactionLeg {
-    /// Check if the sender/receiver accounts are valid.
+    /// Check if the sender/receiver/mediator accounts are valid.
     pub fn verify_accounts(&self) -> bool {
-        self.sender.is_valid() && self.receiver.is_valid()
+        self.sender.is_valid() && self.receiver.is_valid() && self.mediator.is_valid()
     }
 
     pub fn sender_account(&self) -> Option<ElgamalPublicKey> {
-        self.sender.pub_account()
+        self.sender.into_inner()
     }
 
     pub fn receiver_account(&self) -> Option<ElgamalPublicKey> {
-        self.receiver.pub_account()
+        self.receiver.into_inner()
+    }
+
+    pub fn mediator_account(&self) -> Option<ElgamalPublicKey> {
+        self.mediator.into_inner()
     }
 }
 
-/// Mercat sender proof.
+/// Confidential transfer sender proof.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, Eq, PartialEq)]
 pub struct SenderProof(Vec<u8>);
 
@@ -411,32 +359,33 @@ decl_storage! {
         /// ticker -> Option<ConfidentialAssetDetails>
         pub Details get(fn confidential_asset_details): map hasher(blake2_128_concat) Ticker => Option<ConfidentialAssetDetails>;
 
-        /// Contains the encryption key for a mercat mediator.
+        /// Records the did for a mediator account.
         ///
-        /// identity_id -> Option<MercatAccount>
-        pub MediatorMercatAccounts get(fn mediator_mercat_accounts):
-            map hasher(twox_64_concat) IdentityId => Option<MercatAccount>;
-
-        /// Records the did for a mercat account.
-        ///
-        /// account -> Option<IdentityId>.
-        pub MercatAccountDid get(fn mercat_account_did):
-            map hasher(blake2_128_concat) MercatAccount
+        /// mediator_account -> Option<IdentityId>.
+        pub MediatorAccountDid get(fn mediator_account_did):
+            map hasher(blake2_128_concat) MediatorAccount
             => Option<IdentityId>;
 
-        /// Contains the encrypted balance of a mercat account.
+        /// Records the did for a confidential account.
+        ///
+        /// account -> Option<IdentityId>.
+        pub ConfidentialAccountDid get(fn account_did):
+            map hasher(blake2_128_concat) ConfidentialAccount
+            => Option<IdentityId>;
+
+        /// Contains the encrypted balance of a confidential account.
         ///
         /// account -> ticker -> Option<CipherText>
-        pub MercatAccountBalance get(fn mercat_account_balance):
-            double_map hasher(blake2_128_concat) MercatAccount,
+        pub ConfidentialAccountBalance get(fn account_balance):
+            double_map hasher(blake2_128_concat) ConfidentialAccount,
             hasher(blake2_128_concat) Ticker
             => Option<CipherText>;
 
-        /// Accumulates the encrypted incoming balance for a mercat account.
+        /// Accumulates the encrypted incoming balance for a confidential account.
         ///
         /// account -> ticker -> Option<CipherText>
         IncomingBalance get(fn incoming_balance):
-            double_map hasher(blake2_128_concat) MercatAccount,
+            double_map hasher(blake2_128_concat) ConfidentialAccount,
             hasher(blake2_128_concat) Ticker
             => Option<CipherText>;
 
@@ -510,38 +459,36 @@ decl_module! {
         /// Initialize the default event for this module
         fn deposit_event() = default;
 
-        /// Verifies the proofs given the `tx` (transaction) for creating a mercat account.
-        /// If all proofs pass, it stores the mercat account for the origin identity, sets the
-        /// initial encrypted balance, and emits account creation event.
+        /// Initializes a confidential account for an asset.
         ///
         /// # Arguments
-        /// * `tx` The account creation transaction created by the mercat lib.
+        /// * `ticker` the asset.
+        /// * `account` the confidential account to initialize for `ticker`.
         ///
         /// # Errors
-        /// * `InvalidAccountCreationProof` if the provided proofs fail to verify.
         /// * `BadOrigin` if `origin` isn't signed.
-        #[weight = <T as Config>::WeightInfo::validate_mercat_account()]
-        pub fn validate_mercat_account(origin,
+        #[weight = <T as Config>::WeightInfo::create_account()]
+        pub fn create_account(origin,
             ticker: Ticker,
-            account: MercatAccount,
+            account: ConfidentialAccount,
         ) -> DispatchResult {
             let caller_did = Identity::<T>::ensure_perms(origin)?;
-            Self::base_validate_mercat_account(caller_did, ticker, account)
+            Self::base_create_account(caller_did, ticker, account)
         }
 
         /// Stores mediator's public key.
         ///
         /// # Arguments
-        /// * `public_key` the encryption public key, used during mercat operations.
+        /// * `mediator` the public key of the mediator.
         ///
         /// # Errors
         /// * `BadOrigin` if `origin` isn't signed.
-        #[weight = <T as Config>::WeightInfo::add_mediator_mercat_account()]
-        pub fn add_mediator_mercat_account(origin,
-            account: MercatAccount,
+        #[weight = <T as Config>::WeightInfo::add_mediator_account()]
+        pub fn add_mediator_account(origin,
+            mediator: MediatorAccount,
         ) -> DispatchResult {
             let caller_did = Identity::<T>::ensure_perms(origin)?;
-            Self::base_add_mediator_mercat_account(caller_did, account)
+            Self::base_add_mediator_account(caller_did, mediator)
         }
 
         /// Initializes a new confidential security token.
@@ -553,10 +500,7 @@ decl_module! {
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         /// * `name` - the name of the token.
         /// * `ticker` - the ticker symbol of the token.
-        /// * `divisible` - a boolean to identify the divisibility status of the token.
         /// * `asset_type` - the asset type.
-        /// * `identifiers` - a vector of asset identifiers.
-        /// * `funding_round` - name of the funding round.
         ///
         /// # Errors
         /// - `TickerAlreadyRegistered` if the ticker was already registered, e.g., by `origin`.
@@ -580,39 +524,38 @@ decl_module! {
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         /// * `ticker` - the ticker symbol of the token.
         /// * `amount` - amount of tokens to mint.
-        /// * `asset_mint_proof` - The proofs that the encrypted asset id is a valid ticker name and that the `total_supply` matches encrypted value.
+        /// * `account` - the asset isser's confidential account to receive the minted assets.
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
         /// - `Unauthorized` if origin is not the owner of the asset.
-        /// - `CanSetTotalSupplyOnlyOnce` if this function is called more than once.
         /// - `TotalSupplyMustBePositive` if `amount` is zero.
-        /// - `TotalSupplyAboveMercatBalanceLimit` if `total_supply` exceeds the mercat balance limit.
-        /// - `UnknownConfidentialAsset` The ticker is not part of the set of confidential assets.
+        /// - `TotalSupplyAboveConfidentialBalanceLimit` if `total_supply` exceeds the confidential balance limit.
+        /// - `UnknownConfidentialAsset` The ticker is not a confidential asset.
         #[weight = <T as Config>::WeightInfo::mint_confidential_asset()]
         pub fn mint_confidential_asset(
             origin,
             ticker: Ticker,
             amount: Balance,
-            account: MercatAccount,
+            account: ConfidentialAccount,
         ) -> DispatchResult {
             let owner_did = Identity::<T>::ensure_perms(origin)?;
             Self::base_mint_confidential_asset(owner_did, ticker, amount, account)
         }
 
-        /// Applies any incoming balance to the mercat account balance.
+        /// Applies any incoming balance to the confidential account balance.
         ///
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
-        /// * `account` - the mercat account (mercat public key) of the `origin`.
-        /// * `ticker` - Ticker of mercat account.
+        /// * `account` - the confidential account (Elgamal public key) of the `origin`.
+        /// * `ticker` - Ticker of confidential account.
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
         #[weight = <T as Config>::WeightInfo::apply_incoming_balance()]
         pub fn apply_incoming_balance(
             origin,
-            account: MercatAccount,
+            account: ConfidentialAccount,
             ticker: Ticker,
         ) -> DispatchResult {
             let caller_did = Identity::<T>::ensure_perms(origin)?;
@@ -707,37 +650,37 @@ decl_module! {
 }
 
 impl<T: Config> Module<T> {
-    fn base_validate_mercat_account(
+    fn base_create_account(
         caller_did: IdentityId,
         ticker: Ticker,
-        account: MercatAccount,
+        account: ConfidentialAccount,
     ) -> DispatchResult {
-        // Ensure the mercat account's balance hasn't been initialized.
+        // Ensure the confidential account's balance hasn't been initialized.
         ensure!(
-            !MercatAccountBalance::contains_key(&account, ticker),
-            Error::<T>::MercatAccountAlreadyInitialized
+            !ConfidentialAccountBalance::contains_key(&account, ticker),
+            Error::<T>::ConfidentialAccountAlreadyInitialized
         );
-        // Ensure the mercat account doesn't exist, or is already linked to the caller's identity.
-        MercatAccountDid::try_mutate(&account, |account_did| -> DispatchResult {
+        // Ensure the confidential account doesn't exist, or is already linked to the caller's identity.
+        ConfidentialAccountDid::try_mutate(&account, |account_did| -> DispatchResult {
             match account_did {
                 Some(account_did) => {
                     // Ensure the caller's identity is the same.
                     ensure!(
                         *account_did == caller_did,
-                        Error::<T>::MercatAccountAlreadyCreated
+                        Error::<T>::ConfidentialAccountAlreadyCreated
                     );
                 }
                 None => {
-                    // Link the mercat account to the caller's identity.
+                    // Link the confidential account to the caller's identity.
                     *account_did = Some(caller_did);
                 }
             }
             Ok(())
         })?;
 
-        // Initialize the mercat account balance to zero.
+        // Initialize the confidential account balance to zero.
         let enc_balance = CipherText::zero();
-        MercatAccountBalance::insert(&account, ticker, enc_balance.clone());
+        ConfidentialAccountBalance::insert(&account, ticker, enc_balance.clone());
 
         Self::deposit_event(Event::AccountCreated(
             caller_did,
@@ -748,13 +691,13 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    fn base_add_mediator_mercat_account(
+    fn base_add_mediator_account(
         caller_did: IdentityId,
-        account: MercatAccount,
+        account: MediatorAccount,
     ) -> DispatchResult {
-        ensure!(account.is_valid(), Error::<T>::InvalidMercatAccount);
+        ensure!(account.is_valid(), Error::<T>::InvalidConfidentialAccount);
 
-        MediatorMercatAccounts::insert(&caller_did, &account);
+        MediatorAccountDid::insert(&account, &caller_did);
 
         Self::deposit_event(Event::MediatorAccountCreated(caller_did, account));
         Ok(())
@@ -793,10 +736,10 @@ impl<T: Config> Module<T> {
         owner_did: IdentityId,
         ticker: Ticker,
         amount: Balance,
-        account: MercatAccount,
+        account: ConfidentialAccount,
     ) -> DispatchResult {
         // Ensure `owner_did` owns `account`.
-        let account_did = Self::mercat_account_did(&account);
+        let account_did = Self::account_did(&account);
         ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
 
         // Ensure the caller is the asset owner and get the asset details.
@@ -815,11 +758,11 @@ impl<T: Config> Module<T> {
             Error::<T>::TotalSupplyOverLimit
         );
 
-        // At the moment, mercat lib imposes that balances can be at most 32/64 bits.
-        let max_balance_mercat = MercatBalance::MAX.saturated_into::<Balance>();
+        // At the moment, `confidential_assets` lib imposes that balances can be at most 64 bits.
+        let max_balance = ConfidentialBalance::MAX.saturated_into::<Balance>();
         ensure!(
-            details.total_supply <= max_balance_mercat,
-            Error::<T>::TotalSupplyAboveMercatBalanceLimit
+            details.total_supply <= max_balance,
+            Error::<T>::TotalSupplyAboveConfidentialBalanceLimit
         );
 
         ensure!(
@@ -827,15 +770,15 @@ impl<T: Config> Module<T> {
             Error::<T>::UnknownConfidentialAsset
         );
 
-        // Ensure the mercat account's balance has been initialized.
+        // Ensure the confidential account's balance has been initialized.
         ensure!(
-            MercatAccountBalance::contains_key(&account, ticker),
-            Error::<T>::MercatAccountMissing
+            ConfidentialAccountBalance::contains_key(&account, ticker),
+            Error::<T>::ConfidentialAccountMissing
         );
 
         let enc_issued_amount = CipherText::value(amount.into());
-        // Deposit the minted assets into the issuer's mercat account.
-        Self::mercat_account_deposit_amount(&account, ticker, enc_issued_amount)?;
+        // Deposit the minted assets into the issuer's confidential account.
+        Self::account_deposit_amount(&account, ticker, enc_issued_amount)?;
 
         // Emit Issue event with new `total_supply`.
         Self::deposit_event(Event::Issued(
@@ -852,18 +795,18 @@ impl<T: Config> Module<T> {
 
     fn base_apply_incoming_balance(
         caller_did: IdentityId,
-        account: MercatAccount,
+        account: ConfidentialAccount,
         ticker: Ticker,
     ) -> DispatchResult {
-        let account_did = Self::get_mercat_account_did(&account)?;
-        // Ensure the caller is the owner of the mercat account.
+        let account_did = Self::get_account_did(&account)?;
+        // Ensure the caller is the owner of the confidential account.
         ensure!(account_did == caller_did, Error::<T>::Unauthorized);
 
         // Take the incoming balance.
         match IncomingBalance::take(&account, ticker) {
             Some(incoming_balance) => {
-                // If there is an incoming balance, deposit it into the mercat account balance.
-                Self::mercat_account_deposit_amount(&account, ticker, incoming_balance)?;
+                // If there is an incoming balance, deposit it into the confidential account balance.
+                Self::account_deposit_amount(&account, ticker, incoming_balance)?;
             }
             None => (),
         }
@@ -967,10 +910,14 @@ impl<T: Config> Module<T> {
         for (i, leg) in legs.iter().enumerate() {
             // Check if the venue has required permissions from asset owners.
             Self::ensure_venue_filtering(&mut tickers, leg.ticker, &venue_id)?;
-            ensure!(leg.verify_accounts(), Error::<T>::InvalidMercatAccount);
+            ensure!(
+                leg.verify_accounts(),
+                Error::<T>::InvalidConfidentialAccount
+            );
             let leg_id = TransactionLegId(i as _);
-            let sender_did = Self::get_mercat_account_did(&leg.sender)?;
-            let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
+            let sender_did = Self::get_account_did(&leg.sender)?;
+            let receiver_did = Self::get_account_did(&leg.receiver)?;
+            let mediator_did = Self::get_account_did(&leg.mediator)?;
             UserAffirmations::insert(
                 (sender_did, transaction_id),
                 (leg_id, LegParty::Sender),
@@ -982,7 +929,7 @@ impl<T: Config> Module<T> {
                 false,
             );
             UserAffirmations::insert(
-                (&leg.mediator, transaction_id),
+                (mediator_did, transaction_id),
                 (leg_id, LegParty::Mediator),
                 false,
             );
@@ -1029,26 +976,24 @@ impl<T: Config> Module<T> {
 
         match affirm.party {
             AffirmParty::Sender(proof) => {
-                let init_tx = proof
-                    .into_tx()
-                    .ok_or(Error::<T>::InvalidMercatSenderProof)?;
-                let sender_did = Self::mercat_account_did(&leg.sender);
+                let init_tx = proof.into_tx().ok_or(Error::<T>::InvalidSenderProof)?;
+                let sender_did = Self::account_did(&leg.sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
 
                 // Get sender/receiver accounts from the leg.
                 let sender_account = leg
                     .sender_account()
-                    .ok_or(Error::<T>::InvalidMercatAccount)?;
+                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
                 let receiver_account = leg
                     .receiver_account()
-                    .ok_or(Error::<T>::InvalidMercatAccount)?;
-                let mediator_acount = Self::mediator_mercat_accounts(leg.mediator)
-                    .and_then(|m| m.pub_account())
-                    .ok_or(Error::<T>::MercatAccountMissing)?;
+                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
+                let mediator_account = leg
+                    .mediator_account()
+                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
 
                 // Get the sender's current balance.
-                let from_current_balance = Self::mercat_account_balance(&leg.sender, leg.ticker)
-                    .ok_or(Error::<T>::MercatAccountMissing)?;
+                let from_current_balance = Self::account_balance(&leg.sender, leg.ticker)
+                    .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
                 // Verify the sender's proof.
                 let mut rng = Self::get_rng();
@@ -1060,11 +1005,11 @@ impl<T: Config> Module<T> {
                         &[(AuditorId(0), mediator_acount)].into(),
                         &mut rng,
                     )
-                    .map_err(|_| Error::<T>::InvalidMercatSenderProof)?;
+                    .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
                 // Withdraw the transaction amount when the sender affirms.
                 let sender_amount = init_tx.sender_amount();
-                Self::mercat_account_withdraw_amount(&leg.sender, leg.ticker, sender_amount)?;
+                Self::account_withdraw_amount(&leg.sender, leg.ticker, sender_amount)?;
 
                 // Store the pending state for this transaction leg.
                 let receiver_amount = init_tx.receiver_amount();
@@ -1080,7 +1025,7 @@ impl<T: Config> Module<T> {
                 ));
             }
             AffirmParty::Receiver => {
-                let receiver_did = Self::mercat_account_did(&leg.receiver);
+                let receiver_did = Self::account_did(&leg.receiver);
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
             }
             AffirmParty::Mediator => {
@@ -1118,13 +1063,13 @@ impl<T: Config> Module<T> {
         let leg = TransactionLegs::get(id, leg_id).ok_or(Error::<T>::UnknownTransactionLeg)?;
         let pending_affirms = match unaffirm.party {
             LegParty::Sender => {
-                let sender_did = Self::mercat_account_did(&leg.sender);
+                let sender_did = Self::account_did(&leg.sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
 
                 let mut pending_affirms = 1;
                 // If the receiver has affirmed the leg, then we need to invalid their affirmation.
-                let receiver_did = Self::mercat_account_did(&leg.receiver)
-                    .ok_or(Error::<T>::MercatAccountMissing)?;
+                let receiver_did = Self::account_did(&leg.receiver)
+                    .ok_or(Error::<T>::ConfidentialAccountMissing)?;
                 UserAffirmations::mutate(
                     (receiver_did, id),
                     (leg_id, LegParty::Receiver),
@@ -1154,12 +1099,12 @@ impl<T: Config> Module<T> {
                 TxLegReceiverAmount::remove((id, leg_id));
 
                 // Deposit the transaction amount back into the sender's account.
-                Self::mercat_account_deposit_amount(&leg.sender, leg.ticker, sender_amount)?;
+                Self::account_deposit_amount(&leg.sender, leg.ticker, sender_amount)?;
 
                 pending_affirms
             }
             LegParty::Receiver => {
-                let receiver_did = Self::mercat_account_did(&leg.receiver);
+                let receiver_did = Self::account_did(&leg.receiver);
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
 
                 1
@@ -1230,14 +1175,14 @@ impl<T: Config> Module<T> {
         let ticker = leg.ticker;
 
         // Check affirmations and remove them.
-        let sender_did = Self::get_mercat_account_did(&leg.sender)?;
+        let sender_did = Self::get_account_did(&leg.sender)?;
         let sender_affirm =
             UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
         ensure!(
             sender_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
-        let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
+        let receiver_did = Self::get_account_did(&leg.receiver)?;
         let receiver_affirm =
             UserAffirmations::take((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
         ensure!(
@@ -1258,7 +1203,7 @@ impl<T: Config> Module<T> {
             .ok_or(Error::<T>::TransactionNotAffirmed)?;
 
         // Deposit the transaction amount into the receiver's account.
-        Self::mercat_account_deposit_amount_incoming(&leg.receiver, ticker, receiver_amount);
+        Self::account_deposit_amount_incoming(&leg.receiver, ticker, receiver_amount);
         Ok(())
     }
 
@@ -1308,10 +1253,10 @@ impl<T: Config> Module<T> {
         leg: TransactionLeg,
     ) -> DispatchResult {
         // Remove user affirmations.
-        let sender_did = Self::get_mercat_account_did(&leg.sender)?;
+        let sender_did = Self::get_account_did(&leg.sender)?;
         let sender_affirm =
             UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
-        let receiver_did = Self::get_mercat_account_did(&leg.receiver)?;
+        let receiver_did = Self::get_account_did(&leg.receiver)?;
         UserAffirmations::remove((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
         UserAffirmations::remove((leg.mediator, transaction_id), (leg_id, LegParty::Mediator));
 
@@ -1320,11 +1265,7 @@ impl<T: Config> Module<T> {
             match TxLegSenderAmount::take((transaction_id, leg_id)) {
                 Some(sender_amount) => {
                     // Deposit the transaction amount back into the sender's incoming account.
-                    Self::mercat_account_deposit_amount_incoming(
-                        &leg.sender,
-                        leg.ticker,
-                        sender_amount,
-                    );
+                    Self::account_deposit_amount_incoming(&leg.sender, leg.ticker, sender_amount);
                 }
                 None => (),
             }
@@ -1335,17 +1276,22 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    pub fn get_mercat_account_did(account: &MercatAccount) -> Result<IdentityId, DispatchError> {
-        Self::mercat_account_did(account).ok_or(Error::<T>::MercatAccountMissing.into())
+    pub fn get_account_did(account: &ConfidentialAccount) -> Result<IdentityId, DispatchError> {
+        Self::account_did(account).ok_or(Error::<T>::ConfidentialAccountMissing.into())
     }
 
-    /// Subtract the `amount` from the mercat account balance.
-    fn mercat_account_withdraw_amount(
-        account: &MercatAccount,
+    pub fn get_mediator_did(mediator: &ConfidentialAccount) -> Result<IdentityId, DispatchError> {
+        // TODO: Improve error.
+        Self::mediator_account_did(mediator).ok_or(Error::<T>::ConfidentialAccountMissing.into())
+    }
+
+    /// Subtract the `amount` from the confidential account balance.
+    fn account_withdraw_amount(
+        account: &ConfidentialAccount,
         ticker: Ticker,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = MercatAccountBalance::try_mutate(
+        let balance = ConfidentialAccountBalance::try_mutate(
             account,
             ticker,
             |balance| -> Result<CipherText, DispatchError> {
@@ -1353,7 +1299,7 @@ impl<T: Config> Module<T> {
                     *balance -= amount;
                     Ok(*balance)
                 } else {
-                    Err(Error::<T>::MercatAccountMissing.into())
+                    Err(Error::<T>::ConfidentialAccountMissing.into())
                 }
             },
         )?;
@@ -1361,13 +1307,13 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    /// Add the `amount` to the mercat account's balance.
-    fn mercat_account_deposit_amount(
-        account: &MercatAccount,
+    /// Add the `amount` to the confidential account's balance.
+    fn account_deposit_amount(
+        account: &ConfidentialAccount,
         ticker: Ticker,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = MercatAccountBalance::try_mutate(
+        let balance = ConfidentialAccountBalance::try_mutate(
             account,
             ticker,
             |balance| -> Result<CipherText, DispatchError> {
@@ -1375,7 +1321,7 @@ impl<T: Config> Module<T> {
                     *balance += amount;
                     Ok(*balance)
                 } else {
-                    Err(Error::<T>::MercatAccountMissing.into())
+                    Err(Error::<T>::ConfidentialAccountMissing.into())
                 }
             },
         )?;
@@ -1383,9 +1329,9 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
-    /// Add the `amount` to the mercat account's `IncomingBalance` accumulator.
-    fn mercat_account_deposit_amount_incoming(
-        account: &MercatAccount,
+    /// Add the `amount` to the confidential account's `IncomingBalance` accumulator.
+    fn account_deposit_amount_incoming(
+        account: &ConfidentialAccount,
         ticker: Ticker,
         amount: CipherText,
     ) {
@@ -1420,12 +1366,12 @@ impl<T: Config> Module<T> {
 
 decl_event! {
     pub enum Event {
-        /// Event for creation of a Mediator Mercat account.
-        /// caller DID, Mediator mercat account (public key)
-        MediatorAccountCreated(IdentityId, MercatAccount),
-        /// Event for creation of a Mercat account.
-        /// caller DID, mercat account (public key), ticker, encrypted balance
-        AccountCreated(IdentityId, MercatAccount, Ticker, CipherText),
+        /// Event for creation of a Mediator account.
+        /// caller DID, Mediator confidential account (public key)
+        MediatorAccountCreated(IdentityId, MediatorAccount),
+        /// Event for creation of a Confidential account.
+        /// caller DID, confidential account (public key), ticker, encrypted balance
+        AccountCreated(IdentityId, ConfidentialAccount, Ticker, CipherText),
         /// Event for creation of a confidential asset.
         /// (caller DID, ticker, total supply, asset type)
         ConfidentialAssetCreated(IdentityId, Ticker, Balance, AssetType),
@@ -1467,37 +1413,39 @@ decl_event! {
         /// Confidential transaction leg affirmed.
         /// (caller DID, TransactionId, TransactionLegId, SenderProof)
         TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, Option<SenderProof>),
-        /// Mercat account balance decreased.
+        /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
-        /// (mercat account, ticker, new encrypted balance)
-        AccountWithdraw(MercatAccount, Ticker, CipherText),
-        /// Mercat account balance increased.
+        /// (confidential account, ticker, new encrypted balance)
+        AccountWithdraw(ConfidentialAccount, Ticker, CipherText),
+        /// Confidential account balance increased.
         /// This happens when the sender unaffirms a transaction or
         /// when the receiver calls `apply_incoming_balance`.
-        /// (mercat account, ticker, new encrypted balance)
-        AccountDeposit(MercatAccount, Ticker, CipherText),
-        /// Mercat account has an incoming amount.
+        /// (confidential account, ticker, new encrypted balance)
+        AccountDeposit(ConfidentialAccount, Ticker, CipherText),
+        /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
-        /// (mercat account, ticker, encrypted amount)
-        AccountDepositIncoming(MercatAccount, Ticker, CipherText),
+        /// (confidential account, ticker, encrypted amount)
+        AccountDepositIncoming(ConfidentialAccount, Ticker, CipherText),
     }
 }
 
 decl_error! {
     pub enum Error for Module<T: Config> {
-        /// Mercat account hasn't been created yet.
-        MercatAccountMissing,
-        /// Mercat account already created.
-        MercatAccountAlreadyCreated,
-        /// Mercat account's balance already initialized.
-        MercatAccountAlreadyInitialized,
-        /// Mercat account isn't a valid CompressedEncryptionPubKey.
-        InvalidMercatAccount,
-        /// The balance values does not fit a mercat balance.
-        TotalSupplyAboveMercatBalanceLimit,
+        /// Mediator account hasn't been created yet.
+        MediatorAccountMissing,
+        /// Confidential account hasn't been created yet.
+        ConfidentialAccountMissing,
+        /// Confidential account already created.
+        ConfidentialAccountAlreadyCreated,
+        /// Confidential account's balance already initialized.
+        ConfidentialAccountAlreadyInitialized,
+        /// Confidential account isn't a valid CompressedEncryptionPubKey.
+        InvalidConfidentialAccount,
+        /// The balance values does not fit a confidential balance.
+        TotalSupplyAboveConfidentialBalanceLimit,
         /// The user is not authorized.
         Unauthorized,
-        /// The provided asset is not among the set of valid asset ids.
+        /// The ticker is not a registered confidential asset.
         UnknownConfidentialAsset,
         /// The confidential asset has already been created.
         ConfidentialAssetAlreadyCreated,
@@ -1505,12 +1453,8 @@ decl_error! {
         TotalSupplyOverLimit,
         /// A confidential asset's total supply must be positive.
         TotalSupplyMustBePositive,
-        /// Insufficient mercat authorizations are provided.
-        InsufficientMercatAuthorizations,
-        /// Confidential transfer's proofs are invalid.
-        ConfidentialTransferValidationFailure,
-        /// The MERCAT sender proof is invalid.
-        InvalidMercatSenderProof,
+        /// The confidential transfer sender proof is invalid.
+        InvalidSenderProof,
         /// Venue does not exist.
         InvalidVenue,
         /// Transaction has not been affirmed.
