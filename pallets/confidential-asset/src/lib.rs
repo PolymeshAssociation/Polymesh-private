@@ -1,30 +1,13 @@
 // This file is part of the Polymesh distribution (https://github.com/PolymathNetwork/Polymesh).
-// Copyright (c) 2020 Polymath
+// Copyright (c) 2023 Polymesh
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, version 3.
-
-// This program is distributed in the hope that it will be useful, but
-// WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-// General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-//! # Confidential Asset Module
+//! # Confidential Asset Pallet
 //!
-//! The Confidential Asset module is one place to create the MERCAT security assets on the
-//! Polymesh blockchain.
+//! The Confidential Asset pallet provides privacy of account balances and transaction amounts.
 //!
 //! ## Overview
 //!
-//! The following documentation covers the functionalities needed for a transfer of a confidential asset.
-//! Part of this functionality (creating a confidential account and minting confidential assets) are
-//! handled in this pallet, while the confidential transfer is handled by the
-//! [settlement module](../pallet_settlement/index.html). These pallets call out to the
-//! [MERCAT library]https://github.com/PolymathNetwork/cryptography) which is an implementation of the
+//! These pallets call out to the [Confidential Asset library](https://github.com/PolymeshAssociation/confidential_assets) which is an implementation of the
 //! [MERCAT whitepaper](https://info.polymath.network/hubfs/PDFs/Polymath-MERCAT-Whitepaper-Mediated-Encrypted-Reversible-SeCure-Asset-Transfers.pdf).
 //!
 //!
@@ -385,8 +368,8 @@ pub enum TransactionStatus<BlockNumber> {
     Pending,
     /// Executed at block.
     Executed(BlockNumber),
-    /// Reverted at block.
-    Reverted(BlockNumber),
+    /// Rejected at block.
+    Rejected(BlockNumber),
 }
 
 decl_storage! {
@@ -474,7 +457,7 @@ decl_storage! {
 
         /// Stores the transfer amount encrypted using the sender's public key.
         ///
-        /// This is needed to revert the transaction.
+        /// This is needed to revert the transaction leg.
         ///
         /// (transaction_id, leg_id) -> Option<CipherText>
         pub TxLegSenderAmount get(fn tx_leg_sender_amount):
@@ -710,7 +693,7 @@ decl_module! {
             Self::base_execute_transaction(did, transaction_id, leg_count as usize)?;
         }
 
-        /// Revert pending transaction.
+        /// Reject pending transaction.
         #[weight = <T as Config>::WeightInfo::execute_transaction(*leg_count)]
         pub fn reject_transaction(
             origin,
@@ -1300,16 +1283,17 @@ impl<T: Config> Module<T> {
         let details =
             <Transactions<T>>::take(transaction_id).ok_or(Error::<T>::UnknownTransactionLeg)?;
 
-        // Revert transaction legs.
+        // Revert transaction legs.  This is needed for legs where the sender
+        // has affirmed it with the sender proof.
         for (leg_id, leg) in legs {
             Self::revert_leg(transaction_id, leg_id, leg)?;
         }
 
         // Update status.
         let block = System::<T>::block_number();
-        <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Reverted(block));
+        <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Rejected(block));
 
-        Self::deposit_event(Event::TransactionReverted(
+        Self::deposit_event(Event::TransactionRejected(
             caller_did,
             transaction_id,
             details.memo,
@@ -1473,9 +1457,9 @@ decl_event! {
             TransactionId,
             Option<Memo>,
         ),
-        /// Confidential transaction reverted.
+        /// Confidential transaction rejected.
         /// (caller DID, transaction_id, memo)
-        TransactionReverted(
+        TransactionRejected(
             IdentityId,
             TransactionId,
             Option<Memo>,
