@@ -692,7 +692,7 @@ impl<T: Config> Module<T> {
 
         // Initialize the confidential account balance to zero.
         let enc_balance = CipherText::zero();
-        AccountBalance::insert(&account, ticker, enc_balance.clone());
+        AccountBalance::insert(&account, ticker, enc_balance);
 
         Self::deposit_event(Event::AccountCreated(
             caller_did,
@@ -1293,12 +1293,12 @@ impl<T: Config> Module<T> {
     }
 
     pub fn get_account_did(account: &ConfidentialAccount) -> Result<IdentityId, DispatchError> {
-        Self::account_did(account).ok_or(Error::<T>::ConfidentialAccountMissing.into())
+        Self::account_did(account).ok_or_else(|| Error::<T>::ConfidentialAccountMissing.into())
     }
 
     pub fn get_mediator_did(mediator: &MediatorAccount) -> Result<IdentityId, DispatchError> {
-        // TODO: Improve error.
-        Self::mediator_account_did(mediator).ok_or(Error::<T>::ConfidentialAccountMissing.into())
+        Self::mediator_account_did(mediator)
+            .ok_or_else(|| Error::<T>::MediatorAccountMissing.into())
     }
 
     /// Subtract the `amount` from the confidential account balance.
@@ -1319,7 +1319,7 @@ impl<T: Config> Module<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::AccountWithdraw(account.clone(), ticker, balance));
+        Self::deposit_event(Event::AccountWithdraw(*account, ticker, balance));
         Ok(())
     }
 
@@ -1341,7 +1341,7 @@ impl<T: Config> Module<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::AccountDeposit(account.clone(), ticker, balance));
+        Self::deposit_event(Event::AccountDeposit(*account, ticker, balance));
         Ok(())
     }
 
@@ -1356,14 +1356,10 @@ impl<T: Config> Module<T> {
                 *previous_balance += amount;
             }
             None => {
-                *incoming_balance = Some(amount.into());
+                *incoming_balance = Some(amount);
             }
         });
-        Self::deposit_event(Event::AccountDepositIncoming(
-            account.clone(),
-            ticker,
-            amount,
-        ));
+        Self::deposit_event(Event::AccountDepositIncoming(*account, ticker, amount));
     }
 
     fn get_rng() -> Rng {
