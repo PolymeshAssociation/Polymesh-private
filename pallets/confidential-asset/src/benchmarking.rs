@@ -91,6 +91,10 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         self.sec.public.into()
     }
 
+    pub fn mediator_account(&self) -> MediatorAccount {
+        self.sec.public.into()
+    }
+
     pub fn did(&self) -> IdentityId {
         self.user.did()
     }
@@ -123,7 +127,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     pub fn add_mediator(&self) {
         assert_ok!(Module::<T>::add_mediator_account(
             self.origin().into(),
-            self.account(),
+            self.mediator_account(),
         ));
     }
 }
@@ -237,7 +241,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
                 ticker,
                 sender: issuer.account(),
                 receiver: investor.account(),
-                mediator: mediator.did(),
+                mediator: mediator.mediator_account(),
             })
             .collect();
         Self {
@@ -363,7 +367,7 @@ benchmarks! {
     add_mediator_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let mediator = ConfidentialUser::<T>::new("mediator", &mut rng);
-        let account = mediator.account();
+        let account = mediator.mediator_account();
     }: _(mediator.origin(), account)
 
     create_confidential_asset {

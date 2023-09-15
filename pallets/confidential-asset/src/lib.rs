@@ -7,8 +7,8 @@
 //!
 //! ## Overview
 //!
-//! These pallets call out to the [Confidential Asset library](https://github.com/PolymeshAssociation/confidential_assets) which is an implementation of the
-//! [MERCAT whitepaper](https://info.polymath.network/hubfs/PDFs/Polymath-MERCAT-Whitepaper-Mediated-Encrypted-Reversible-SeCure-Asset-Transfers.pdf).
+//! These pallets call out to the [Confidential Assets library](https://github.com/PolymeshAssociation/confidential_assets)
+//! which implements the ZK-proofs for confidential transfers.
 //!
 //!
 
@@ -158,6 +158,18 @@ impl MediatorAccount {
 
     pub fn is_valid(&self) -> bool {
         self.0.into_public_key().is_some()
+    }
+}
+
+impl From<ElgamalPublicKey> for MediatorAccount {
+    fn from(data: ElgamalPublicKey) -> Self {
+        Self(data.into())
+    }
+}
+
+impl From<&ElgamalPublicKey> for MediatorAccount {
+    fn from(data: &ElgamalPublicKey) -> Self {
+        Self(data.into())
     }
 }
 
