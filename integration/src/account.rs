@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use sp_core::Pair;
 use sp_keyring::{ed25519, sr25519};
 use sp_runtime::MultiSignature;
 
-use polymesh_api::client::{AccountId, PairSigner, Result, Signer};
+use polymesh_api::client::{AccountId, PairSigner, KeypairSigner, Result, Signer};
 
 use crate::User;
 
@@ -16,11 +15,7 @@ pub struct AccountSigner {
 }
 
 impl AccountSigner {
-    pub fn new<P: Pair>(pair: P) -> Self
-    where
-        MultiSignature: From<<P as Pair>::Signature>,
-        AccountId: From<<P as Pair>::Public>,
-    {
+    pub fn new<P: KeypairSigner + 'static>(pair: P) -> Self {
         let signer = PairSigner::new(pair);
         let account = signer.account();
         Self {
@@ -39,7 +34,7 @@ impl AccountSigner {
 
     /// Generate signing key pair from string `s`.
     pub fn from_string(s: &str) -> Result<Self> {
-        Ok(Self::new(sr25519::sr25519::Pair::from_string(s, None)?))
+        Ok(Self::new(<sr25519::sr25519::Pair as KeypairSigner>::from_string(s, None)?))
     }
 }
 

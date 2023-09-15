@@ -5,7 +5,8 @@ use sp_core::{Encode, Decode};
 use polymesh_api::types::{
     pallet_confidential_asset::{
         AffirmLeg, AffirmParty,
-        MercatAccount,
+        ConfidentialAccount,
+        MediatorAccount,
         SenderProof,
         TransactionId, TransactionLeg, TransactionLegId,
     },
@@ -24,17 +25,29 @@ use confidential_assets::{
 
 use integration::*;
 
-fn create_account() -> (ElgamalKeys, MercatAccount) {
+fn create_keys() -> ElgamalKeys {
     let mut rng = rand::thread_rng();
     let secret = ElgamalSecretKey::new(Scalar::random(&mut rng));
     let public = secret.get_public_key();
-    // Convert ElgamalPublicKey to on-chain MercatAccount type.
-    let enc_pub = public.encode();
-    let account = MercatAccount::decode(&mut enc_pub.as_slice()).expect("MercatAccount");
-    let keys = ElgamalKeys {
+    ElgamalKeys {
         public,
         secret,
-    };
+    }
+}
+
+fn create_account() -> (ElgamalKeys, ConfidentialAccount) {
+    let keys = create_keys();
+    // Convert ElgamalPublicKey to on-chain ConfidentialAccount type.
+    let enc_pub = keys.public.encode();
+    let account = ConfidentialAccount::decode(&mut enc_pub.as_slice()).expect("ConfidentialAccount");
+    (keys, account)
+}
+
+fn create_mediator_account() -> (ElgamalKeys, MediatorAccount) {
+    let keys = create_keys();
+    // Convert ElgamalPublicKey to on-chain MediatorAccount type.
+    let enc_pub = keys.public.encode();
+    let account = MediatorAccount::decode(&mut enc_pub.as_slice()).expect("MediatorAccount");
     (keys, account)
 }
 
@@ -95,18 +108,18 @@ async fn confidential_transfer() -> Result<()> {
     ]).await?;
     let ticker = tester.gen_ticker();
     let mut mediator = users.pop().unwrap();
-    let (mediator_keys, mediator_account) = create_account();
+    let (mediator_keys, mediator_account) = create_mediator_account();
     let mut investor = users.pop().unwrap();
     let (investor_keys, investor_account) = create_account();
     let mut issuer = users.pop().unwrap();
     let (issuer_keys, issuer_account) = create_account();
 
-    // Mediator registers their mercat account.
+    // Mediator registers their account.
     tester
         .api
         .call()
         .confidential_asset()
-        .add_mediator_mercat_account(mediator_account)?
+        .add_mediator_account(mediator_account)?
         .submit_and_watch(&mut mediator)
         .await?;
 
@@ -115,7 +128,7 @@ async fn confidential_transfer() -> Result<()> {
         .api
         .call()
         .confidential_asset()
-        .validate_mercat_account(ticker, issuer_account)?
+        .create_account(ticker, issuer_account)?
         .submit_and_watch(&mut issuer)
         .await?;
     // Initialize the investor's account.
@@ -123,7 +136,7 @@ async fn confidential_transfer() -> Result<()> {
         .api
         .call()
         .confidential_asset()
-        .validate_mercat_account(ticker, investor_account)?
+        .create_account(ticker, investor_account)?
         .submit_and_watch(&mut investor)
         .await?;
 
@@ -181,7 +194,7 @@ async fn confidential_transfer() -> Result<()> {
             ticker,
             sender: issuer_account,
             receiver: investor_account,
-            mediator: mediator.did.expect("Mediator DID"),
+            mediator: mediator_account,
         }
     ];
     let mut res_add_tx = tester
@@ -201,7 +214,7 @@ async fn confidential_transfer() -> Result<()> {
         .api
         .query()
         .confidential_asset()
-        .mercat_account_balance(issuer_account, ticker)
+        .account_balance(issuer_account, ticker)
         .await?
         .and_then(|enc| {
             CipherText::decode(&mut &enc.0[..]).ok()

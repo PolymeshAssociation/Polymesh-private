@@ -369,14 +369,14 @@ decl_storage! {
         /// Records the did for a confidential account.
         ///
         /// account -> Option<IdentityId>.
-        pub ConfidentialAccountDid get(fn account_did):
+        pub AccountDid get(fn account_did):
             map hasher(blake2_128_concat) ConfidentialAccount
             => Option<IdentityId>;
 
         /// Contains the encrypted balance of a confidential account.
         ///
         /// account -> ticker -> Option<CipherText>
-        pub ConfidentialAccountBalance get(fn account_balance):
+        pub AccountBalance get(fn account_balance):
             double_map hasher(blake2_128_concat) ConfidentialAccount,
             hasher(blake2_128_concat) Ticker
             => Option<CipherText>;
@@ -657,11 +657,11 @@ impl<T: Config> Module<T> {
     ) -> DispatchResult {
         // Ensure the confidential account's balance hasn't been initialized.
         ensure!(
-            !ConfidentialAccountBalance::contains_key(&account, ticker),
+            !AccountBalance::contains_key(&account, ticker),
             Error::<T>::ConfidentialAccountAlreadyInitialized
         );
         // Ensure the confidential account doesn't exist, or is already linked to the caller's identity.
-        ConfidentialAccountDid::try_mutate(&account, |account_did| -> DispatchResult {
+        AccountDid::try_mutate(&account, |account_did| -> DispatchResult {
             match account_did {
                 Some(account_did) => {
                     // Ensure the caller's identity is the same.
@@ -680,7 +680,7 @@ impl<T: Config> Module<T> {
 
         // Initialize the confidential account balance to zero.
         let enc_balance = CipherText::zero();
-        ConfidentialAccountBalance::insert(&account, ticker, enc_balance.clone());
+        AccountBalance::insert(&account, ticker, enc_balance.clone());
 
         Self::deposit_event(Event::AccountCreated(
             caller_did,
@@ -772,7 +772,7 @@ impl<T: Config> Module<T> {
 
         // Ensure the confidential account's balance has been initialized.
         ensure!(
-            ConfidentialAccountBalance::contains_key(&account, ticker),
+            AccountBalance::contains_key(&account, ticker),
             Error::<T>::ConfidentialAccountMissing
         );
 
@@ -917,7 +917,7 @@ impl<T: Config> Module<T> {
             let leg_id = TransactionLegId(i as _);
             let sender_did = Self::get_account_did(&leg.sender)?;
             let receiver_did = Self::get_account_did(&leg.receiver)?;
-            let mediator_did = Self::get_account_did(&leg.mediator)?;
+            let mediator_did = Self::get_mediator_did(&leg.mediator)?;
             UserAffirmations::insert(
                 (sender_did, transaction_id),
                 (leg_id, LegParty::Sender),
@@ -1002,7 +1002,7 @@ impl<T: Config> Module<T> {
                         &sender_account,
                         &from_current_balance,
                         &receiver_account,
-                        &[(AuditorId(0), mediator_acount)].into(),
+                        &[(AuditorId(0), mediator_account)].into(),
                         &mut rng,
                     )
                     .map_err(|_| Error::<T>::InvalidSenderProof)?;
@@ -1029,7 +1029,8 @@ impl<T: Config> Module<T> {
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
             }
             AffirmParty::Mediator => {
-                ensure!(caller_did == leg.mediator, Error::<T>::Unauthorized);
+                let mediator_did = Self::mediator_account_did(&leg.mediator);
+                ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
             }
         }
         // Update affirmations.
@@ -1068,8 +1069,7 @@ impl<T: Config> Module<T> {
 
                 let mut pending_affirms = 1;
                 // If the receiver has affirmed the leg, then we need to invalid their affirmation.
-                let receiver_did = Self::account_did(&leg.receiver)
-                    .ok_or(Error::<T>::ConfidentialAccountMissing)?;
+                let receiver_did = Self::get_account_did(&leg.receiver)?;
                 UserAffirmations::mutate(
                     (receiver_did, id),
                     (leg_id, LegParty::Receiver),
@@ -1081,8 +1081,9 @@ impl<T: Config> Module<T> {
                     },
                 );
                 // If the mediator has affirmed the leg, then we need to invalid their affirmation.
+                let mediator_did = Self::get_mediator_did(&leg.mediator)?;
                 UserAffirmations::mutate(
-                    (leg.mediator, id),
+                    (mediator_did, id),
                     (leg_id, LegParty::Mediator),
                     |affirmed| {
                         if *affirmed == Some(true) {
@@ -1110,7 +1111,8 @@ impl<T: Config> Module<T> {
                 1
             }
             LegParty::Mediator => {
-                ensure!(caller_did == leg.mediator, Error::<T>::Unauthorized);
+                let mediator_did = Self::mediator_account_did(&leg.mediator);
+                ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
 
                 1
             }
@@ -1189,8 +1191,9 @@ impl<T: Config> Module<T> {
             receiver_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
+        let mediator_did = Self::get_mediator_did(&leg.mediator)?;
         let mediator_affirm =
-            UserAffirmations::take((leg.mediator, transaction_id), (leg_id, LegParty::Mediator));
+            UserAffirmations::take((mediator_did, transaction_id), (leg_id, LegParty::Mediator));
         ensure!(
             mediator_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
@@ -1258,7 +1261,8 @@ impl<T: Config> Module<T> {
             UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
         let receiver_did = Self::get_account_did(&leg.receiver)?;
         UserAffirmations::remove((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
-        UserAffirmations::remove((leg.mediator, transaction_id), (leg_id, LegParty::Mediator));
+        let mediator_did = Self::get_mediator_did(&leg.mediator)?;
+        UserAffirmations::remove((mediator_did, transaction_id), (leg_id, LegParty::Mediator));
 
         if sender_affirm == Some(true) {
             // Take the transaction leg's pending state.
@@ -1280,7 +1284,7 @@ impl<T: Config> Module<T> {
         Self::account_did(account).ok_or(Error::<T>::ConfidentialAccountMissing.into())
     }
 
-    pub fn get_mediator_did(mediator: &ConfidentialAccount) -> Result<IdentityId, DispatchError> {
+    pub fn get_mediator_did(mediator: &MediatorAccount) -> Result<IdentityId, DispatchError> {
         // TODO: Improve error.
         Self::mediator_account_did(mediator).ok_or(Error::<T>::ConfidentialAccountMissing.into())
     }
@@ -1291,7 +1295,7 @@ impl<T: Config> Module<T> {
         ticker: Ticker,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = ConfidentialAccountBalance::try_mutate(
+        let balance = AccountBalance::try_mutate(
             account,
             ticker,
             |balance| -> Result<CipherText, DispatchError> {
@@ -1313,7 +1317,7 @@ impl<T: Config> Module<T> {
         ticker: Ticker,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = ConfidentialAccountBalance::try_mutate(
+        let balance = AccountBalance::try_mutate(
             account,
             ticker,
             |balance| -> Result<CipherText, DispatchError> {
