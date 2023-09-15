@@ -118,6 +118,7 @@ parameter_types! {
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
     pub const MaxNumberOfOffChainAssets: u32 = 10;
+    pub const MaxNumberOfVenueSigners: u32 = 50;
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
