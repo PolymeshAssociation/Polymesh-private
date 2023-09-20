@@ -361,10 +361,10 @@ decl_storage! {
         /// Venues that are allowed to create transactions involving a particular ticker.
         ///
         /// ticker -> venue_id -> allowed
-        VenueAllowList get(fn venue_allow_list): double_map hasher(blake2_128_concat) Ticker, hasher(twox_64_concat) VenueId => bool;
+        pub VenueAllowList get(fn venue_allow_list): double_map hasher(blake2_128_concat) Ticker, hasher(twox_64_concat) VenueId => bool;
 
         /// Number of venues in the system (It's one more than the actual number)
-        VenueCounter get(fn venue_counter) build(|_| VenueId(1u64)): VenueId;
+        pub VenueCounter get(fn venue_counter) build(|_| VenueId(1u64)): VenueId;
 
         /// Details of the confidential asset.
         ///
@@ -396,7 +396,7 @@ decl_storage! {
         /// Accumulates the encrypted incoming balance for a confidential account.
         ///
         /// account -> ticker -> Option<CipherText>
-        IncomingBalance get(fn incoming_balance):
+        pub IncomingBalance get(fn incoming_balance):
             double_map hasher(blake2_128_concat) ConfidentialAccount,
             hasher(blake2_128_concat) Ticker
             => Option<CipherText>;
@@ -435,18 +435,18 @@ decl_storage! {
         /// Number of affirmations pending before transaction is executed.
         ///
         /// transaction_id -> Option<affirms_pending>
-        PendingAffirms get(fn affirms_pending): map hasher(twox_64_concat) TransactionId => Option<u32>;
+        pub PendingAffirms get(fn affirms_pending): map hasher(twox_64_concat) TransactionId => Option<u32>;
 
         /// Track pending transaction affirmations.
         ///
         /// party (identity, transaction_id) -> (leg_id, leg_party) -> Option<bool>
-        UserAffirmations get(fn user_affirmations):
+        pub UserAffirmations get(fn user_affirmations):
             double_map hasher(twox_64_concat) (IdentityId, TransactionId), hasher(twox_64_concat) (TransactionLegId, LegParty) => Option<bool>;
 
         /// Transaction statuses.
         ///
         /// transaction_id -> Option<TransactionStatus>
-        TransactionStatuses get(fn transaction_status):
+        pub TransactionStatuses get(fn transaction_status):
             map hasher(twox_64_concat) TransactionId => Option<TransactionStatus<T::BlockNumber>>;
 
         /// Details about an instruction.
@@ -456,7 +456,7 @@ decl_storage! {
             map hasher(twox_64_concat) TransactionId => Option<Transaction<T::BlockNumber>>;
 
         /// Number of transactions in the system (It's one more than the actual number)
-        TransactionCounter get(fn transaction_counter) build(|_| TransactionId(1u64)): TransactionId;
+        pub TransactionCounter get(fn transaction_counter) build(|_| TransactionId(1u64)): TransactionId;
 
         /// RngNonce - Nonce used as `subject` to `Randomness`.
         RngNonce get(fn rng_nonce): u64;
