@@ -934,8 +934,12 @@ impl<T: Config> Module<T> {
         let pending_affirms = (legs.len() * 3) as u32;
         PendingAffirms::insert(transaction_id, pending_affirms);
 
-        let mut tickers = BTreeSet::new();
         let mut parties = BTreeSet::new();
+        // Add the caller to the parties.
+        // Used to allow the caller to execute/reject the transaction.
+        parties.insert(did);
+
+        let mut tickers = BTreeSet::new();
         for (i, leg) in legs.iter().enumerate() {
             // Check if the venue has required permissions from asset owners.
             Self::ensure_venue_filtering(&mut tickers, leg.ticker, &venue_id)?;
