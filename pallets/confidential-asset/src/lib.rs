@@ -405,7 +405,8 @@ decl_storage! {
         ///
         /// transaction_id -> leg_id -> Option<Leg>
         pub TransactionLegs get(fn transaction_legs):
-            double_map hasher(twox_64_concat) TransactionId, hasher(twox_64_concat) TransactionLegId => Option<TransactionLeg>;
+            double_map hasher(twox_64_concat) TransactionId,
+            hasher(twox_64_concat) TransactionLegId => Option<TransactionLeg>;
 
         /// Stores the sender's initial balance when they affirmed the transaction leg.
         ///
@@ -435,13 +436,28 @@ decl_storage! {
         /// Number of affirmations pending before transaction is executed.
         ///
         /// transaction_id -> Option<affirms_pending>
-        pub PendingAffirms get(fn affirms_pending): map hasher(twox_64_concat) TransactionId => Option<u32>;
+        pub PendingAffirms get(fn affirms_pending):
+            map hasher(twox_64_concat) TransactionId => Option<u32>;
+
+        /// All parties (identities) of a transaction.
+        ///
+        /// transaction_id -> identity -> bool
+        pub TransactionParties get(fn transaction_parties):
+            double_map hasher(twox_64_concat) TransactionId,
+            hasher(twox_64_concat) IdentityId => bool;
+
+        /// Number of parties in a transaction.
+        ///
+        /// transaction_id -> Option<party_count>
+        pub TransactionPartyCount get(fn transaction_party_count):
+            map hasher(twox_64_concat) TransactionId => Option<u32>;
 
         /// Track pending transaction affirmations.
         ///
-        /// party (identity, transaction_id) -> (leg_id, leg_party) -> Option<bool>
+        /// identity -> (transaction_id, leg_id, leg_party) -> Option<bool>
         pub UserAffirmations get(fn user_affirmations):
-            double_map hasher(twox_64_concat) (IdentityId, TransactionId), hasher(twox_64_concat) (TransactionLegId, LegParty) => Option<bool>;
+            double_map hasher(twox_64_concat) IdentityId,
+            hasher(twox_64_concat) (TransactionId, TransactionLegId, LegParty) => Option<bool>;
 
         /// Transaction statuses.
         ///
@@ -918,7 +934,8 @@ impl<T: Config> Module<T> {
         let pending_affirms = (legs.len() * 3) as u32;
         PendingAffirms::insert(transaction_id, pending_affirms);
 
-        let mut tickers: BTreeSet<Ticker> = BTreeSet::new();
+        let mut tickers = BTreeSet::new();
+        let mut parties = BTreeSet::new();
         for (i, leg) in legs.iter().enumerate() {
             // Check if the venue has required permissions from asset owners.
             Self::ensure_venue_filtering(&mut tickers, leg.ticker, &venue_id)?;
@@ -930,22 +947,31 @@ impl<T: Config> Module<T> {
             let sender_did = Self::get_account_did(&leg.sender)?;
             let receiver_did = Self::get_account_did(&leg.receiver)?;
             let mediator_did = Self::get_mediator_did(&leg.mediator)?;
+            parties.insert(sender_did);
             UserAffirmations::insert(
-                (sender_did, transaction_id),
-                (leg_id, LegParty::Sender),
+                sender_did,
+                (transaction_id, leg_id, LegParty::Sender),
                 false,
             );
+            parties.insert(receiver_did);
             UserAffirmations::insert(
-                (receiver_did, transaction_id),
-                (leg_id, LegParty::Receiver),
+                receiver_did,
+                (transaction_id, leg_id, LegParty::Receiver),
                 false,
             );
+            parties.insert(mediator_did);
             UserAffirmations::insert(
-                (mediator_did, transaction_id),
-                (leg_id, LegParty::Mediator),
+                mediator_did,
+                (transaction_id, leg_id, LegParty::Mediator),
                 false,
             );
             TransactionLegs::insert(transaction_id, leg_id, leg.clone());
+        }
+
+        // Add parties to transaction.
+        TransactionPartyCount::insert(transaction_id, parties.len() as u32);
+        for did in parties {
+            TransactionParties::insert(transaction_id, did, true);
         }
 
         // Record transaction details and status.
@@ -972,15 +998,16 @@ impl<T: Config> Module<T> {
 
     fn base_affirm_transaction(
         caller_did: IdentityId,
-        id: TransactionId,
+        transaction_id: TransactionId,
         affirm: AffirmLeg,
     ) -> DispatchResult {
         let leg_id = affirm.leg_id;
-        let leg = TransactionLegs::get(id, leg_id).ok_or(Error::<T>::UnknownTransactionLeg)?;
+        let leg = TransactionLegs::get(transaction_id, leg_id)
+            .ok_or(Error::<T>::UnknownTransactionLeg)?;
 
         // Ensure the caller hasn't already affirmed this leg.
         let party = affirm.leg_party();
-        let caller_affirm = UserAffirmations::get((caller_did, id), (leg_id, party));
+        let caller_affirm = UserAffirmations::get(caller_did, (transaction_id, leg_id, party));
         ensure!(
             caller_affirm == Some(false),
             Error::<T>::TransactionAlreadyAffirmed
@@ -1025,13 +1052,13 @@ impl<T: Config> Module<T> {
 
                 // Store the pending state for this transaction leg.
                 let receiver_amount = init_tx.receiver_amount();
-                TxLegSenderBalance::insert(&(id, leg_id), from_current_balance);
-                TxLegSenderAmount::insert(&(id, leg_id), sender_amount);
-                TxLegReceiverAmount::insert(&(id, leg_id), receiver_amount);
+                TxLegSenderBalance::insert(&(transaction_id, leg_id), from_current_balance);
+                TxLegSenderAmount::insert(&(transaction_id, leg_id), sender_amount);
+                TxLegReceiverAmount::insert(&(transaction_id, leg_id), receiver_amount);
 
                 Self::deposit_event(Event::TransactionAffirmed(
                     caller_did,
-                    id,
+                    transaction_id,
                     leg_id,
                     Some(*proof),
                 ));
@@ -1046,8 +1073,8 @@ impl<T: Config> Module<T> {
             }
         }
         // Update affirmations.
-        UserAffirmations::insert((caller_did, id), (leg_id, party), true);
-        PendingAffirms::try_mutate(id, |pending| -> DispatchResult {
+        UserAffirmations::insert(caller_did, (transaction_id, leg_id, party), true);
+        PendingAffirms::try_mutate(transaction_id, |pending| -> DispatchResult {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_sub(1);
                 Ok(())
@@ -1061,19 +1088,21 @@ impl<T: Config> Module<T> {
 
     fn base_unaffirm_transaction(
         caller_did: IdentityId,
-        id: TransactionId,
+        transaction_id: TransactionId,
         unaffirm: UnaffirmLeg,
     ) -> DispatchResult {
         let leg_id = unaffirm.leg_id;
 
         // Ensure the caller has affirmed this leg.
-        let caller_affirm = UserAffirmations::get((caller_did, id), (leg_id, unaffirm.party));
+        let caller_affirm =
+            UserAffirmations::get(caller_did, (transaction_id, leg_id, unaffirm.party));
         ensure!(
             caller_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
 
-        let leg = TransactionLegs::get(id, leg_id).ok_or(Error::<T>::UnknownTransactionLeg)?;
+        let leg = TransactionLegs::get(transaction_id, leg_id)
+            .ok_or(Error::<T>::UnknownTransactionLeg)?;
         let pending_affirms = match unaffirm.party {
             LegParty::Sender => {
                 let sender_did = Self::account_did(&leg.sender);
@@ -1083,8 +1112,8 @@ impl<T: Config> Module<T> {
                 // If the receiver has affirmed the leg, then we need to invalid their affirmation.
                 let receiver_did = Self::get_account_did(&leg.receiver)?;
                 UserAffirmations::mutate(
-                    (receiver_did, id),
-                    (leg_id, LegParty::Receiver),
+                    receiver_did,
+                    (transaction_id, leg_id, LegParty::Receiver),
                     |affirmed| {
                         if *affirmed == Some(true) {
                             pending_affirms += 1;
@@ -1095,8 +1124,8 @@ impl<T: Config> Module<T> {
                 // If the mediator has affirmed the leg, then we need to invalid their affirmation.
                 let mediator_did = Self::get_mediator_did(&leg.mediator)?;
                 UserAffirmations::mutate(
-                    (mediator_did, id),
-                    (leg_id, LegParty::Mediator),
+                    mediator_did,
+                    (transaction_id, leg_id, LegParty::Mediator),
                     |affirmed| {
                         if *affirmed == Some(true) {
                             pending_affirms += 1;
@@ -1106,10 +1135,10 @@ impl<T: Config> Module<T> {
                 );
 
                 // Take the transaction leg's pending state.
-                TxLegSenderBalance::remove((id, leg_id));
-                let sender_amount = TxLegSenderAmount::take((id, leg_id))
+                TxLegSenderBalance::remove((transaction_id, leg_id));
+                let sender_amount = TxLegSenderAmount::take((transaction_id, leg_id))
                     .ok_or(Error::<T>::TransactionNotAffirmed)?;
-                TxLegReceiverAmount::remove((id, leg_id));
+                TxLegReceiverAmount::remove((transaction_id, leg_id));
 
                 // Deposit the transaction amount back into the sender's account.
                 Self::account_deposit_amount(&leg.sender, leg.ticker, sender_amount)?;
@@ -1130,8 +1159,8 @@ impl<T: Config> Module<T> {
             }
         };
         // Update affirmations.
-        UserAffirmations::insert((caller_did, id), (leg_id, unaffirm.party), false);
-        PendingAffirms::try_mutate(id, |pending| -> DispatchResult {
+        UserAffirmations::insert(caller_did, (transaction_id, leg_id, unaffirm.party), false);
+        PendingAffirms::try_mutate(transaction_id, |pending| -> DispatchResult {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_add(pending_affirms);
                 Ok(())
@@ -1148,6 +1177,12 @@ impl<T: Config> Module<T> {
         transaction_id: TransactionId,
         leg_count: usize,
     ) -> DispatchResult {
+        // Check if the caller is a party of the transaction.
+        ensure!(
+            TransactionParties::get(transaction_id, caller_did),
+            Error::<T>::Unauthorized
+        );
+
         // Take transaction legs.
         let legs = TransactionLegs::drain_prefix(transaction_id).collect::<Vec<_>>();
         ensure!(legs.len() <= leg_count, Error::<T>::LegCountTooSmall);
@@ -1168,15 +1203,9 @@ impl<T: Config> Module<T> {
             Self::execute_leg(transaction_id, leg_id, leg)?;
         }
 
-        // Update status.
-        let block = System::<T>::block_number();
-        <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Executed(block));
+        // Cleanup transaction.
+        Self::cleanup_transaction(caller_did, transaction_id, details, true)?;
 
-        Self::deposit_event(Event::TransactionExecuted(
-            caller_did,
-            transaction_id,
-            details.memo,
-        ));
         Ok(())
     }
 
@@ -1191,21 +1220,21 @@ impl<T: Config> Module<T> {
         // Check affirmations and remove them.
         let sender_did = Self::get_account_did(&leg.sender)?;
         let sender_affirm =
-            UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
+            UserAffirmations::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
         ensure!(
             sender_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
         let receiver_did = Self::get_account_did(&leg.receiver)?;
         let receiver_affirm =
-            UserAffirmations::take((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
+            UserAffirmations::take(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
         ensure!(
             receiver_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
         let mediator_did = Self::get_mediator_did(&leg.mediator)?;
         let mediator_affirm =
-            UserAffirmations::take((mediator_did, transaction_id), (leg_id, LegParty::Mediator));
+            UserAffirmations::take(mediator_did, (transaction_id, leg_id, LegParty::Mediator));
         ensure!(
             mediator_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
@@ -1227,14 +1256,15 @@ impl<T: Config> Module<T> {
         transaction_id: TransactionId,
         leg_count: usize,
     ) -> DispatchResult {
+        // Check if the caller is a party of the transaction.
+        ensure!(
+            TransactionParties::get(transaction_id, caller_did),
+            Error::<T>::Unauthorized
+        );
+
         // Take transaction legs.
         let legs = TransactionLegs::drain_prefix(transaction_id).collect::<Vec<_>>();
         ensure!(legs.len() <= leg_count, Error::<T>::LegCountTooSmall);
-
-        ensure!(
-            UserAffirmations::contains_prefix((caller_did, transaction_id)),
-            Error::<T>::Unauthorized
-        );
 
         // Remove the pending affirmation count.
         PendingAffirms::remove(transaction_id);
@@ -1249,15 +1279,9 @@ impl<T: Config> Module<T> {
             Self::revert_leg(transaction_id, leg_id, leg)?;
         }
 
-        // Update status.
-        let block = System::<T>::block_number();
-        <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Rejected(block));
+        // Cleanup transaction.
+        Self::cleanup_transaction(caller_did, transaction_id, details, false)?;
 
-        Self::deposit_event(Event::TransactionRejected(
-            caller_did,
-            transaction_id,
-            details.memo,
-        ));
         Ok(())
     }
 
@@ -1270,11 +1294,11 @@ impl<T: Config> Module<T> {
         // Remove user affirmations.
         let sender_did = Self::get_account_did(&leg.sender)?;
         let sender_affirm =
-            UserAffirmations::take((sender_did, transaction_id), (leg_id, LegParty::Sender));
+            UserAffirmations::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
         let receiver_did = Self::get_account_did(&leg.receiver)?;
-        UserAffirmations::remove((receiver_did, transaction_id), (leg_id, LegParty::Receiver));
+        UserAffirmations::remove(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
         let mediator_did = Self::get_mediator_did(&leg.mediator)?;
-        UserAffirmations::remove((mediator_did, transaction_id), (leg_id, LegParty::Mediator));
+        UserAffirmations::remove(mediator_did, (transaction_id, leg_id, LegParty::Mediator));
 
         if sender_affirm == Some(true) {
             // Take the transaction leg's pending state.
@@ -1289,6 +1313,41 @@ impl<T: Config> Module<T> {
             TxLegReceiverAmount::remove((transaction_id, leg_id));
         }
 
+        Ok(())
+    }
+
+    /// Cleanup transaction storage after it has been execute/rejected.
+    fn cleanup_transaction(
+        caller_did: IdentityId,
+        transaction_id: TransactionId,
+        details: Transaction<T::BlockNumber>,
+        is_execute: bool,
+    ) -> DispatchResult {
+        // Remove transaction parties.
+        let party_count = TransactionPartyCount::take(transaction_id).unwrap_or(u32::MAX);
+        // We track how many parties are added to `TransactionParties`, so
+        // this `clear_prefix` should remove all parties in a single call.
+        let _ = TransactionParties::clear_prefix(transaction_id, party_count, None);
+
+        let block = System::<T>::block_number();
+        let memo = details.memo;
+        let (status, event) = if is_execute {
+            (
+                TransactionStatus::Executed(block),
+                Event::TransactionExecuted(caller_did, transaction_id, memo),
+            )
+        } else {
+            (
+                TransactionStatus::Rejected(block),
+                Event::TransactionRejected(caller_did, transaction_id, memo),
+            )
+        };
+
+        // Update status.
+        <TransactionStatuses<T>>::insert(transaction_id, status);
+
+        // emit event.
+        Self::deposit_event(event);
         Ok(())
     }
 
