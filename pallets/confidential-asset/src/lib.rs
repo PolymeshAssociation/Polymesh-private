@@ -25,6 +25,7 @@ use frame_support::{
     ensure,
     traits::{Get, Randomness},
     weights::Weight,
+    BoundedBTreeMap,
 };
 use pallet_base::try_next_post;
 use pallet_identity as identity;
@@ -39,6 +40,7 @@ use polymesh_primitives::{
 };
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Zero, SaturatedConversion};
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::{convert::From, prelude::*};
 
@@ -106,6 +108,12 @@ pub trait Config:
 
     /// Maximum number of legs in a confidential transaction.
     type MaxNumberOfLegs: Get<u32>;
+
+    /// Maximum number of auditors (to limit SenderProof verification time).
+    type MaxNumberOfAuditors: Get<u32>;
+
+    /// Maximum number of confidential asset auditors (should be lower then `MaxNumberOfAuditors`).
+    type MaxNumberOfAssetAuditors: Get<u32>;
 }
 
 /// A global and unique confidential transaction ID.
@@ -148,7 +156,7 @@ impl From<&ElgamalPublicKey> for ConfidentialAccount {
 /// A mediator account.
 ///
 /// Mediator accounts can't hold confidential assets.
-#[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct MediatorAccount(CompressedElgamalPublicKey);
 
 impl MediatorAccount {
@@ -298,7 +306,7 @@ impl UnaffirmLeg {
 }
 
 /// Confidential asset details.
-#[derive(Encode, Decode, TypeInfo, Default, Clone, PartialEq, Debug)]
+#[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
 pub struct ConfidentialAssetDetails {
     /// Confidential asset name.
     pub name: AssetName,
@@ -308,6 +316,40 @@ pub struct ConfidentialAssetDetails {
     pub owner_did: IdentityId,
     /// Type of the asset.
     pub asset_type: AssetType,
+}
+
+/// Confidential transaction role auditor/mediator.
+#[derive(Encode, Decode, TypeInfo, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfidentialTransactionRole {
+    /// An auditor that only needs to audit confidential transactions.
+    Auditor,
+    /// A mediator needs to affirm confidential transactions between identities.
+    Mediator,
+}
+
+/// Confidential auditors and/or mediators.
+#[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
+#[scale_info(skip_type_params(S))]
+pub struct ConfidentialAuditors<S: Get<u32>> {
+    /// Auditors/Mediators and their role in confidential transactions.
+    pub auditors: BoundedBTreeMap<MediatorAccount, ConfidentialTransactionRole, S>,
+}
+
+impl<S: Get<u32>> ConfidentialAuditors<S> {
+    /// Check if the auditor accounts are valid.
+    pub fn is_valid(&self) -> bool {
+        self.auditors.keys().all(|m| m.is_valid())
+    }
+
+    /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
+    /// Assign an `AuditorId` to each auditor for the Confidential transfer proof.
+    pub fn build_auditor_map(&self) -> BTreeMap<AuditorId, MediatorAccount> {
+        self.auditors
+            .keys()
+            .enumerate()
+            .map(|(idx, account)| (AuditorId(idx as u32), *account))
+            .collect()
+    }
 }
 
 /// Transaction information.
@@ -370,6 +412,11 @@ decl_storage! {
         ///
         /// ticker -> Option<ConfidentialAssetDetails>
         pub Details get(fn confidential_asset_details): map hasher(blake2_128_concat) Ticker => Option<ConfidentialAssetDetails>;
+
+        /// Confidential asset's auditor/mediators.
+        ///
+        /// ticker -> Option<ConfidentialAuditors>
+        pub AssetAuditors get(fn asset_auditors): map hasher(blake2_128_concat) Ticker => Option<ConfidentialAuditors<T::MaxNumberOfAssetAuditors>>;
 
         /// Records the did for a mediator account.
         ///

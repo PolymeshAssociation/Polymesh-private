@@ -123,6 +123,8 @@ parameter_types! {
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
+    pub const MaxNumberOfConfidentialAuditors: u32 = 8;
+    pub const MaxNumberOfConfidentialAssetAuditors: u32 = 4;
 }
 
 frame_support::construct_runtime!(
@@ -284,6 +286,8 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
+    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
+    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {

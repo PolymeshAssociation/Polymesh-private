@@ -142,6 +142,8 @@ parameter_types! {
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
+    pub const MaxNumberOfConfidentialAuditors: u32 = 8;
+    pub const MaxNumberOfConfidentialAssetAuditors: u32 = 4;
 }
 
 /// 100% goes to the block author.
@@ -309,6 +311,8 @@ impl pallet_confidential_asset::Config for Runtime {
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
+    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
+    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
 }
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
