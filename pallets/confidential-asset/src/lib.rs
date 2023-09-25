@@ -89,6 +89,15 @@ pub trait WeightInfo {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+pub struct ConstSize<const T: u32>;
+
+impl<const T: u32> Get<u32> for ConstSize<T> {
+    fn get() -> u32 {
+        T
+    }
+}
+
 /// A global and unique confidential transaction ID.
 #[derive(
     Encode,

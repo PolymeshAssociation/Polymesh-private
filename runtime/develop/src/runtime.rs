@@ -142,9 +142,10 @@ parameter_types! {
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
-    pub const MaxNumberOfConfidentialAuditors: u32 = 8;
-    pub const MaxNumberOfConfidentialAssetAuditors: u32 = 4;
 }
+
+type MaxNumberOfConfidentialAuditors = pallet_confidential_asset::ConstSize<8>;
+type MaxNumberOfConfidentialAssetAuditors = pallet_confidential_asset::ConstSize<4>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
