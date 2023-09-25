@@ -463,7 +463,7 @@ construct_runtime!(
         TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
 
         // Confidential Asset pallets.
-        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event, Config} = 60,
+        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,
     }
 );
 

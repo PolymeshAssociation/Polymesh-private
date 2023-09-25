@@ -182,7 +182,8 @@ impl From<&ElgamalPublicKey> for MediatorAccount {
 
 /// Confidential transaction leg.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
-pub struct TransactionLeg {
+#[scale_info(skip_type_params(S))]
+pub struct TransactionLeg<S: Get<u32>> {
     /// Asset ticker.
     pub ticker: Ticker,
     /// Confidential account of the sender.
@@ -191,9 +192,11 @@ pub struct TransactionLeg {
     pub receiver: ConfidentialAccount,
     /// Mediator.
     pub mediator: MediatorAccount,
+    /// Auditors.
+    pub auditors: ConfidentialAuditors<S>,
 }
 
-impl TransactionLeg {
+impl<S: Get<u32>> TransactionLeg<S> {
     /// Check if the sender/receiver/mediator accounts are valid.
     pub fn verify_accounts(&self) -> bool {
         self.sender.is_valid() && self.receiver.is_valid() && self.mediator.is_valid()
@@ -392,7 +395,7 @@ pub mod pallet {
         frame_system::Config + BalancesConfig + IdentityConfig + pallet_statistics::Config
     {
         /// Pallet's events.
-        type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Randomness source.
         type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
 
@@ -406,15 +409,15 @@ pub mod pallet {
         type MaxNumberOfLegs: Get<u32>;
 
         /// Maximum number of auditors (to limit SenderProof verification time).
-        type MaxNumberOfAuditors: Get<u32>;
+        type MaxNumberOfAuditors: Get<u32> + Clone + core::fmt::Debug + PartialEq + Eq;
 
         /// Maximum number of confidential asset auditors (should be lower then `MaxNumberOfAuditors`).
-        type MaxNumberOfAssetAuditors: Get<u32>;
+        type MaxNumberOfAssetAuditors: Get<u32> + Clone + core::fmt::Debug + PartialEq + Eq;
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event {
+    pub enum Event<T: Config> {
         /// Event for creation of a Mediator account.
         /// caller DID, Mediator confidential account (public key)
         MediatorAccountCreated(IdentityId, MediatorAccount),
@@ -442,7 +445,7 @@ pub mod pallet {
             IdentityId,
             VenueId,
             TransactionId,
-            Vec<TransactionLeg>,
+            Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
             Option<Memo>,
         ),
         /// Confidential transaction executed.
@@ -628,7 +631,7 @@ pub mod pallet {
         TransactionId,
         Twox64Concat,
         TransactionLegId,
-        TransactionLeg,
+        TransactionLeg<T::MaxNumberOfAuditors>,
     >;
 
     /// Stores the sender's initial balance when they affirmed the transaction leg.
@@ -901,7 +904,7 @@ pub mod pallet {
         pub fn add_transaction(
             origin: OriginFor<T>,
             venue_id: VenueId,
-            legs: Vec<TransactionLeg>,
+            legs: Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
             memo: Option<Memo>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
@@ -996,7 +999,7 @@ impl<T: Config> Pallet<T> {
         let enc_balance = CipherText::zero();
         AccountBalance::<T>::insert(&account, ticker, enc_balance);
 
-        Self::deposit_event(Event::AccountCreated(
+        Self::deposit_event(Event::<T>::AccountCreated(
             caller_did,
             account,
             ticker,
@@ -1013,7 +1016,7 @@ impl<T: Config> Pallet<T> {
 
         MediatorAccountDid::<T>::insert(&account, &caller_did);
 
-        Self::deposit_event(Event::MediatorAccountCreated(caller_did, account));
+        Self::deposit_event(Event::<T>::MediatorAccountCreated(caller_did, account));
         Ok(())
     }
 
@@ -1037,7 +1040,7 @@ impl<T: Config> Pallet<T> {
         };
         Details::<T>::insert(ticker, details);
 
-        Self::deposit_event(Event::ConfidentialAssetCreated(
+        Self::deposit_event(Event::<T>::ConfidentialAssetCreated(
             owner_did,
             ticker,
             Zero::zero(),
@@ -1095,7 +1098,7 @@ impl<T: Config> Pallet<T> {
         Self::account_deposit_amount(&account, ticker, enc_issued_amount)?;
 
         // Emit Issue event with new `total_supply`.
-        Self::deposit_event(Event::Issued(
+        Self::deposit_event(Event::<T>::Issued(
             owner_did,
             ticker,
             amount,
@@ -1172,7 +1175,7 @@ impl<T: Config> Pallet<T> {
         // Other commits to storage + emit event.
         VenueCreator::<T>::insert(venue_id, did);
         IdentityVenues::<T>::insert(did, venue_id, ());
-        Self::deposit_event(Event::VenueCreated(did, venue_id));
+        Self::deposit_event(Event::<T>::VenueCreated(did, venue_id));
         Ok(())
     }
 
@@ -1188,12 +1191,12 @@ impl<T: Config> Pallet<T> {
             for venue in &venues {
                 VenueAllowList::<T>::insert(&ticker, venue, true);
             }
-            Self::deposit_event(Event::VenuesAllowed(did, ticker, venues));
+            Self::deposit_event(Event::<T>::VenuesAllowed(did, ticker, venues));
         } else {
             for venue in &venues {
                 VenueAllowList::<T>::remove(&ticker, venue);
             }
-            Self::deposit_event(Event::VenuesBlocked(did, ticker, venues));
+            Self::deposit_event(Event::<T>::VenuesBlocked(did, ticker, venues));
         }
         Ok(())
     }
@@ -1201,7 +1204,7 @@ impl<T: Config> Pallet<T> {
     pub fn base_add_transaction(
         did: IdentityId,
         venue_id: VenueId,
-        legs: Vec<TransactionLeg>,
+        legs: Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
         memo: Option<Memo>,
     ) -> Result<TransactionId, DispatchError> {
         // Ensure transaction does not have too many legs.
@@ -1255,7 +1258,7 @@ impl<T: Config> Pallet<T> {
                 (transaction_id, leg_id, LegParty::Mediator),
                 false,
             );
-            TransactionLegs::<T>::insert(transaction_id, leg_id, leg.clone());
+            TransactionLegs::<T>::insert(transaction_id, leg_id, &leg);
         }
 
         // Add parties to transaction.
@@ -1275,7 +1278,7 @@ impl<T: Config> Pallet<T> {
         );
         <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Pending);
 
-        Self::deposit_event(Event::TransactionCreated(
+        Self::deposit_event(Event::<T>::TransactionCreated(
             did,
             venue_id,
             transaction_id,
@@ -1346,7 +1349,7 @@ impl<T: Config> Pallet<T> {
                 TxLegSenderAmount::<T>::insert(&(transaction_id, leg_id), sender_amount);
                 TxLegReceiverAmount::<T>::insert(&(transaction_id, leg_id), receiver_amount);
 
-                Self::deposit_event(Event::TransactionAffirmed(
+                Self::deposit_event(Event::<T>::TransactionAffirmed(
                     caller_did,
                     transaction_id,
                     leg_id,
@@ -1503,7 +1506,7 @@ impl<T: Config> Pallet<T> {
     fn execute_leg(
         transaction_id: TransactionId,
         leg_id: TransactionLegId,
-        leg: TransactionLeg,
+        leg: TransactionLeg<T::MaxNumberOfAuditors>,
     ) -> DispatchResult {
         let ticker = leg.ticker;
 
@@ -1579,7 +1582,7 @@ impl<T: Config> Pallet<T> {
     fn revert_leg(
         transaction_id: TransactionId,
         leg_id: TransactionLegId,
-        leg: TransactionLeg,
+        leg: TransactionLeg<T::MaxNumberOfAuditors>,
     ) -> DispatchResult {
         // Remove user affirmations.
         let sender_did = Self::get_account_did(&leg.sender)?;
@@ -1624,12 +1627,12 @@ impl<T: Config> Pallet<T> {
         let (status, event) = if is_execute {
             (
                 TransactionStatus::Executed(block),
-                Event::TransactionExecuted(caller_did, transaction_id, memo),
+                Event::<T>::TransactionExecuted(caller_did, transaction_id, memo),
             )
         } else {
             (
                 TransactionStatus::Rejected(block),
-                Event::TransactionRejected(caller_did, transaction_id, memo),
+                Event::<T>::TransactionRejected(caller_did, transaction_id, memo),
             )
         };
 
@@ -1668,7 +1671,7 @@ impl<T: Config> Pallet<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::AccountWithdraw(*account, ticker, balance));
+        Self::deposit_event(Event::<T>::AccountWithdraw(*account, ticker, balance));
         Ok(())
     }
 
@@ -1690,7 +1693,7 @@ impl<T: Config> Pallet<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::AccountDeposit(*account, ticker, balance));
+        Self::deposit_event(Event::<T>::AccountDeposit(*account, ticker, balance));
         Ok(())
     }
 
@@ -1708,7 +1711,7 @@ impl<T: Config> Pallet<T> {
                 *incoming_balance = Some(amount);
             }
         });
-        Self::deposit_event(Event::AccountDepositIncoming(*account, ticker, amount));
+        Self::deposit_event(Event::<T>::AccountDepositIncoming(*account, ticker, amount));
     }
 
     fn get_rng() -> Rng {

@@ -387,7 +387,7 @@ construct_runtime!(
         Nft: pallet_nft::{Pallet, Call, Storage, Event},
 
         // Confidential Asset pallets.
-        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event, Config} = 60,
+        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,
     }
 );
 
