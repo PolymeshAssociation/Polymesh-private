@@ -22,7 +22,7 @@ use crate::test_runtime::ext_builder::ExtBuilder;
 use crate::test_runtime::{EventTest, TestRuntime, User};
 
 type System = frame_system::Pallet<TestRuntime>;
-type ConfidentialAsset = pallet_confidential_asset::Module<TestRuntime>;
+type ConfidentialAsset = pallet_confidential_asset::Pallet<TestRuntime>;
 
 macro_rules! assert_affirm_confidential_transaction {
     ($signer:expr, $transaction_id:expr, $data:expr) => {
