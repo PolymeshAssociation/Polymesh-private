@@ -13,7 +13,8 @@ use pallet_corporate_actions::distribution as pallet_capital_distribution;
 use pallet_session::historical as pallet_session_historical;
 pub use pallet_transaction_payment::{Multiplier, RuntimeDispatchInfo, TargetedFeeAdjustment};
 use polymesh_common_utilities::{
-    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, TestUtilsFn,
+    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize,
+    TestUtilsFn,
 };
 use polymesh_primitives::{AccountId, Balance, BlockNumber, Moment};
 use polymesh_runtime_common::{
@@ -144,8 +145,8 @@ parameter_types! {
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
 
-type MaxNumberOfConfidentialAuditors = pallet_confidential_asset::ConstSize<8>;
-type MaxNumberOfConfidentialAssetAuditors = pallet_confidential_asset::ConstSize<4>;
+type MaxNumberOfConfidentialAuditors = ConstSize<8>;
+type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;

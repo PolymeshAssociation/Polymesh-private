@@ -44,7 +44,7 @@ use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
-use polymesh_common_utilities::Context;
+use polymesh_common_utilities::{ConstSize, Context};
 use polymesh_primitives::{AccountId, BlockNumber, Claim, Moment};
 use polymesh_runtime_common::runtime::{BENCHMARK_MAX_INCREASE, VMO};
 use polymesh_runtime_common::{merge_active_and_inactive, AvailableBlockRatio, MaximumBlockWeight};
@@ -125,8 +125,8 @@ parameter_types! {
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
 
-type MaxNumberOfConfidentialAuditors = pallet_confidential_asset::ConstSize<8>;
-type MaxNumberOfConfidentialAssetAuditors = pallet_confidential_asset::ConstSize<4>;
+type MaxNumberOfConfidentialAuditors = ConstSize<8>;
+type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
 
 frame_support::construct_runtime!(
     pub enum TestRuntime where

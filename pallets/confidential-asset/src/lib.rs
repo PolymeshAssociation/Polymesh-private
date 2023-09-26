@@ -28,7 +28,7 @@ use frame_support::{
 };
 use pallet_base::try_next_post;
 use polymesh_common_utilities::{
-    balances::Config as BalancesConfig, identity::Config as IdentityConfig,
+    balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
 use polymesh_primitives::{
     asset::{AssetName, AssetType},
@@ -86,15 +86,6 @@ pub trait WeightInfo {
             LegParty::Receiver => Self::receiver_unaffirm_transaction(),
             LegParty::Mediator => Self::mediator_unaffirm_transaction(),
         }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct ConstSize<const T: u32>;
-
-impl<const T: u32> Get<u32> for ConstSize<T> {
-    fn get() -> u32 {
-        T
     }
 }
 
@@ -418,10 +409,10 @@ pub mod pallet {
         type MaxNumberOfLegs: Get<u32>;
 
         /// Maximum number of auditors (to limit SenderProof verification time).
-        type MaxNumberOfAuditors: Get<u32> + Clone + core::fmt::Debug + PartialEq + Eq;
+        type MaxNumberOfAuditors: GetExtra<u32>;
 
         /// Maximum number of confidential asset auditors (should be lower then `MaxNumberOfAuditors`).
-        type MaxNumberOfAssetAuditors: Get<u32> + Clone + core::fmt::Debug + PartialEq + Eq;
+        type MaxNumberOfAssetAuditors: GetExtra<u32>;
     }
 
     #[pallet::event]
