@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::str::FromStr;
 
 use thiserror::Error;
 
@@ -89,9 +90,9 @@ impl AppState {
 #[get("/account/0x{id}/get_nonce")]
 async fn account_get_nonce(
     data: web::Data<AppState>,
-    path: web::Path<AccountId>,
+    path: web::Path<String>,
 ) -> Result<String> {
-    let account_id = path.into_inner();
+    let account_id = AccountId::from_str(&path.into_inner())?;
     let mut backend = data.backend.lock().unwrap();
 
     let nonce = backend.get_nonce(account_id).await?;
