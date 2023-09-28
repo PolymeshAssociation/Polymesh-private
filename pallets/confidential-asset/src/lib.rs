@@ -155,7 +155,9 @@ impl From<&ElgamalPublicKey> for ConfidentialAccount {
 /// A mediator account.
 ///
 /// Mediator accounts can't hold confidential assets.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(
+    Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq,
+)]
 pub struct MediatorAccount(CompressedElgamalPublicKey);
 
 impl MediatorAccount {
@@ -352,25 +354,37 @@ impl<S: Get<u32>> ConfidentialAuditors<S> {
     }
 
     /// Add an auditor/mediator.
-    pub fn add_auditor(&mut self, account: &MediatorAccount, role: ConfidentialTransactionRole) -> Result<Option<ConfidentialTransactionRole>, (MediatorAccount, ConfidentialTransactionRole)> {
+    pub fn add_auditor(
+        &mut self,
+        account: &MediatorAccount,
+        role: ConfidentialTransactionRole,
+    ) -> Result<Option<ConfidentialTransactionRole>, (MediatorAccount, ConfidentialTransactionRole)>
+    {
         self.auditors.try_insert(*account, role)
     }
 
     /// Get an auditors role.
-    pub fn get_auditor_role(&self, account: &MediatorAccount) -> Option<ConfidentialTransactionRole> {
+    pub fn get_auditor_role(
+        &self,
+        account: &MediatorAccount,
+    ) -> Option<ConfidentialTransactionRole> {
         self.auditors.get(account).copied()
     }
 
     /// Get only the mediators.
     pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
-        self.auditors.iter().filter_map(|(account, role)| match role {
-            ConfidentialTransactionRole::Mediator => Some(account),
-            _ => None
-        })
+        self.auditors
+            .iter()
+            .filter_map(|(account, role)| match role {
+                ConfidentialTransactionRole::Mediator => Some(account),
+                _ => None,
+            })
     }
 
     /// Get an iterator over all auditors.
-    pub fn auditors(&self) -> impl Iterator<Item = (&MediatorAccount, &ConfidentialTransactionRole)> {
+    pub fn auditors(
+        &self,
+    ) -> impl Iterator<Item = (&MediatorAccount, &ConfidentialTransactionRole)> {
         self.auditors.iter()
     }
 
@@ -1181,9 +1195,13 @@ impl<T: Config> Pallet<T> {
             Self::asset_auditors(ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?;
 
         for (account, required_role) in asset_auditors.auditors() {
-            let role = auditors.get_auditor_role(account)
+            let role = auditors
+                .get_auditor_role(account)
                 .ok_or(Error::<T>::RequiredAssetAuditorMissing)?;
-            ensure!(*required_role == role, Error::<T>::RequiredAssetAuditorWrongRole);
+            ensure!(
+                *required_role == role,
+                Error::<T>::RequiredAssetAuditorWrongRole
+            );
         }
         Ok(())
     }
@@ -1385,7 +1403,8 @@ impl<T: Config> Pallet<T> {
                 let receiver_account = leg
                     .receiver_account()
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
-                let auditors = leg.auditors
+                let auditors = leg
+                    .auditors
                     .build_auditor_map()
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
 
@@ -1595,8 +1614,10 @@ impl<T: Config> Pallet<T> {
         );
         for mediator in leg.mediators() {
             let mediator_did = Self::get_mediator_did(mediator)?;
-            let mediator_affirm =
-                UserAffirmations::<T>::take(mediator_did, (transaction_id, leg_id, LegParty::Mediator(*mediator)));
+            let mediator_affirm = UserAffirmations::<T>::take(
+                mediator_did,
+                (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+            );
             ensure!(
                 mediator_affirm == Some(true),
                 Error::<T>::TransactionNotAffirmed
@@ -1662,7 +1683,10 @@ impl<T: Config> Pallet<T> {
         UserAffirmations::<T>::remove(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
         for mediator in leg.mediators() {
             let mediator_did = Self::get_mediator_did(mediator)?;
-            UserAffirmations::<T>::remove(mediator_did, (transaction_id, leg_id, LegParty::Mediator(*mediator)));
+            UserAffirmations::<T>::remove(
+                mediator_did,
+                (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+            );
         }
 
         if sender_affirm == Some(true) {

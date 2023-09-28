@@ -22,9 +22,8 @@ use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::SeedableRng;
 
 use confidential_assets::{
-    transaction::ConfidentialTransferProof,
-    Balance as ConfidentialBalance, CipherText, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey,
-    Scalar,
+    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 use polymesh_common_utilities::{
@@ -74,8 +73,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
             } else {
                 ConfidentialTransactionRole::Auditor
             };
-            auditors.add_auditor(&account, role)
-                .expect("Auditor added");
+            auditors.add_auditor(&account, role).expect("Auditor added");
         }
         Self {
             auditors,
@@ -86,8 +84,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
     /// Return an `ConfidentialAuditors` limited to just the number of auditors allowed per asset.
     pub fn get_asset_auditors(&self) -> ConfidentialAuditors<T::MaxNumberOfAssetAuditors> {
         let mut auditors = ConfidentialAuditors::default();
-        for (account, role) in self.auditors.auditors().take(T::MaxNumberOfAssetAuditors::get() as usize) {
-          auditors.add_auditor(account, *role).expect("Shouldn't hit the limit");
+        for (account, role) in self
+            .auditors
+            .auditors()
+            .take(T::MaxNumberOfAssetAuditors::get() as usize)
+        {
+            auditors
+                .add_auditor(account, *role)
+                .expect("Shouldn't hit the limit");
         }
         auditors
     }
@@ -201,7 +205,12 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     total_supply: u128,
     idx: u32,
     rng: &mut StdRng,
-) -> (Ticker, ConfidentialUser<T>, ConfidentialBalance, AuditorState<T>) {
+) -> (
+    Ticker,
+    ConfidentialUser<T>,
+    ConfidentialBalance,
+    AuditorState<T>,
+) {
     let token_name = format!("A{idx}");
     let owner = ConfidentialUser::ticker_user(name, idx, rng);
     let token = ConfidentialAssetDetails {
@@ -313,7 +322,11 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     pub fn sender_proof(&self, rng: &mut StdRng) -> AffirmLeg {
         let investor_pub_account = self.investor.pub_key();
         let issuer_enc_balance = self.issuer.enc_balance(self.ticker);
-        let auditor_keys = self.auditors.auditors.build_auditor_map().expect("auditor map");
+        let auditor_keys = self
+            .auditors
+            .auditors
+            .build_auditor_map()
+            .expect("auditor map");
         let sender_tx = ConfidentialTransferProof::new(
             &self.issuer.sec,
             &issuer_enc_balance,
