@@ -6,6 +6,8 @@ use polymesh_api::types::{
     pallet_confidential_asset::{
         AffirmLeg, AffirmParty,
         ConfidentialAccount,
+        ConfidentialAuditors,
+        ConfidentialTransactionRole,
         MediatorAccount,
         SenderProof,
         TransactionId, TransactionLeg, TransactionLegId,
@@ -114,6 +116,13 @@ async fn confidential_transfer() -> Result<()> {
     let mut issuer = users.pop().unwrap();
     let (issuer_keys, issuer_account) = create_account();
 
+    let auditors = ConfidentialAuditors {
+      auditors: BTreeMap::from([(mediator_account, ConfidentialTransactionRole::Mediator)]),
+    };
+    let auditors_ids = BTreeMap::from([
+        (AuditorId(0), mediator_keys.public),
+    ]);
+
     // Mediator registers their account.
     tester
         .api
@@ -154,7 +163,7 @@ async fn confidential_transfer() -> Result<()> {
         .api
         .call()
         .confidential_asset()
-        .create_confidential_asset(AssetName(b"Test".to_vec()), ticker, AssetType::EquityCommon)?
+        .create_confidential_asset(AssetName(b"Test".to_vec()), ticker, AssetType::EquityCommon, auditors.clone())?
         .submit_and_watch(&mut issuer)
         .await?;
     let total_supply = 1_000_000_000u64;
@@ -186,15 +195,12 @@ async fn confidential_transfer() -> Result<()> {
     res_allow_venue.ok().await?;
 
     // Setup confidential transfer.
-    let auditors = BTreeMap::from([
-        (AuditorId(0), mediator_keys.public),
-    ]);
     let legs = vec![
         TransactionLeg {
             ticker,
             sender: issuer_account,
             receiver: investor_account,
-            mediator: mediator_account,
+            auditors: auditors.clone(),
         }
     ];
     let mut res_add_tx = tester
@@ -228,7 +234,7 @@ async fn confidential_transfer() -> Result<()> {
         &sender_enc_balance,
         total_supply.into(),
         &investor_keys.public,
-        &auditors,
+        &auditors_ids,
         tx_amount,
         &mut rng,
     ).expect("Sender proof");
@@ -266,7 +272,7 @@ async fn confidential_transfer() -> Result<()> {
     // TODO: Mediator should verify transaction amount from `sender_proof`.
     let mediator_affirm = AffirmLeg {
         leg_id,
-        party: AffirmParty::Mediator,
+        party: AffirmParty::Mediator(mediator_account),
     };
     // Mediator affirms.
     tester

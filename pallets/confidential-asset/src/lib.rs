@@ -1086,6 +1086,7 @@ impl<T: Config> Pallet<T> {
         ensure!(auditors.is_valid(), Error::<T>::InvalidMediatorAccount);
         // Ensure that there is at least one auditor.
         ensure!(auditors.len() >= 1, Error::<T>::NotEnoughAssetAuditors);
+        AssetAuditors::<T>::insert(ticker, auditors);
 
         let details = ConfidentialAssetDetails {
             name,

@@ -27,7 +27,7 @@ sp-core = "21.0"
 sp-runtime = "24.0"
 sp-keyring = "24.0"
 
-polymesh-api = { version = "2.0.1", features = ["download_metadata"] }
+polymesh-api = { version = "2.3.1", features = ["download_metadata"] }
 polymesh-api-client-extras = { version = "2.0" }
 
 serde = { version = "1.0.171", features = ["derive"] }
