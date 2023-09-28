@@ -168,7 +168,7 @@ polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git
 polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 frame-support = { version = "4.0.0-dev", default-features = false }
 frame-system = { version = "4.0.0-dev", default-features = false }
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false }
