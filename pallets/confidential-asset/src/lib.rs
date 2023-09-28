@@ -76,7 +76,7 @@ pub trait WeightInfo {
         match affirm.party {
             AffirmParty::Sender(_) => Self::sender_affirm_transaction(),
             AffirmParty::Receiver => Self::receiver_affirm_transaction(),
-            AffirmParty::Mediator => Self::mediator_affirm_transaction(),
+            AffirmParty::Mediator(_) => Self::mediator_affirm_transaction(),
         }
     }
 
@@ -84,7 +84,7 @@ pub trait WeightInfo {
         match unaffirm.party {
             LegParty::Sender => Self::sender_unaffirm_transaction(),
             LegParty::Receiver => Self::receiver_unaffirm_transaction(),
-            LegParty::Mediator => Self::mediator_unaffirm_transaction(),
+            LegParty::Mediator(_) => Self::mediator_unaffirm_transaction(),
         }
     }
 }
@@ -124,10 +124,10 @@ impl_checked_inc!(TransactionId);
     Default,
     Debug,
 )]
-pub struct TransactionLegId(#[codec(compact)] pub u64);
+pub struct TransactionLegId(#[codec(compact)] pub u32);
 
 /// A confidential account that can hold confidential assets.
-#[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ConfidentialAccount(CompressedElgamalPublicKey);
 
 impl ConfidentialAccount {
@@ -155,7 +155,7 @@ impl From<&ElgamalPublicKey> for ConfidentialAccount {
 /// A mediator account.
 ///
 /// Mediator accounts can't hold confidential assets.
-#[derive(Encode, Decode, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct MediatorAccount(CompressedElgamalPublicKey);
 
 impl MediatorAccount {
@@ -190,16 +190,14 @@ pub struct TransactionLeg<S: Get<u32>> {
     pub sender: ConfidentialAccount,
     /// Confidential account of the receiver.
     pub receiver: ConfidentialAccount,
-    /// Mediator.
-    pub mediator: MediatorAccount,
     /// Auditors.
     pub auditors: ConfidentialAuditors<S>,
 }
 
 impl<S: Get<u32>> TransactionLeg<S> {
-    /// Check if the sender/receiver/mediator accounts are valid.
+    /// Check if the sender/receiver/auditor accounts are valid.
     pub fn verify_accounts(&self) -> bool {
-        self.sender.is_valid() && self.receiver.is_valid() && self.mediator.is_valid()
+        self.sender.is_valid() && self.receiver.is_valid() && self.auditors.is_valid()
     }
 
     pub fn sender_account(&self) -> Option<ElgamalPublicKey> {
@@ -210,8 +208,8 @@ impl<S: Get<u32>> TransactionLeg<S> {
         self.receiver.into_inner()
     }
 
-    pub fn mediator_account(&self) -> Option<ElgamalPublicKey> {
-        self.mediator.into_inner()
+    pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
+        self.auditors.mediators()
     }
 }
 
@@ -230,7 +228,7 @@ impl SenderProof {
 pub enum AffirmParty {
     Sender(Box<SenderProof>),
     Receiver,
-    Mediator,
+    Mediator(MediatorAccount),
 }
 
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
@@ -254,10 +252,10 @@ impl AffirmLeg {
         }
     }
 
-    pub fn mediator(leg_id: TransactionLegId) -> Self {
+    pub fn mediator(leg_id: TransactionLegId, account: MediatorAccount) -> Self {
         Self {
             leg_id,
-            party: AffirmParty::Mediator,
+            party: AffirmParty::Mediator(account),
         }
     }
 
@@ -265,7 +263,7 @@ impl AffirmLeg {
         match self.party {
             AffirmParty::Sender(_) => LegParty::Sender,
             AffirmParty::Receiver => LegParty::Receiver,
-            AffirmParty::Mediator => LegParty::Mediator,
+            AffirmParty::Mediator(account) => LegParty::Mediator(account),
         }
     }
 }
@@ -275,7 +273,7 @@ impl AffirmLeg {
 pub enum LegParty {
     Sender,
     Receiver,
-    Mediator,
+    Mediator(MediatorAccount),
 }
 
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
@@ -299,10 +297,10 @@ impl UnaffirmLeg {
         }
     }
 
-    pub fn mediator(leg_id: TransactionLegId) -> Self {
+    pub fn mediator(leg_id: TransactionLegId, account: MediatorAccount) -> Self {
         Self {
             leg_id,
-            party: LegParty::Mediator,
+            party: LegParty::Mediator(account),
         }
     }
 }
@@ -334,7 +332,7 @@ pub enum ConfidentialTransactionRole {
 #[scale_info(skip_type_params(S))]
 pub struct ConfidentialAuditors<S: Get<u32>> {
     /// Auditors/Mediators and their role in confidential transactions.
-    pub auditors: BoundedBTreeMap<MediatorAccount, ConfidentialTransactionRole, S>,
+    auditors: BoundedBTreeMap<MediatorAccount, ConfidentialTransactionRole, S>,
 }
 
 impl<S: Get<u32>> ConfidentialAuditors<S> {
@@ -345,12 +343,40 @@ impl<S: Get<u32>> ConfidentialAuditors<S> {
 
     /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
     /// Assign an `AuditorId` to each auditor for the Confidential transfer proof.
-    pub fn build_auditor_map(&self) -> BTreeMap<AuditorId, MediatorAccount> {
+    pub fn build_auditor_map(&self) -> Option<BTreeMap<AuditorId, ElgamalPublicKey>> {
         self.auditors
             .keys()
             .enumerate()
-            .map(|(idx, account)| (AuditorId(idx as u32), *account))
+            .map(|(idx, account)| account.into_inner().map(|key| (AuditorId(idx as u32), key)))
             .collect()
+    }
+
+    /// Add an auditor/mediator.
+    pub fn add_auditor(&mut self, account: &MediatorAccount, role: ConfidentialTransactionRole) -> Result<Option<ConfidentialTransactionRole>, (MediatorAccount, ConfidentialTransactionRole)> {
+        self.auditors.try_insert(*account, role)
+    }
+
+    /// Get an auditors role.
+    pub fn get_auditor_role(&self, account: &MediatorAccount) -> Option<ConfidentialTransactionRole> {
+        self.auditors.get(account).copied()
+    }
+
+    /// Get only the mediators.
+    pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
+        self.auditors.iter().filter_map(|(account, role)| match role {
+            ConfidentialTransactionRole::Mediator => Some(account),
+            _ => None
+        })
+    }
+
+    /// Get an iterator over all auditors.
+    pub fn auditors(&self) -> impl Iterator<Item = (&MediatorAccount, &ConfidentialTransactionRole)> {
+        self.auditors.iter()
+    }
+
+    /// Returns the number of all auditors (including mediators).
+    pub fn len(&self) -> usize {
+        self.auditors.len()
     }
 }
 
@@ -483,12 +509,20 @@ pub mod pallet {
         MediatorAccountMissing,
         /// Confidential account hasn't been created yet.
         ConfidentialAccountMissing,
+        /// A required auditor/mediator is missing.
+        RequiredAssetAuditorMissing,
+        /// A required auditor/mediator has the wrong role.
+        RequiredAssetAuditorWrongRole,
+        /// The number of confidential asset auditors doesn't meet the minimum requirement.
+        NotEnoughAssetAuditors,
         /// Confidential account already created.
         ConfidentialAccountAlreadyCreated,
         /// Confidential account's balance already initialized.
         ConfidentialAccountAlreadyInitialized,
         /// Confidential account isn't a valid CompressedEncryptionPubKey.
         InvalidConfidentialAccount,
+        /// Mediator account isn't a valid CompressedEncryptionPubKey.
+        InvalidMediatorAccount,
         /// The balance values does not fit a confidential balance.
         TotalSupplyAboveConfidentialBalanceLimit,
         /// The user is not authorized.
@@ -807,9 +841,10 @@ pub mod pallet {
             name: AssetName,
             ticker: Ticker,
             asset_type: AssetType,
+            auditors: ConfidentialAuditors<T::MaxNumberOfAssetAuditors>,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_confidential_asset(owner_did, name, ticker, asset_type)
+            Self::base_create_confidential_asset(owner_did, name, ticker, asset_type, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
@@ -899,6 +934,7 @@ pub mod pallet {
 
         /// Adds a new transaction.
         ///
+        /// TODO: Update weight to include auditor count.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::add_transaction(legs.len() as u32))]
         pub fn add_transaction(
@@ -1025,12 +1061,17 @@ impl<T: Config> Pallet<T> {
         name: AssetName,
         ticker: Ticker,
         asset_type: AssetType,
+        auditors: ConfidentialAuditors<T::MaxNumberOfAssetAuditors>,
     ) -> DispatchResult {
         // Ensure the asset hasn't been created yet.
         ensure!(
             !Details::<T>::contains_key(ticker),
             Error::<T>::ConfidentialAssetAlreadyCreated
         );
+        // Ensure the auditor accounts are valid.
+        ensure!(auditors.is_valid(), Error::<T>::InvalidMediatorAccount);
+        // Ensure that there is at least one auditor.
+        ensure!(auditors.len() >= 1, Error::<T>::NotEnoughAssetAuditors);
 
         let details = ConfidentialAssetDetails {
             name,
@@ -1131,6 +1172,22 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    // Ensure that the required asset auditors/mediators are included.
+    fn ensure_asset_auditors<S: Get<u32>>(
+        ticker: Ticker,
+        auditors: &ConfidentialAuditors<S>,
+    ) -> Result<(), DispatchError> {
+        let asset_auditors =
+            Self::asset_auditors(ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?;
+
+        for (account, required_role) in asset_auditors.auditors() {
+            let role = auditors.get_auditor_role(account)
+                .ok_or(Error::<T>::RequiredAssetAuditorMissing)?;
+            ensure!(*required_role == role, Error::<T>::RequiredAssetAuditorWrongRole);
+        }
+        Ok(())
+    }
+
     // Ensure the caller is the asset owner.
     fn ensure_asset_owner(
         ticker: Ticker,
@@ -1220,14 +1277,12 @@ impl<T: Config> Pallet<T> {
         let transaction_id = TransactionCounter::<T>::try_mutate(try_next_post::<T, _>)?;
         VenueTransactions::<T>::insert(venue_id, transaction_id, ());
 
-        let pending_affirms = (legs.len() * 3) as u32;
-        PendingAffirms::<T>::insert(transaction_id, pending_affirms);
-
         let mut parties = BTreeSet::new();
         // Add the caller to the parties.
         // Used to allow the caller to execute/reject the transaction.
         parties.insert(did);
 
+        let mut pending_affirms = 0u32;
         let mut tickers = BTreeSet::new();
         for (i, leg) in legs.iter().enumerate() {
             // Check if the venue has required permissions from asset owners.
@@ -1236,10 +1291,12 @@ impl<T: Config> Pallet<T> {
                 leg.verify_accounts(),
                 Error::<T>::InvalidConfidentialAccount
             );
+            // Ensure the required asset auditors are included.
+            Self::ensure_asset_auditors(leg.ticker, &leg.auditors)?;
+
             let leg_id = TransactionLegId(i as _);
             let sender_did = Self::get_account_did(&leg.sender)?;
             let receiver_did = Self::get_account_did(&leg.receiver)?;
-            let mediator_did = Self::get_mediator_did(&leg.mediator)?;
             parties.insert(sender_did);
             UserAffirmations::<T>::insert(
                 sender_did,
@@ -1252,14 +1309,23 @@ impl<T: Config> Pallet<T> {
                 (transaction_id, leg_id, LegParty::Receiver),
                 false,
             );
-            parties.insert(mediator_did);
-            UserAffirmations::<T>::insert(
-                mediator_did,
-                (transaction_id, leg_id, LegParty::Mediator),
-                false,
-            );
+            pending_affirms += 2;
+            // Get the mediators from the auditors list.
+            for mediator in leg.mediators() {
+                let mediator_did = Self::get_mediator_did(mediator)?;
+                parties.insert(mediator_did);
+                pending_affirms += 1;
+                UserAffirmations::<T>::insert(
+                    mediator_did,
+                    (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+                    false,
+                );
+            }
             TransactionLegs::<T>::insert(transaction_id, leg_id, &leg);
         }
+
+        // Track pending affirms.
+        PendingAffirms::<T>::insert(transaction_id, pending_affirms);
 
         // Add parties to transaction.
         TransactionPartyCount::<T>::insert(transaction_id, parties.len() as u32);
@@ -1319,8 +1385,8 @@ impl<T: Config> Pallet<T> {
                 let receiver_account = leg
                     .receiver_account()
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
-                let mediator_account = leg
-                    .mediator_account()
+                let auditors = leg.auditors
+                    .build_auditor_map()
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
 
                 // Get the sender's current balance.
@@ -1334,7 +1400,7 @@ impl<T: Config> Pallet<T> {
                         &sender_account,
                         &from_current_balance,
                         &receiver_account,
-                        &[(AuditorId(0), mediator_account)].into(),
+                        &auditors,
                         &mut rng,
                     )
                     .map_err(|_| Error::<T>::InvalidSenderProof)?;
@@ -1360,8 +1426,8 @@ impl<T: Config> Pallet<T> {
                 let receiver_did = Self::account_did(&leg.receiver);
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
             }
-            AffirmParty::Mediator => {
-                let mediator_did = Self::mediator_account_did(&leg.mediator);
+            AffirmParty::Mediator(mediator) => {
+                let mediator_did = Self::mediator_account_did(mediator);
                 ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
             }
         }
@@ -1414,18 +1480,20 @@ impl<T: Config> Pallet<T> {
                         *affirmed = Some(false)
                     },
                 );
-                // If the mediator has affirmed the leg, then we need to invalid their affirmation.
-                let mediator_did = Self::get_mediator_did(&leg.mediator)?;
-                UserAffirmations::<T>::mutate(
-                    mediator_did,
-                    (transaction_id, leg_id, LegParty::Mediator),
-                    |affirmed| {
-                        if *affirmed == Some(true) {
-                            pending_affirms += 1;
-                        }
-                        *affirmed = Some(false)
-                    },
-                );
+                // If mediators have affirmed the leg, then we need to invalid their affirmation.
+                for mediator in leg.mediators() {
+                    let mediator_did = Self::get_mediator_did(mediator)?;
+                    UserAffirmations::<T>::mutate(
+                        mediator_did,
+                        (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+                        |affirmed| {
+                            if *affirmed == Some(true) {
+                                pending_affirms += 1;
+                            }
+                            *affirmed = Some(false)
+                        },
+                    );
+                }
 
                 // Take the transaction leg's pending state.
                 TxLegSenderBalance::<T>::remove((transaction_id, leg_id));
@@ -1444,8 +1512,8 @@ impl<T: Config> Pallet<T> {
 
                 1
             }
-            LegParty::Mediator => {
-                let mediator_did = Self::mediator_account_did(&leg.mediator);
+            LegParty::Mediator(mediator) => {
+                let mediator_did = Self::mediator_account_did(mediator);
                 ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
 
                 1
@@ -1525,13 +1593,15 @@ impl<T: Config> Pallet<T> {
             receiver_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
-        let mediator_did = Self::get_mediator_did(&leg.mediator)?;
-        let mediator_affirm =
-            UserAffirmations::<T>::take(mediator_did, (transaction_id, leg_id, LegParty::Mediator));
-        ensure!(
-            mediator_affirm == Some(true),
-            Error::<T>::TransactionNotAffirmed
-        );
+        for mediator in leg.mediators() {
+            let mediator_did = Self::get_mediator_did(mediator)?;
+            let mediator_affirm =
+                UserAffirmations::<T>::take(mediator_did, (transaction_id, leg_id, LegParty::Mediator(*mediator)));
+            ensure!(
+                mediator_affirm == Some(true),
+                Error::<T>::TransactionNotAffirmed
+            );
+        }
 
         // Take the transaction leg's pending state.
         TxLegSenderBalance::<T>::remove((transaction_id, leg_id));
@@ -1590,8 +1660,10 @@ impl<T: Config> Pallet<T> {
             UserAffirmations::<T>::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
         let receiver_did = Self::get_account_did(&leg.receiver)?;
         UserAffirmations::<T>::remove(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
-        let mediator_did = Self::get_mediator_did(&leg.mediator)?;
-        UserAffirmations::<T>::remove(mediator_did, (transaction_id, leg_id, LegParty::Mediator));
+        for mediator in leg.mediators() {
+            let mediator_did = Self::get_mediator_did(mediator)?;
+            UserAffirmations::<T>::remove(mediator_did, (transaction_id, leg_id, LegParty::Mediator(*mediator)));
+        }
 
         if sender_affirm == Some(true) {
             // Take the transaction leg's pending state.
