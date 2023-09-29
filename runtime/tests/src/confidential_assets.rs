@@ -1,4 +1,3 @@
-use core::convert::TryInto;
 use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
 use rand::SeedableRng;
@@ -6,10 +5,7 @@ use rand_chacha::ChaCha20Rng as StdRng;
 use sp_runtime::traits::Zero;
 use test_client::AccountKeyring;
 
-use confidential_assets::{
-    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, ElgamalKeys,
-    ElgamalSecretKey, Scalar,
-};
+use confidential_assets::transaction::ConfidentialTransferProof;
 
 use pallet_confidential_asset::{
     testing::*, AffirmLeg, ConfidentialAssetDetails, Event, TransactionLeg, TransactionLegId,
@@ -37,18 +33,6 @@ pub fn next_block() {
     let block_number = frame_system::Pallet::<TestRuntime>::block_number() + 1;
     frame_system::Pallet::<TestRuntime>::set_block_number(block_number);
     pallet_scheduler::Pallet::<TestRuntime>::on_initialize(block_number);
-}
-
-/// Creates a confidential account and returns its secret part (to be stored in the wallet) and
-/// the account creation proofs (to be submitted to the chain).
-pub fn gen_account(mut rng: &mut StdRng) -> ElgamalKeys {
-    // These are the encryptions keys used by confidential asset transfers and are different from the signing keys
-    // that Polymesh uses.
-    let elg_secret = ElgamalSecretKey::new(Scalar::random(&mut rng));
-    ElgamalKeys {
-        public: elg_secret.get_public_key(),
-        secret: elg_secret,
-    }
 }
 
 pub fn create_auditors(idx: u32, rng: &mut StdRng) -> AuditorState<TestRuntime> {
@@ -162,7 +146,7 @@ fn issuers_can_create_and_mint_tokens() {
         let mut rng = StdRng::from_seed([10u8; 32]);
 
         // Alice is the owner of the token in this test.
-        let owner = User::new(AccountKeyring::Alice);
+        let owner = ConfidentialUser::<TestRuntime>::new("alice", &mut rng);
 
         let auditors = create_auditors(0, &mut rng);
 
@@ -176,7 +160,7 @@ fn issuers_can_create_and_mint_tokens() {
         let token_name = vec![b'D'];
         let token = ConfidentialAssetDetails {
             name: AssetName(token_name.clone()),
-            owner_did: owner.did,
+            owner_did: owner.did(),
             total_supply,
             asset_type: AssetType::default(),
         };
@@ -200,22 +184,14 @@ fn issuers_can_create_and_mint_tokens() {
 
         // ---------------- Setup: prepare for minting the asset
 
-        let issuer_account = gen_account(&mut rng);
-        let confidential_account = issuer_account.public.into();
+        // The issuer's account must be initialized before minting.
+        owner.init_account(ticker);
 
-        ConfidentialAsset::create_account(owner.origin(), ticker, confidential_account).unwrap();
-
-        // ------------- START: Computations that will happen in Alice's Wallet ----------
-        let amount: ConfidentialBalance = token.total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
-
-        // ------------- END: Computations that will happen in the Wallet ----------
-
-        // Wallet submits the transaction to the chain for verification.
         ConfidentialAsset::mint_confidential_asset(
             owner.origin(),
             ticker,
-            amount.into(), // convert to u128
-            confidential_account,
+            total_supply,
+            owner.account(),
         )
         .unwrap();
 
@@ -228,39 +204,25 @@ fn issuers_can_create_and_mint_tokens() {
         );
 
         // -------------------------- Ensure that the account balance is set properly.
-        let balance = ConfidentialAsset::account_balance(&confidential_account, ticker)
-            .expect("account balance");
-
-        issuer_account
-            .secret
-            .verify(&balance, &amount.into())
-            .expect("verify new balance");
+        owner.ensure_balance(ticker, total_supply as _);
     })
 }
 
 #[test]
-fn account_create_tx() {
+fn account_create() {
     ExtBuilder::default().build().execute_with(|| {
-        let alice = User::new(AccountKeyring::Alice);
-        // Simulating the case were issuers have registered some tickers and therefore the list of
-        // valid asset ids contains some values.
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
 
         // ------------- START: Computations that will happen in Alice's Wallet ----------
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let account = gen_account(&mut rng);
-        let confidential_account = account.public.into();
+        let alice = ConfidentialUser::<TestRuntime>::new("alice", &mut rng);
         // ------------- END: Computations that will happen in the Wallet ----------
 
-        // Wallet submits the transaction to the chain for verification.
-        ConfidentialAsset::create_account(alice.origin(), ticker, confidential_account).unwrap();
+        // Wallet initialize the account for `ticker`.
+        alice.init_account(ticker);
 
-        // Ensure that the transaction was verified and that confidential account is created on the chain.
-        let stored_balance = ConfidentialAsset::account_balance(&confidential_account, ticker)
-            .expect("account balance");
         // Ensure that the account has an initial balance of zero.
-        let stored_balance = account.secret.decrypt(&stored_balance).unwrap();
-        assert_eq!(stored_balance, 0);
+        alice.ensure_balance(ticker, 0);
     });
 }
 
@@ -309,7 +271,7 @@ fn basic_confidential_settlement() {
 
             // Add the venue to the allow list for the asset.
             assert_ok!(ConfidentialAsset::allow_venues(
-                alice.origin().into(),
+                alice.origin(),
                 ticker,
                 vec![venue_id]
             ));
@@ -331,9 +293,8 @@ fn basic_confidential_settlement() {
             ));
 
             // -------------------------- Perform the transfer
-            let amount = 100 as ConfidentialBalance; // This plain format is only used on functions that emulate the work of the wallet.
+            let amount = 100;
 
-            println!("-------------> Checking if alice has enough funds.");
             // Ensure that Alice has minted enough tokens.
             alice.ensure_balance(ticker, alice_init_balance);
 
@@ -342,7 +303,7 @@ fn basic_confidential_settlement() {
             println!("-------------> Alice is going to authorize.");
             let alice_enc_balance = alice.enc_balance(ticker);
             let auditor_keys = auditors.build_auditor_map();
-            let sender_tx = ConfidentialTransferProof::new(
+            let sender_proof = ConfidentialTransferProof::new(
                 &alice.sec,
                 &alice_enc_balance,
                 alice_init_balance,
@@ -352,15 +313,11 @@ fn basic_confidential_settlement() {
                 &mut rng,
             )
             .unwrap();
-            let alice_encrypted_transfer_amount = sender_tx.sender_amount();
-            let bob_encrypted_transfer_amount = sender_tx.receiver_amount();
-            let initialized_tx = AffirmLeg::sender(leg_id, sender_tx);
+            let alice_encrypted_transfer_amount = sender_proof.sender_amount();
+            let bob_encrypted_transfer_amount = sender_proof.receiver_amount();
+            let affirm = AffirmLeg::sender(leg_id, sender_proof);
             // Sender authorizes the transaction and passes in the proofs.
-            assert_affirm_confidential_transaction!(
-                alice.origin().into(),
-                transaction_id,
-                initialized_tx
-            );
+            assert_affirm_confidential_transaction!(alice.origin(), transaction_id, affirm);
 
             // ------ Receiver authorizes.
             // Receiver reads the sender's proof from the event.
@@ -381,14 +338,10 @@ fn basic_confidential_settlement() {
             sender_proof
                 .receiver_verify(bob.sec.clone(), amount)
                 .unwrap();
-            let finalized_tx = AffirmLeg::receiver(leg_id);
+            let affirm = AffirmLeg::receiver(leg_id);
 
             // Receiver submits the proof to the chain.
-            assert_affirm_confidential_transaction!(
-                bob.origin().into(),
-                transaction_id,
-                finalized_tx
-            );
+            assert_affirm_confidential_transaction!(bob.origin(), transaction_id, affirm);
 
             // ------ Mediator authorizes.
             // Mediator reads the receiver's proofs from the chain (it contains the sender's proofs as well).
@@ -399,11 +352,7 @@ fn basic_confidential_settlement() {
             for user in auditors.mediators() {
                 let affirm = AffirmLeg::mediator(leg_id, user.mediator_account());
 
-                assert_affirm_confidential_transaction!(
-                    user.origin().into(),
-                    transaction_id,
-                    affirm
-                );
+                assert_affirm_confidential_transaction!(user.origin(), transaction_id, affirm);
             }
 
             // Execute affirmed transaction.
@@ -423,7 +372,7 @@ fn basic_confidential_settlement() {
 
             // Bob update's their balance.
             assert_ok!(ConfidentialAsset::apply_incoming_balance(
-                bob.origin().into(),
+                bob.origin(),
                 bob.account(),
                 ticker
             ));

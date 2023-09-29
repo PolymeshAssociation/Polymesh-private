@@ -118,7 +118,7 @@ pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let ticker = Ticker::from_slice_truncated(name.as_bytes());
     let auditors = AuditorState::new(0, rng);
     assert_ok!(Pallet::<T>::create_confidential_asset(
-        issuer.origin().into(),
+        issuer.origin(),
         AssetName(b"Name".to_vec()),
         ticker,
         AssetType::default(),
@@ -180,14 +180,18 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         self.user.did()
     }
 
-    pub fn origin(&self) -> frame_system::RawOrigin<T::AccountId> {
+    pub fn origin(&self) -> <T as frame_system::Config>::RuntimeOrigin {
+        self.user.origin().into()
+    }
+
+    pub fn raw_origin(&self) -> frame_system::RawOrigin<T::AccountId> {
         self.user.origin()
     }
 
     /// Initialize a new confidential account on-chain for `ticker`.
     pub fn init_account(&self, ticker: Ticker) {
         assert_ok!(Pallet::<T>::create_account(
-            self.origin().into(),
+            self.origin(),
             ticker,
             self.account(),
         ));
@@ -207,7 +211,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
 
     pub fn add_mediator(&self) {
         assert_ok!(Pallet::<T>::add_mediator_account(
-            self.origin().into(),
+            self.origin(),
             self.mediator_account(),
         ));
     }
@@ -237,7 +241,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     let auditors = AuditorState::new(idx, rng);
     assert_ok!(Pallet::<T>::create_confidential_asset(
-        owner.origin().into(),
+        owner.origin(),
         AssetName(b"Name".to_vec()),
         ticker,
         AssetType::default(),
@@ -261,7 +265,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     // Wallet submits the transaction to the chain for verification.
     assert_ok!(Pallet::<T>::mint_confidential_asset(
-        owner.origin().into(),
+        owner.origin(),
         ticker,
         amount.into(), // convert to u128
         owner.account(),
@@ -306,7 +310,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
 
         // Allow our venue.
         assert_ok!(Pallet::<T>::allow_venues(
-            issuer.origin().into(),
+            issuer.origin(),
             ticker,
             vec![venue_id]
         ));
@@ -353,7 +357,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     pub fn sender_affirm(&self, id: TransactionId, rng: &mut StdRng) {
         let affirm = self.sender_proof(rng);
         assert_ok!(Pallet::<T>::affirm_transaction(
-            self.issuer.origin().into(),
+            self.issuer.origin(),
             id,
             affirm
         ));
@@ -361,7 +365,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
 
     pub fn receiver_affirm(&self, id: TransactionId) {
         assert_ok!(Pallet::<T>::affirm_transaction(
-            self.investor.origin().into(),
+            self.investor.origin(),
             id,
             AffirmLeg::receiver(self.leg_id),
         ));
@@ -370,7 +374,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     pub fn mediator_affirm(&self, id: TransactionId) {
         for mediator in self.auditors.mediators() {
             assert_ok!(Pallet::<T>::affirm_transaction(
-                mediator.origin().into(),
+                mediator.origin(),
                 id,
                 AffirmLeg::mediator(self.leg_id, mediator.mediator_account()),
             ));
@@ -379,7 +383,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
 
     pub fn sender_unaffirm(&self, id: TransactionId) {
         assert_ok!(Pallet::<T>::unaffirm_transaction(
-            self.issuer.origin().into(),
+            self.issuer.origin(),
             id,
             UnaffirmLeg::sender(self.leg_id),
         ));
@@ -387,7 +391,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
 
     pub fn receiver_unaffirm(&self, id: TransactionId) {
         assert_ok!(Pallet::<T>::unaffirm_transaction(
-            self.investor.origin().into(),
+            self.investor.origin(),
             id,
             UnaffirmLeg::receiver(self.leg_id),
         ));
@@ -396,7 +400,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     pub fn mediator_unaffirm(&self, id: TransactionId) {
         for mediator in self.auditors.mediators() {
             assert_ok!(Pallet::<T>::unaffirm_transaction(
-                mediator.origin().into(),
+                mediator.origin(),
                 id,
                 UnaffirmLeg::mediator(self.leg_id, mediator.mediator_account()),
             ));
@@ -438,7 +442,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
         // Setup venue.
         let venue_id = Pallet::<T>::venue_counter();
-        assert_ok!(Pallet::<T>::create_venue(custodian.origin().into(),));
+        assert_ok!(Pallet::<T>::create_venue(custodian.origin()));
 
         let legs = (0..leg_count)
             .into_iter()
@@ -460,7 +464,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
     pub fn add_transaction(&mut self) {
         self.id = Pallet::<T>::transaction_counter();
         assert_ok!(Pallet::<T>::add_transaction(
-            self.custodian.origin().into(),
+            self.custodian.origin(),
             self.venue_id,
             self.get_legs(),
             Some(Memo([7u8; 32])),
@@ -513,7 +517,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     pub fn execute(&self) {
         assert_ok!(Pallet::<T>::execute_transaction(
-            self.custodian.origin().into(),
+            self.custodian.origin(),
             self.id,
             self.legs.len() as u32,
         ));
