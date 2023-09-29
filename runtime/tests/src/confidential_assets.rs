@@ -1,27 +1,26 @@
 use core::convert::TryInto;
 use frame_support::assert_ok;
-use frame_support::traits::{Get, OnInitialize};
-use rand::{rngs::StdRng, SeedableRng};
+use frame_support::traits::OnInitialize;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng as StdRng;
 use sp_runtime::traits::Zero;
-use sp_std::collections::btree_map::BTreeMap;
 use test_client::AccountKeyring;
 
 use confidential_assets::{
-    transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as ConfidentialBalance, CipherText, ElgamalKeys, ElgamalSecretKey, Scalar,
+    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    ElgamalKeys, ElgamalSecretKey, Scalar,
 };
 
 use pallet_confidential_asset::{
-    AffirmLeg, ConfidentialAccount, ConfidentialAssetDetails, ConfidentialAuditors,
-    ConfidentialTransactionRole,
-    Event, MediatorAccount, TransactionLeg, TransactionLegId,
+    testing::*, AffirmLeg, ConfidentialAccount, ConfidentialAssetDetails, ConfidentialAuditors,
+    Event, TransactionLeg, TransactionLegId,
 };
 use polymesh_primitives::asset::{AssetName, AssetType};
 use polymesh_primitives::Ticker;
 
 use crate::test_runtime::ext_builder::ExtBuilder;
-use crate::test_runtime::{EventTest, TestRuntime, User};
 use crate::test_runtime::MaxNumberOfConfidentialAssetAuditors;
+use crate::test_runtime::{EventTest, TestRuntime, User};
 
 type System = frame_system::Pallet<TestRuntime>;
 type ConfidentialAsset = pallet_confidential_asset::Pallet<TestRuntime>;
@@ -40,21 +39,6 @@ pub fn next_block() {
     let block_number = frame_system::Pallet::<TestRuntime>::block_number() + 1;
     frame_system::Pallet::<TestRuntime>::set_block_number(block_number);
     pallet_scheduler::Pallet::<TestRuntime>::on_initialize(block_number);
-}
-
-fn create_confidential_token(
-    owner: User,
-    token_name: &[u8],
-    ticker: Ticker,
-    auditors: &ConfidentialAuditors<MaxNumberOfConfidentialAssetAuditors>,
-) {
-    assert_ok!(ConfidentialAsset::create_confidential_asset(
-        owner.origin(),
-        AssetName(token_name.into()),
-        ticker,
-        AssetType::default(),
-        auditors.clone(),
-    ));
 }
 
 /// Creates a confidential account and returns its secret part (to be stored in the wallet) and
@@ -90,25 +74,8 @@ pub fn init_account(
     (enc_keys, account, balance)
 }
 
-/// Creates a confidential account for the `owner` and submits the proofs to the chain and validates them.
-/// It then return the secret part of the account, the account id, the public portion of the account and the initial
-/// encrypted balance of zero.
-pub fn init_mediator(mut rng: &mut StdRng, owner: User) -> (ElgamalKeys, MediatorAccount) {
-    let enc_keys = gen_account(&mut rng);
-    let account = enc_keys.public.into();
-
-    assert_ok!(ConfidentialAsset::add_mediator_account(
-        owner.origin(),
-        account,
-    ));
-
-    (enc_keys, account)
-}
-
-pub fn create_auditors<S: Get<u32> + Default>(account: MediatorAccount) -> ConfidentialAuditors<S> {
-    let mut auditors = ConfidentialAuditors::default();
-    auditors.add_auditor(&account, ConfidentialTransactionRole::Mediator).expect("shouldn't fail");
-    auditors
+pub fn create_auditors(idx: u32, rng: &mut StdRng) -> AuditorState<TestRuntime> {
+    AuditorState::<TestRuntime>::new(idx, rng)
 }
 
 /// Performs confidential account creation, validation, and minting of the account with `total_supply` tokens.
@@ -204,9 +171,7 @@ fn issuers_can_create_and_rename_confidential_tokens() {
         };
         let ticker = Ticker::from_slice_truncated(token_name.as_slice());
 
-        let charlie = User::new(AccountKeyring::Charlie);
-        let (_charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
-        let asset_auditors = create_auditors(charlie_account);
+        let auditors = create_auditors(0, &mut rng);
 
         // Issuance is successful.
         assert_ok!(ConfidentialAsset::create_confidential_asset(
@@ -214,7 +179,7 @@ fn issuers_can_create_and_rename_confidential_tokens() {
             token.name.clone(),
             ticker,
             token.asset_type.clone(),
-            asset_auditors.clone(),
+            auditors.get_asset_auditors(),
         ));
 
         // A correct entry is added.
@@ -271,7 +236,7 @@ fn issuers_can_create_and_rename_confidential_tokens() {
             token.name.clone(),
             ticker2,
             token.asset_type.clone(),
-            asset_auditors.clone(),
+            auditors.get_asset_auditors(),
         ));
 
         let token_with_zero_supply = ConfidentialAssetDetails {
@@ -297,21 +262,14 @@ fn issuers_can_create_and_mint_tokens() {
 
         // Alice is the owner of the token in this test.
         let owner = User::new(AccountKeyring::Alice);
-        let bob = User::new(AccountKeyring::Bob);
 
-        let charlie = User::new(AccountKeyring::Charlie);
-        let (_charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
-        let asset_auditors = create_auditors(charlie_account);
+        let auditors = create_auditors(0, &mut rng);
 
-        let token_names = [[b'A'], [b'B'], [b'C']];
-        for token_name in token_names.iter() {
-            create_confidential_token(
-                bob, // Alice does not own any of these tokens.
-                &token_name[..],
-                Ticker::from_slice_truncated(&token_name[..]),
-                &asset_auditors,
-            );
+        // Create a few confidential assets.
+        for idx in 0..3 {
+            create_confidential_token::<TestRuntime>("A", idx, &mut rng);
         }
+
         let total_supply: u128 = 10_000_000;
         // Expected token entry
         let token_name = vec![b'D'];
@@ -328,7 +286,7 @@ fn issuers_can_create_and_mint_tokens() {
             token.name.clone(),
             ticker,
             token.asset_type.clone(),
-            asset_auditors,
+            auditors.get_asset_auditors(),
         ));
 
         // In the initial call, the total_supply must be zero.
@@ -429,9 +387,7 @@ fn basic_confidential_settlement() {
             let bob = User::new(AccountKeyring::Bob);
 
             let charlie = User::new(AccountKeyring::Charlie);
-            let (charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
-            let asset_auditors = create_auditors(charlie_account);
-            let leg_auditors = create_auditors(charlie_account);
+            let auditors = create_auditors(0, &mut rng);
 
             // ------------ Setup confidential accounts.
             let token_name = b"ACME";
@@ -441,7 +397,13 @@ fn basic_confidential_settlement() {
             // let total_supply = 1_1000_000;
             let total_supply = 500;
             let (alice_keys, alice_account, alice_encrypted_init_balance) =
-                create_account_and_mint_token(alice, total_supply, token_name.to_vec(), asset_auditors, &mut rng);
+                create_account_and_mint_token(
+                    alice,
+                    total_supply,
+                    token_name.to_vec(),
+                    auditors.get_asset_auditors(),
+                    &mut rng,
+                );
 
             // Create accounts for Bob, and Charlie.
             let (bob_keys, bob_account, bob_encrypted_init_balance) =
@@ -469,7 +431,7 @@ fn basic_confidential_settlement() {
                     ticker,
                     sender: alice_account,
                     receiver: bob_account,
-                    auditors: leg_auditors,
+                    auditors: auditors.auditors.clone(),
                 }],
                 None
             ));
@@ -488,7 +450,7 @@ fn basic_confidential_settlement() {
             // ----- Sender authorizes.
             // Sender computes the proofs in the wallet.
             println!("-------------> Alice is going to authorize.");
-            let auditor_keys = BTreeMap::from([(AuditorId(0), charlie_keys.public)]);
+            let auditor_keys = auditors.build_auditor_map();
             let sender_tx = ConfidentialTransferProof::new(
                 &alice_keys,
                 &alice_encrypted_init_balance,
@@ -534,13 +496,16 @@ fn basic_confidential_settlement() {
             println!("-------------> Charlie is going to authorize.");
 
             // Mediator verifies the proofs in the wallet.
-            sender_proof
-                .auditor_verify(AuditorId(0), &charlie_keys)
-                .unwrap();
-            let justified_tx = AffirmLeg::mediator(leg_id, charlie_account);
+            auditors.verify_proof(&sender_proof);
+            for user in auditors.mediators() {
+                let affirm = AffirmLeg::mediator(leg_id, user.mediator_account());
 
-            println!("-------------> This should trigger the execution");
-            assert_affirm_confidential_transaction!(charlie.origin(), transaction_id, justified_tx);
+                assert_affirm_confidential_transaction!(
+                    user.origin().into(),
+                    transaction_id,
+                    affirm
+                );
+            }
 
             // Execute affirmed transaction.
             assert_ok!(ConfidentialAsset::execute_transaction(

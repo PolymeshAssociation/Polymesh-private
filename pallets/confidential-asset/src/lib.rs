@@ -51,6 +51,9 @@ type System<T> = frame_system::Pallet<T>;
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
+#[cfg(feature = "testing")]
+pub mod testing;
+
 pub mod weights;
 
 pub trait WeightInfo {

@@ -37,6 +37,8 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 equalize = []
 default = ["std", "equalize", "u64_backend"]
 
+testing = []
+
 # Backends
 u64_backend = ["confidential_assets/u64_backend"]
 avx2_backend = ["confidential_assets/avx2_backend"]
@@ -61,6 +63,7 @@ std = [
     "sp-std/std",
 ]
 runtime-benchmarks = [
+		"testing",
     "frame-benchmarking",
     "polymesh-common-utilities/runtime-benchmarks",
 ]
