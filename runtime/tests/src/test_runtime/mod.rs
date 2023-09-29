@@ -5,7 +5,7 @@ pub mod ext_builder;
 use sp_version::NativeVersion;
 
 use codec::Encode;
-use frame_support::dispatch::{DispatchInfo, Weight};
+use frame_support::dispatch::{DispatchInfo, DispatchResult, Weight};
 use frame_support::parameter_types;
 use frame_support::traits::{Currency, Imbalance, KeyOwnerProofSystem, OnUnbalanced};
 use frame_support::weights::RuntimeDbWeight;
@@ -44,7 +44,7 @@ use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
-use polymesh_common_utilities::{ConstSize, Context};
+use polymesh_common_utilities::{ConstSize, Context, TestUtilsFn};
 use polymesh_primitives::{AccountId, BlockNumber, Claim, Moment};
 use polymesh_runtime_common::runtime::{BENCHMARK_MAX_INCREASE, VMO};
 use polymesh_runtime_common::{merge_active_and_inactive, AvailableBlockRatio, MaximumBlockWeight};
@@ -125,8 +125,18 @@ parameter_types! {
     pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
 
-type MaxNumberOfConfidentialAuditors = ConstSize<8>;
-type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+pub type MaxNumberOfConfidentialAuditors = ConstSize<8>;
+pub type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+
+/// NB It is needed by benchmarks, in order to use `UserBuilder`.
+impl TestUtilsFn<AccountId> for Runtime {
+    fn register_did(
+        target: AccountId,
+        secondary_keys: Vec<polymesh_primitives::secondary_key::SecondaryKey<AccountId>>,
+    ) -> DispatchResult {
+        <TestUtils as TestUtilsFn<AccountId>>::register_did(target, secondary_keys)
+    }
+}
 
 frame_support::construct_runtime!(
     pub enum TestRuntime where

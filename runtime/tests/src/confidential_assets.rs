@@ -1,6 +1,6 @@
 use core::convert::TryInto;
 use frame_support::assert_ok;
-use frame_support::traits::OnInitialize;
+use frame_support::traits::{Get, OnInitialize};
 use rand::{rngs::StdRng, SeedableRng};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
@@ -12,14 +12,16 @@ use confidential_assets::{
 };
 
 use pallet_confidential_asset::{
-    AffirmLeg, ConfidentialAccount, ConfidentialAssetDetails, Event, MediatorAccount,
-    TransactionLeg, TransactionLegId,
+    AffirmLeg, ConfidentialAccount, ConfidentialAssetDetails, ConfidentialAuditors,
+    ConfidentialTransactionRole,
+    Event, MediatorAccount, TransactionLeg, TransactionLegId,
 };
 use polymesh_primitives::asset::{AssetName, AssetType};
 use polymesh_primitives::Ticker;
 
 use crate::test_runtime::ext_builder::ExtBuilder;
 use crate::test_runtime::{EventTest, TestRuntime, User};
+use crate::test_runtime::MaxNumberOfConfidentialAssetAuditors;
 
 type System = frame_system::Pallet<TestRuntime>;
 type ConfidentialAsset = pallet_confidential_asset::Pallet<TestRuntime>;
@@ -40,12 +42,18 @@ pub fn next_block() {
     pallet_scheduler::Pallet::<TestRuntime>::on_initialize(block_number);
 }
 
-fn create_confidential_token(token_name: &[u8], ticker: Ticker, user: User) {
+fn create_confidential_token(
+    owner: User,
+    token_name: &[u8],
+    ticker: Ticker,
+    auditors: &ConfidentialAuditors<MaxNumberOfConfidentialAssetAuditors>,
+) {
     assert_ok!(ConfidentialAsset::create_confidential_asset(
-        user.origin(),
+        owner.origin(),
         AssetName(token_name.into()),
         ticker,
         AssetType::default(),
+        auditors.clone(),
     ));
 }
 
@@ -97,6 +105,12 @@ pub fn init_mediator(mut rng: &mut StdRng, owner: User) -> (ElgamalKeys, Mediato
     (enc_keys, account)
 }
 
+pub fn create_auditors<S: Get<u32> + Default>(account: MediatorAccount) -> ConfidentialAuditors<S> {
+    let mut auditors = ConfidentialAuditors::default();
+    auditors.add_auditor(&account, ConfidentialTransactionRole::Mediator).expect("shouldn't fail");
+    auditors
+}
+
 /// Performs confidential account creation, validation, and minting of the account with `total_supply` tokens.
 /// It returns the next the secret portion of the account, the account id, the public portion of the account,
 /// and the encrypted balance of `total_supply`.
@@ -104,6 +118,7 @@ pub fn create_account_and_mint_token(
     owner: User,
     total_supply: u128,
     token_name: Vec<u8>,
+    auditors: ConfidentialAuditors<MaxNumberOfConfidentialAssetAuditors>,
     mut rng: &mut StdRng,
 ) -> (ElgamalKeys, ConfidentialAccount, CipherText) {
     let token = ConfidentialAssetDetails {
@@ -119,6 +134,7 @@ pub fn create_account_and_mint_token(
         token.name.clone(),
         ticker,
         token.asset_type.clone(),
+        auditors,
     ));
 
     // In the initial call, the total_supply must be zero.
@@ -174,6 +190,9 @@ pub fn create_account_and_mint_token(
 #[test]
 fn issuers_can_create_and_rename_confidential_tokens() {
     ExtBuilder::default().build().execute_with(|| {
+        // ------------ Setup
+        let mut rng = StdRng::from_seed([10u8; 32]);
+
         let owner = User::new(AccountKeyring::Dave);
         // Expected token entry
         let token_name = vec![b'A'];
@@ -185,12 +204,17 @@ fn issuers_can_create_and_rename_confidential_tokens() {
         };
         let ticker = Ticker::from_slice_truncated(token_name.as_slice());
 
+        let charlie = User::new(AccountKeyring::Charlie);
+        let (_charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
+        let asset_auditors = create_auditors(charlie_account);
+
         // Issuance is successful.
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
             token.name.clone(),
             ticker,
             token.asset_type.clone(),
+            asset_auditors.clone(),
         ));
 
         // A correct entry is added.
@@ -247,6 +271,7 @@ fn issuers_can_create_and_rename_confidential_tokens() {
             token.name.clone(),
             ticker2,
             token.asset_type.clone(),
+            asset_auditors.clone(),
         ));
 
         let token_with_zero_supply = ConfidentialAssetDetails {
@@ -268,17 +293,23 @@ fn issuers_can_create_and_rename_confidential_tokens() {
 fn issuers_can_create_and_mint_tokens() {
     ExtBuilder::default().build().execute_with(|| {
         // ------------ Setup
+        let mut rng = StdRng::from_seed([10u8; 32]);
 
         // Alice is the owner of the token in this test.
         let owner = User::new(AccountKeyring::Alice);
         let bob = User::new(AccountKeyring::Bob);
 
+        let charlie = User::new(AccountKeyring::Charlie);
+        let (_charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
+        let asset_auditors = create_auditors(charlie_account);
+
         let token_names = [[b'A'], [b'B'], [b'C']];
         for token_name in token_names.iter() {
             create_confidential_token(
+                bob, // Alice does not own any of these tokens.
                 &token_name[..],
                 Ticker::from_slice_truncated(&token_name[..]),
-                bob, // Alice does not own any of these tokens.
+                &asset_auditors,
             );
         }
         let total_supply: u128 = 10_000_000;
@@ -297,6 +328,7 @@ fn issuers_can_create_and_mint_tokens() {
             token.name.clone(),
             ticker,
             token.asset_type.clone(),
+            asset_auditors,
         ));
 
         // In the initial call, the total_supply must be zero.
@@ -309,7 +341,6 @@ fn issuers_can_create_and_mint_tokens() {
 
         // ---------------- Setup: prepare for minting the asset
 
-        let mut rng = StdRng::from_seed([10u8; 32]);
         let issuer_account = gen_account(&mut rng);
         let confidential_account = issuer_account.public.into();
 
@@ -398,6 +429,9 @@ fn basic_confidential_settlement() {
             let bob = User::new(AccountKeyring::Bob);
 
             let charlie = User::new(AccountKeyring::Charlie);
+            let (charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
+            let asset_auditors = create_auditors(charlie_account);
+            let leg_auditors = create_auditors(charlie_account);
 
             // ------------ Setup confidential accounts.
             let token_name = b"ACME";
@@ -407,13 +441,11 @@ fn basic_confidential_settlement() {
             // let total_supply = 1_1000_000;
             let total_supply = 500;
             let (alice_keys, alice_account, alice_encrypted_init_balance) =
-                create_account_and_mint_token(alice, total_supply, token_name.to_vec(), &mut rng);
+                create_account_and_mint_token(alice, total_supply, token_name.to_vec(), asset_auditors, &mut rng);
 
             // Create accounts for Bob, and Charlie.
             let (bob_keys, bob_account, bob_encrypted_init_balance) =
                 init_account(&mut rng, ticker, bob);
-
-            let (charlie_keys, charlie_account) = init_mediator(&mut rng, charlie);
 
             // Mediator creates a venue
             let venue_id = ConfidentialAsset::venue_counter();
@@ -437,7 +469,7 @@ fn basic_confidential_settlement() {
                     ticker,
                     sender: alice_account,
                     receiver: bob_account,
-                    mediator: charlie_account,
+                    auditors: leg_auditors,
                 }],
                 None
             ));
@@ -505,7 +537,7 @@ fn basic_confidential_settlement() {
             sender_proof
                 .auditor_verify(AuditorId(0), &charlie_keys)
                 .unwrap();
-            let justified_tx = AffirmLeg::mediator(leg_id);
+            let justified_tx = AffirmLeg::mediator(leg_id, charlie_account);
 
             println!("-------------> This should trigger the execution");
             assert_affirm_confidential_transaction!(charlie.origin(), transaction_id, justified_tx);
