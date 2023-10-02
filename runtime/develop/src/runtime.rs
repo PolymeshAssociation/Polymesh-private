@@ -144,6 +144,9 @@ parameter_types! {
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+type MaxNumberOfConfidentialLegs = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
 type MaxNumberOfConfidentialLegs = ConstSize<10>;
 type MaxNumberOfConfidentialAuditors = ConstSize<8>;
 type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;

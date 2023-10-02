@@ -65,8 +65,8 @@ pub trait WeightInfo {
     fn create_venue() -> Weight;
     fn allow_venues(l: u32) -> Weight;
     fn disallow_venues(l: u32) -> Weight;
-    fn add_transaction(l: u32) -> Weight;
-    fn sender_affirm_transaction() -> Weight;
+    fn add_transaction(l: u32, m: u32) -> Weight;
+    fn sender_affirm_transaction(a: u32) -> Weight;
     fn receiver_affirm_transaction() -> Weight;
     fn mediator_affirm_transaction() -> Weight;
     fn sender_unaffirm_transaction() -> Weight;
@@ -76,8 +76,15 @@ pub trait WeightInfo {
     fn reject_transaction(l: u32) -> Weight;
 
     fn affirm_transaction(affirm: &AffirmLeg) -> Weight {
-        match affirm.party {
-            AffirmParty::Sender(_) => Self::sender_affirm_transaction(),
+        match &affirm.party {
+            AffirmParty::Sender(proof) => {
+              match proof.into_tx().map(|t| t.auditor_count()) {
+                Some(count) => {
+                  Self::sender_affirm_transaction(count as u32)
+                }
+                _ => Weight::MAX,
+              }
+            },
             AffirmParty::Receiver => Self::receiver_affirm_transaction(),
             AffirmParty::Mediator(_) => Self::mediator_affirm_transaction(),
         }
@@ -570,8 +577,8 @@ pub mod pallet {
         UnknownTransaction,
         /// Transaction leg is unknown.
         UnknownTransactionLeg,
-        /// Maximum legs that can be in a single instruction.
-        TransactionHasTooManyLegs,
+        /// Transaction has no legs.
+        TransactionNoLegs,
     }
 
     /// Venue creator.
@@ -950,10 +957,14 @@ pub mod pallet {
         }
 
         /// Adds a new transaction.
-        ///
-        /// TODO: Update weight to include auditor count.
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_transaction(legs.len() as u32))]
+        #[pallet::weight({
+            // Count the number of mediators.
+            let m_count = legs.iter().fold(0, |acc, l| {
+                acc + l.mediators().count()
+            });
+            <T as Config>::WeightInfo::add_transaction(legs.len() as u32, m_count as u32)
+        })]
         pub fn add_transaction(
             origin: OriginFor<T>,
             venue_id: VenueId,
@@ -1296,10 +1307,7 @@ impl<T: Config> Pallet<T> {
         memo: Option<Memo>,
     ) -> Result<TransactionId, DispatchError> {
         // Ensure transaction does not have too many legs.
-        ensure!(
-            legs.len() <= T::MaxNumberOfLegs::get() as usize,
-            Error::<T>::TransactionHasTooManyLegs
-        );
+        ensure!(legs.len() > 0, Error::<T>::TransactionNoLegs);
 
         // Ensure venue exists and the caller is its creator.
         Self::ensure_venue_creator(venue_id, did)?;

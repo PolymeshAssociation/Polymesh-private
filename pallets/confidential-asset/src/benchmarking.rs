@@ -20,6 +20,9 @@ use polymesh_primitives::{
 use crate::testing::*;
 use crate::*;
 
+pub const MAX_LEGS: u32 = 100;
+pub const MAX_MEDIATORS: u32 = MAX_LEGS * 8;
+
 benchmarks! {
     where_clause { where T: Config, T: TestUtilsFn<AccountIdOf<T>> }
 
@@ -108,21 +111,29 @@ benchmarks! {
 
     add_transaction {
         // Number of legs in transaction.
-        let l in 0 .. T::MaxNumberOfLegs::get();
+        let l in 1 .. MAX_LEGS;
+        // Total number of mediators across all legs.
+        let m in 0 .. MAX_MEDIATORS;
+
+        // Always use the maximum number of auditors per leg.
+        let a_count = l * T::MaxNumberOfAuditors::get();
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
         // Setup for transaction.
-        let tx = TransactionState::<T>::new_legs(l, &mut rng);
+        let tx = TransactionState::<T>::new_legs_full(l, a_count, m, &mut rng);
 
         let legs = tx.get_legs();
     }: _(tx.custodian.raw_origin(), tx.venue_id, legs, Some(Memo([7u8; 32])))
 
     sender_affirm_transaction {
+        // Number of auditors in the sender proof.
+        let a in 0 .. T::MaxNumberOfAuditors::get();
+
         let mut rng = StdRng::from_seed([10u8; 32]);
 
         // Setup for transaction.
-        let mut tx = TransactionState::<T>::new(&mut rng);
+        let mut tx = TransactionState::<T>::new_legs_full(1, a, a, &mut rng);
         tx.add_transaction();
 
         let affirm = tx.sender_proof(0, &mut rng);
@@ -161,8 +172,8 @@ benchmarks! {
         // Setup for transaction.
         let mut tx = TransactionState::<T>::new(&mut rng);
         tx.add_transaction();
+        tx.affirm_legs(&mut rng);
 
-        tx.sender_affirm(0, &mut rng);
         let unaffirm = UnaffirmLeg::sender(TransactionLegId(0));
         let leg = tx.leg(0);
     }: unaffirm_transaction(leg.issuer.raw_origin(), tx.id, unaffirm)
@@ -173,8 +184,7 @@ benchmarks! {
         // Setup for transaction.
         let mut tx = TransactionState::<T>::new(&mut rng);
         tx.add_transaction();
-        tx.sender_affirm(0, &mut rng);
-        tx.receiver_affirm(0);
+        tx.affirm_legs(&mut rng);
 
         let unaffirm = UnaffirmLeg::receiver(TransactionLegId(0));
         let leg = tx.leg(0);
@@ -186,7 +196,7 @@ benchmarks! {
         // Setup for transaction.
         let mut tx = TransactionState::<T>::new(&mut rng);
         tx.add_transaction();
-        tx.affirm_leg(0, &mut rng);
+        tx.affirm_legs(&mut rng);
 
         let leg = tx.leg(0);
         let mediator = leg.mediator(0);
@@ -195,7 +205,7 @@ benchmarks! {
     }: unaffirm_transaction(mediator.raw_origin(), tx.id, unaffirm)
 
     execute_transaction {
-        let l in 0..T::MaxNumberOfLegs::get();
+        let l in 1..T::MaxNumberOfLegs::get();
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
