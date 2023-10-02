@@ -257,6 +257,8 @@ fn basic_confidential_settlement() {
                     "alice",
                     total_supply as u128,
                     0,
+                    4,
+                    4,
                     &mut rng,
                 );
 
