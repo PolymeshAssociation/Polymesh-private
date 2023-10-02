@@ -77,13 +77,9 @@ pub trait WeightInfo {
 
     fn affirm_transaction(affirm: &AffirmLeg) -> Weight {
         match &affirm.party {
-            AffirmParty::Sender(proof) => {
-              match proof.into_tx().map(|t| t.auditor_count()) {
-                Some(count) => {
-                  Self::sender_affirm_transaction(count as u32)
-                }
+            AffirmParty::Sender(proof) => match proof.into_tx().map(|t| t.auditor_count()) {
+                Some(count) => Self::sender_affirm_transaction(count as u32),
                 _ => Weight::MAX,
-              }
             },
             AffirmParty::Receiver => Self::receiver_affirm_transaction(),
             AffirmParty::Mediator(_) => Self::mediator_affirm_transaction(),

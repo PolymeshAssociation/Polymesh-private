@@ -107,8 +107,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset IncomingBalance (max_values: None, max_size: None, mode: Measured)
     fn apply_incoming_balance() -> Weight {
         // Minimum execution time: 43_521 nanoseconds.
-        Weight::from_ref_time(44_013_000)
-            .saturating_add(DbWeight::get().reads(3))
+        Weight::from_ref_time(44_013_000).saturating_add(DbWeight::get().reads(3))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
@@ -131,7 +130,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset VenueAllowList (r:0 w:100)
     // Proof Skipped: ConfidentialAsset VenueAllowList (max_values: None, max_size: None, mode: Measured)
     /// The range of component `v` is `[0, 100]`.
-    fn allow_venues(v: u32, ) -> Weight {
+    fn allow_venues(v: u32) -> Weight {
         // Minimum execution time: 45_309 nanoseconds.
         Weight::from_ref_time(47_225_635)
             // Standard Error: 27_357
@@ -146,7 +145,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset VenueAllowList (r:0 w:100)
     // Proof Skipped: ConfidentialAsset VenueAllowList (max_values: None, max_size: None, mode: Measured)
     /// The range of component `v` is `[0, 100]`.
-    fn disallow_venues(v: u32, ) -> Weight {
+    fn disallow_venues(v: u32) -> Weight {
         // Minimum execution time: 45_236 nanoseconds.
         Weight::from_ref_time(46_441_914)
             // Standard Error: 6_694
@@ -186,7 +185,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset TransactionParties (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[1, 10]`.
     /// The range of component `m` is `[0, 80]`.
-    fn add_transaction(l: u32, m: u32, ) -> Weight {
+    fn add_transaction(l: u32, m: u32) -> Weight {
         // Minimum execution time: 225_777 nanoseconds.
         Weight::from_ref_time(226_217_000)
             // Standard Error: 4_653_180
@@ -224,7 +223,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegSenderBalance (r:0 w:1)
     // Proof Skipped: ConfidentialAsset TxLegSenderBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `a` is `[0, 8]`.
-    fn sender_affirm_transaction(a: u32, ) -> Weight {
+    fn sender_affirm_transaction(a: u32) -> Weight {
         // Minimum execution time: 8_230_141 nanoseconds.
         Weight::from_ref_time(8_288_989_516)
             // Standard Error: 12_847_188
@@ -351,7 +350,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegSenderBalance (r:0 w:10)
     // Proof Skipped: ConfidentialAsset TxLegSenderBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[1, 10]`.
-    fn execute_transaction(l: u32, ) -> Weight {
+    fn execute_transaction(l: u32) -> Weight {
         // Minimum execution time: 308_254 nanoseconds.
         Weight::from_ref_time(90_090_400)
             // Standard Error: 2_602_453
@@ -390,7 +389,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegSenderBalance (r:0 w:10)
     // Proof Skipped: ConfidentialAsset TxLegSenderBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[1, 10]`.
-    fn reject_transaction(l: u32, ) -> Weight {
+    fn reject_transaction(l: u32) -> Weight {
         // Minimum execution time: 260_235 nanoseconds.
         Weight::from_ref_time(100_375_488)
             // Standard Error: 4_419_206

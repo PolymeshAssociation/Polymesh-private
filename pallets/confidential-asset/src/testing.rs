@@ -44,7 +44,12 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
     }
 
     /// Create `auditor_count` auditors with `mediator_count` mediator roles for a ticker.
-    pub fn new_full(ticker: u32, auditor_count: u32, mediator_count: u32, rng: &mut StdRng) -> Self {
+    pub fn new_full(
+        ticker: u32,
+        auditor_count: u32,
+        mediator_count: u32,
+        rng: &mut StdRng,
+    ) -> Self {
         let mut auditors = ConfidentialAuditors::default();
         let mut users = BTreeMap::new();
         let auditor_count = auditor_count.clamp(1, T::MaxNumberOfAuditors::get());
@@ -305,7 +310,13 @@ pub struct TransactionLegState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     /// Create 3 confidential accounts (issuer, investor, mediator), create asset, mint.
-    pub fn new(venue_id: VenueId, leg_id: u32, auditors: u32, mediators: u32, rng: &mut StdRng) -> Self {
+    pub fn new(
+        venue_id: VenueId,
+        leg_id: u32,
+        auditors: u32,
+        mediators: u32,
+        rng: &mut StdRng,
+    ) -> Self {
         let amount = 4_000_000_000 as ConfidentialBalance;
         let total_supply = amount + 100_000_000;
         // Setup confidential asset.
@@ -454,7 +465,12 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     /// Setup for a transaction with `leg_count` legs and a total of `mediator_count` mediators
     /// across all legs.
-    pub fn new_legs_full(leg_count: u32, mut auditors: u32, mut mediators: u32, rng: &mut StdRng) -> Self {
+    pub fn new_legs_full(
+        leg_count: u32,
+        mut auditors: u32,
+        mut mediators: u32,
+        rng: &mut StdRng,
+    ) -> Self {
         assert!(leg_count > 0);
         let custodian = ConfidentialUser::<T>::new("custodian", rng);
 
