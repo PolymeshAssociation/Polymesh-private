@@ -139,9 +139,9 @@ parameter_types! {
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
-    pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
 
+type MaxNumberOfConfidentialLegs = ConstSize<10>;
 type MaxNumberOfConfidentialAuditors = ConstSize<8>;
 type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
 

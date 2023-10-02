@@ -2,6 +2,7 @@
 // Copyright (c) 2023 Polymesh
 
 use frame_support::assert_ok;
+use frame_support::traits::TryCollect;
 use scale_info::prelude::format;
 use sp_runtime::traits::Zero;
 
@@ -457,8 +458,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         }
     }
 
-    pub fn get_legs(&self) -> Vec<TransactionLeg<T::MaxNumberOfAuditors>> {
-        self.legs.iter().map(|s| s.leg.clone()).collect()
+    pub fn get_legs(
+        &self,
+    ) -> BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs> {
+        self.legs
+            .iter()
+            .map(|s| s.leg.clone())
+            .try_collect()
+            .expect("Shouldn't happen")
     }
 
     pub fn add_transaction(&mut self) {

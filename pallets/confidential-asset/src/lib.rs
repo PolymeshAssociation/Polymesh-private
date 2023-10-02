@@ -24,7 +24,7 @@ use frame_support::{
     ensure,
     traits::{Get, Randomness},
     weights::Weight,
-    BoundedBTreeMap,
+    BoundedBTreeMap, BoundedVec,
 };
 use pallet_base::try_next_post;
 use polymesh_common_utilities::{
@@ -449,7 +449,7 @@ pub mod pallet {
         type MaxTotalSupply: Get<Balance>;
 
         /// Maximum number of legs in a confidential transaction.
-        type MaxNumberOfLegs: Get<u32>;
+        type MaxNumberOfLegs: GetExtra<u32>;
 
         /// Maximum number of auditors (to limit SenderProof verification time).
         type MaxNumberOfAuditors: GetExtra<u32>;
@@ -488,7 +488,7 @@ pub mod pallet {
             IdentityId,
             VenueId,
             TransactionId,
-            Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
+            BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
             Option<Memo>,
         ),
         /// Confidential transaction executed.
@@ -957,7 +957,7 @@ pub mod pallet {
         pub fn add_transaction(
             origin: OriginFor<T>,
             venue_id: VenueId,
-            legs: Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
+            legs: BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
             memo: Option<Memo>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
@@ -1190,26 +1190,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // Ensure that the required asset auditors/mediators are included.
-    fn ensure_asset_auditors<S: Get<u32>>(
-        ticker: Ticker,
-        auditors: &ConfidentialAuditors<S>,
-    ) -> Result<(), DispatchError> {
-        let asset_auditors =
-            Self::asset_auditors(ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?;
-
-        for (account, required_role) in asset_auditors.auditors() {
-            let role = auditors
-                .get_auditor_role(account)
-                .ok_or(Error::<T>::RequiredAssetAuditorMissing)?;
-            ensure!(
-                *required_role == role,
-                Error::<T>::RequiredAssetAuditorWrongRole
-            );
-        }
-        Ok(())
-    }
-
     // Ensure the caller is the asset owner.
     fn ensure_asset_owner(
         ticker: Ticker,
@@ -1231,16 +1211,45 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// If `tickers` doesn't contain the given `ticker`, ensures that venue_id is in the allowed list
-    fn ensure_venue_filtering(
-        tickers: &mut BTreeSet<Ticker>,
-        ticker: Ticker,
+    // Ensure that the required asset auditors/mediators are included and
+    // that the asset issuer allows `venue_id`.
+    fn ensure_valid_leg(
+        leg: &TransactionLeg<T::MaxNumberOfAuditors>,
         venue_id: &VenueId,
+        asset_auditors: &mut BTreeMap<Ticker, ConfidentialAuditors<T::MaxNumberOfAssetAuditors>>,
     ) -> DispatchResult {
-        if tickers.insert(ticker) {
+        use sp_std::collections::btree_map::Entry;
+
+        // Ensure all accounts in the leg are valid.
+        ensure!(
+            leg.verify_accounts(),
+            Error::<T>::InvalidConfidentialAccount
+        );
+
+        let required_auditors = match asset_auditors.entry(leg.ticker) {
+            Entry::Vacant(entry) => {
+                // Ensure that the asset issuer allows this `venue_id`.
+                ensure!(
+                    Self::venue_allow_list(leg.ticker, venue_id),
+                    Error::<T>::UnauthorizedVenue
+                );
+                // Load and cache the required auditors for the asset.
+                entry.insert(
+                    Self::asset_auditors(leg.ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?,
+                )
+            }
+            Entry::Occupied(entry) => entry.into_mut(),
+        };
+
+        // Ensure all required auditors are included in the leg.
+        for (account, required_role) in required_auditors.auditors() {
+            let role = leg
+                .auditors
+                .get_auditor_role(account)
+                .ok_or(Error::<T>::RequiredAssetAuditorMissing)?;
             ensure!(
-                Self::venue_allow_list(ticker, venue_id),
-                Error::<T>::UnauthorizedVenue
+                *required_role == role,
+                Error::<T>::RequiredAssetAuditorWrongRole
             );
         }
         Ok(())
@@ -1283,7 +1292,7 @@ impl<T: Config> Pallet<T> {
     pub fn base_add_transaction(
         did: IdentityId,
         venue_id: VenueId,
-        legs: Vec<TransactionLeg<T::MaxNumberOfAuditors>>,
+        legs: BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
         memo: Option<Memo>,
     ) -> Result<TransactionId, DispatchError> {
         // Ensure transaction does not have too many legs.
@@ -1305,16 +1314,11 @@ impl<T: Config> Pallet<T> {
         parties.insert(did);
 
         let mut pending_affirms = 0u32;
-        let mut tickers = BTreeSet::new();
+        let mut asset_auditors = BTreeMap::new();
         for (i, leg) in legs.iter().enumerate() {
-            // Check if the venue has required permissions from asset owners.
-            Self::ensure_venue_filtering(&mut tickers, leg.ticker, &venue_id)?;
-            ensure!(
-                leg.verify_accounts(),
-                Error::<T>::InvalidConfidentialAccount
-            );
-            // Ensure the required asset auditors are included.
-            Self::ensure_asset_auditors(leg.ticker, &leg.auditors)?;
+            // Ensure the required asset auditors are included and
+            // check venue filtering.
+            Self::ensure_valid_leg(&leg, &venue_id, &mut asset_auditors)?;
 
             let leg_id = TransactionLegId(i as _);
             let sender_did = Self::get_account_did(&leg.sender)?;

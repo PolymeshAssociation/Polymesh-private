@@ -288,7 +288,9 @@ fn basic_confidential_settlement() {
                     sender: alice.account(),
                     receiver: bob.account(),
                     auditors: auditors.auditors.clone(),
-                }],
+                }]
+                .try_into()
+                .expect("Only one leg"),
                 None
             ));
 
