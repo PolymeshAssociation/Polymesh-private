@@ -199,6 +199,8 @@ jobs:
     resource_class: medium+
     environment:
       - VERBOSE: "1"
+      - POLYMESH_URL: "ws://localhost:9944"
+      - DATABASE_URL: "accounts.db"
       - RUSTFLAGS: -D warnings
     steps:
       - checkout
