@@ -1152,11 +1152,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::TotalSupplyAboveConfidentialBalanceLimit
         );
 
-        ensure!(
-            Details::<T>::contains_key(ticker),
-            Error::<T>::UnknownConfidentialAsset
-        );
-
         // Ensure the confidential account's balance has been initialized.
         ensure!(
             AccountBalance::<T>::contains_key(&account, ticker),
