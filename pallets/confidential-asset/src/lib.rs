@@ -535,6 +535,8 @@ pub mod pallet {
         RequiredAssetAuditorWrongRole,
         /// The number of confidential asset auditors doesn't meet the minimum requirement.
         NotEnoughAssetAuditors,
+        /// Confidential mediator account already created.
+        MediatorAccountAlreadyCreated,
         /// Confidential account already created.
         ConfidentialAccountAlreadyCreated,
         /// Confidential account's balance already initialized.
@@ -1038,22 +1040,19 @@ impl<T: Config> Pallet<T> {
             Error::<T>::ConfidentialAccountAlreadyInitialized
         );
         // Ensure the confidential account doesn't exist, or is already linked to the caller's identity.
-        AccountDid::<T>::try_mutate(&account, |account_did| -> DispatchResult {
-            match account_did {
-                Some(account_did) => {
-                    // Ensure the caller's identity is the same.
-                    ensure!(
-                        *account_did == caller_did,
-                        Error::<T>::ConfidentialAccountAlreadyCreated
-                    );
-                }
-                None => {
-                    // Link the confidential account to the caller's identity.
-                    *account_did = Some(caller_did);
-                }
+        match Self::account_did(&account) {
+            Some(account_did) => {
+                // Ensure the caller's identity is the same.
+                ensure!(
+                    account_did == caller_did,
+                    Error::<T>::ConfidentialAccountAlreadyCreated
+                );
             }
-            Ok(())
-        })?;
+            None => {
+                // Link the confidential account to the caller's identity.
+                AccountDid::insert(&account, caller_did);
+            }
+        }
 
         // Initialize the confidential account balance to zero.
         let enc_balance = CipherText::zero();
@@ -1072,6 +1071,11 @@ impl<T: Config> Pallet<T> {
         caller_did: IdentityId,
         account: MediatorAccount,
     ) -> DispatchResult {
+        // Ensure the confidential mediator account hasn't been created.
+        ensure!(
+            !MediatorAccountDid::<T>::contains_key(&account),
+            Error::<T>::MediatorAccountAlreadyCreated
+        );
         ensure!(account.is_valid(), Error::<T>::InvalidConfidentialAccount);
 
         MediatorAccountDid::<T>::insert(&account, &caller_did);
