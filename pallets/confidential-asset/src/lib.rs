@@ -1050,7 +1050,7 @@ impl<T: Config> Pallet<T> {
             }
             None => {
                 // Link the confidential account to the caller's identity.
-                AccountDid::insert(&account, caller_did);
+                AccountDid::<T>::insert(&account, caller_did);
             }
         }
 
