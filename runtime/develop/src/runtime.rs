@@ -13,7 +13,8 @@ use pallet_corporate_actions::distribution as pallet_capital_distribution;
 use pallet_session::historical as pallet_session_historical;
 pub use pallet_transaction_payment::{Multiplier, RuntimeDispatchInfo, TargetedFeeAdjustment};
 use polymesh_common_utilities::{
-    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, TestUtilsFn,
+    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize,
+    TestUtilsFn,
 };
 use polymesh_primitives::{AccountId, Balance, BlockNumber, Moment};
 use polymesh_runtime_common::{
@@ -89,6 +90,7 @@ parameter_types! {
     pub const MaxNumberOfFungibleAssets: u32 = 10;
     pub const MaxNumberOfNFTsPerLeg: u32 = 10;
     pub const MaxNumberOfNFTs: u32 = 100;
+    pub const MaxNumberOfVenueSigners: u32 = 50;
 
     // I'm online:
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -140,8 +142,14 @@ parameter_types! {
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
-    pub const MaxNumberOfConfidentialLegs: u32 = 10;
 }
+
+#[cfg(feature = "runtime-benchmarks")]
+type MaxNumberOfConfidentialLegs = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type MaxNumberOfConfidentialLegs = ConstSize<10>;
+type MaxNumberOfConfidentialAuditors = ConstSize<8>;
+type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -308,6 +316,8 @@ impl pallet_confidential_asset::Config for Runtime {
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
+    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
+    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
 }
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
@@ -458,7 +468,7 @@ construct_runtime!(
         TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
 
         // Confidential Asset pallets.
-        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event, Config} = 60,
+        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,
     }
 );
 

@@ -5,7 +5,7 @@ pub mod ext_builder;
 use sp_version::NativeVersion;
 
 use codec::Encode;
-use frame_support::dispatch::{DispatchInfo, Weight};
+use frame_support::dispatch::{DispatchInfo, DispatchResult, Weight};
 use frame_support::parameter_types;
 use frame_support::traits::{Currency, Imbalance, KeyOwnerProofSystem, OnUnbalanced};
 use frame_support::weights::RuntimeDbWeight;
@@ -44,7 +44,7 @@ use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
-use polymesh_common_utilities::Context;
+use polymesh_common_utilities::{ConstSize, Context, TestUtilsFn};
 use polymesh_primitives::{AccountId, BlockNumber, Claim, Moment};
 use polymesh_runtime_common::runtime::{BENCHMARK_MAX_INCREASE, VMO};
 use polymesh_runtime_common::{merge_active_and_inactive, AvailableBlockRatio, MaximumBlockWeight};
@@ -118,10 +118,24 @@ parameter_types! {
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
     pub const MaxNumberOfOffChainAssets: u32 = 10;
+    pub const MaxNumberOfVenueSigners: u32 = 50;
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
-    pub const MaxNumberOfConfidentialLegs: u32 = 10;
+}
+
+pub type MaxNumberOfConfidentialLegs = ConstSize<10>;
+pub type MaxNumberOfConfidentialAuditors = ConstSize<8>;
+pub type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+
+/// NB It is needed by benchmarks, in order to use `UserBuilder`.
+impl TestUtilsFn<AccountId> for Runtime {
+    fn register_did(
+        target: AccountId,
+        secondary_keys: Vec<polymesh_primitives::secondary_key::SecondaryKey<AccountId>>,
+    ) -> DispatchResult {
+        <TestUtils as TestUtilsFn<AccountId>>::register_did(target, secondary_keys)
+    }
 }
 
 frame_support::construct_runtime!(
@@ -179,7 +193,7 @@ frame_support::construct_runtime!(
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 48,
         TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
         Nft: pallet_nft::{Pallet, Call, Storage, Event} = 51,
-        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event} = 60,
+        ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>} = 60,
     }
 );
 
@@ -283,6 +297,8 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
+    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
+    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {

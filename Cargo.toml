@@ -118,57 +118,57 @@ exclude = [
 ## Keep common dependencies here.
 [workspace.dependencies]
 # Our pallets
-pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
+pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
-pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
+pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 
 # Common
-polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
+polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 
 # RPC
-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
-polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
+node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
+polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 
 # Build tool
-polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch  = "add-pallet-contracts-to-benchmarks", default-features = false }
+polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "const_size_type_wrapper", default-features = false }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
 frame-support = { version = "4.0.0-dev", default-features = false }
 frame-system = { version = "4.0.0-dev", default-features = false }
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false }
