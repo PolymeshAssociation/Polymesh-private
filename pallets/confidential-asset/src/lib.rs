@@ -16,8 +16,8 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use confidential_assets::{
-    transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey,
+    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
@@ -351,12 +351,10 @@ impl<S: Get<u32>> ConfidentialAuditors<S> {
     }
 
     /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
-    /// Assign an `AuditorId` to each auditor for the Confidential transfer proof.
-    pub fn build_auditor_map(&self) -> Option<BTreeMap<AuditorId, ElgamalPublicKey>> {
+    pub fn build_auditor_set(&self) -> Option<BTreeSet<ElgamalPublicKey>> {
         self.auditors
             .keys()
-            .enumerate()
-            .map(|(idx, account)| account.into_inner().map(|key| (AuditorId(idx as u32), key)))
+            .map(|account| account.into_inner())
             .collect()
     }
 
@@ -1468,7 +1466,7 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
                 let auditors = leg
                     .auditors
-                    .build_auditor_map()
+                    .build_auditor_set()
                     .ok_or(Error::<T>::InvalidConfidentialAccount)?;
 
                 // Get the sender's current balance.

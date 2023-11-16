@@ -9,9 +9,8 @@ use sp_runtime::traits::Zero;
 use rand_chacha::ChaCha20Rng as StdRng;
 
 use confidential_assets::{
-    transaction::{AuditorId, ConfidentialTransferProof},
-    Balance as ConfidentialBalance, CipherText, ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey,
-    Scalar,
+    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 use polymesh_common_utilities::{
@@ -87,8 +86,8 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
         auditors
     }
 
-    pub fn build_auditor_map(&self) -> BTreeMap<AuditorId, ElgamalPublicKey> {
-        self.auditors.build_auditor_map().expect("auditor map")
+    pub fn build_auditor_set(&self) -> BTreeSet<ElgamalPublicKey> {
+        self.auditors.build_auditor_set().expect("auditor set")
     }
 
     pub fn mediators(&self) -> impl Iterator<Item = &ConfidentialUser<T>> {
@@ -107,7 +106,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
             match (role, self.users.get(account)) {
                 (ConfidentialTransactionRole::Mediator, Some(mediator)) => {
                     sender_proof
-                        .auditor_verify(AuditorId(idx as u32), &mediator.sec, Some(amount))
+                        .auditor_verify(idx as u8, &mediator.sec, Some(amount))
                         .expect("Mediator verify proof");
                 }
                 (ConfidentialTransactionRole::Mediator, None) => {
@@ -365,7 +364,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
     pub fn sender_proof(&self, rng: &mut StdRng) -> AffirmLeg {
         let investor_pub_account = self.investor.pub_key();
         let issuer_enc_balance = self.issuer.enc_balance(self.ticker);
-        let auditor_keys = self.auditors.build_auditor_map();
+        let auditor_keys = self.auditors.build_auditor_set();
         let sender_tx = ConfidentialTransferProof::new(
             &self.issuer.sec,
             &issuer_enc_balance,

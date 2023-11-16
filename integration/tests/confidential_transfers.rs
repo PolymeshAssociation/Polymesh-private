@@ -1,6 +1,6 @@
 use anyhow::Result;
 use sp_core::{Decode, Encode};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use polymesh_api::types::{
     pallet_confidential_asset::{
@@ -17,7 +17,7 @@ use polymesh_api::TransactionResults;
 
 use confidential_assets::{
     elgamal::CipherText,
-    transaction::{AuditorId, ConfidentialTransferProof},
+    transaction::ConfidentialTransferProof,
     ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
@@ -182,7 +182,7 @@ pub async fn get_transaction_affirmed(
                     leg_id,
                     AffirmParty::Sender(sender_proof),
                 )) => {
-                    return Some((*tx_id, *leg_id, Some(sender_proof.clone())));
+                    return Some((*tx_id, *leg_id, Some(*sender_proof.clone())));
                 }
                 RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
                     _,
@@ -261,7 +261,7 @@ async fn confidential_transfer() -> Result<()> {
     let auditors = ConfidentialAuditors {
         auditors: BTreeMap::from([(mediator.account(), ConfidentialTransactionRole::Mediator)]),
     };
-    let auditors_ids = BTreeMap::from([(AuditorId(0), mediator.pub_key())]);
+    let auditors_ids = BTreeSet::from([mediator.pub_key()]);
 
     // Mediator registers their account.
     mediator.init_account().await?;

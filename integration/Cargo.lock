@@ -144,6 +144,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-stream"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd56dd203fef61ac097dd65721a419ddccb106b2d2b70ba60a6b529f03961a51"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.32",
+]
+
+[[package]]
 name = "async-trait"
 version = "0.1.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -437,7 +459,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#00d65edcf919b0af4b999e39251f8f7d2fa8ac04"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=MESH-2112-improve_proofs#b01aa3d9d37289fe171ddf7986e1068f06198b70"
 dependencies = [
  "bincode",
  "bulletproofs",
@@ -2508,9 +2530,9 @@ checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 
 [[package]]
 name = "polymesh-api"
-version = "3.0.0"
+version = "3.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7bee09ee051a0f8b30187357750c13d3eee5dfbf31f7611c277b64472afb8f6"
+checksum = "7d29a7e1046c104379e5f7b77ea9736903017303e53b864c28cc5dff217bec24"
 dependencies = [
  "async-trait",
  "ink_env",
@@ -2530,12 +2552,14 @@ dependencies = [
 
 [[package]]
 name = "polymesh-api-client"
-version = "3.0.0"
+version = "3.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3163587707b278f6d6ebe856aed1f5dab814f787302c81a26701ef2a9175b1c7"
+checksum = "e646a1cb1f0ce72d63a9789745e3ae9c071697b8f247cca00903421441e817cc"
 dependencies = [
+ "async-stream",
  "async-trait",
  "frame-metadata",
+ "futures-core",
  "hex",
  "http",
  "impl-serde 0.3.2",
@@ -2573,9 +2597,9 @@ dependencies = [
 
 [[package]]
 name = "polymesh-api-codegen"
-version = "2.1.1"
+version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f15b897daf39953e89d5de70bd25583ec8ad079ae60b6f4db332ef77f22e3b0"
+checksum = "c5a50318a2539a78c48e658c05a11356c6c6cae717843d1cb6abb6b112e1bfac"
 dependencies = [
  "frame-metadata",
  "heck",
@@ -2589,14 +2613,13 @@ dependencies = [
  "serde",
  "serde-big-array",
  "sp-core-hashing",
- "thiserror",
 ]
 
 [[package]]
 name = "polymesh-api-codegen-macro"
-version = "3.0.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6e3ab1dbfd5cbc09a8110fd52a9d698527f7570e9b701d9f4c400104f9a1f58"
+checksum = "140562a50fce7873d1d1e43bccddf5d1930704352d2d2cafa01c6feaf96c799c"
 dependencies = [
  "darling",
  "parity-scale-codec",
@@ -3713,7 +3736,7 @@ dependencies = [
 [[package]]
 name = "sp-std"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#497e3a771f6951815613af339a1d2936af0e3cb6"
+source = "git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03#7854710a5de4066a874ec6e786665f65c439616a"
 
 [[package]]
 name = "sp-std"
@@ -4500,7 +4523,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

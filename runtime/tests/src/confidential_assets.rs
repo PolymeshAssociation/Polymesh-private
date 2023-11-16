@@ -307,7 +307,7 @@ fn basic_confidential_settlement() {
             // Sender computes the proofs in the wallet.
             println!("-------------> Alice is going to authorize.");
             let alice_enc_balance = alice.enc_balance(ticker);
-            let auditor_keys = auditors.build_auditor_map();
+            let auditor_keys = auditors.build_auditor_set();
             let sender_proof = ConfidentialTransferProof::new(
                 &alice.sec,
                 &alice_enc_balance,
