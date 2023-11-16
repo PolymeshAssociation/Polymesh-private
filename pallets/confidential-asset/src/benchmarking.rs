@@ -68,6 +68,11 @@ benchmarks! {
         let issuer = user::<T>("issuer", SEED);
     }: _(issuer.origin())
 
+    set_venue_filtering {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let (ticker, issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
+    }: _(issuer.raw_origin(), ticker, true)
+
     allow_venues {
         // Count of venues.
         let v in 0 .. 100;

@@ -63,6 +63,7 @@ pub trait WeightInfo {
     fn mint_confidential_asset() -> Weight;
     fn apply_incoming_balance() -> Weight;
     fn create_venue() -> Weight;
+    fn set_venue_filtering() -> Weight;
     fn allow_venues(l: u32) -> Weight;
     fn disallow_venues(l: u32) -> Weight;
     fn add_transaction(l: u32, m: u32) -> Weight;
@@ -479,6 +480,9 @@ pub mod pallet {
         /// A new venue has been created.
         /// (caller DID, venue_id)
         VenueCreated(IdentityId, VenueId),
+        /// Venue filtering changed for an asset.
+        /// (caller DID, ticker, enabled)
+        VenueFiltering(IdentityId, Ticker, bool),
         /// Venues added to allow list.
         /// (caller DID, ticker, Vec<VenueId>)
         VenuesAllowed(IdentityId, Ticker, Vec<VenueId>),
@@ -603,6 +607,13 @@ pub mod pallet {
     #[pallet::getter(fn venue_transactions)]
     pub type VenueTransactions<T: Config> =
         StorageDoubleMap<_, Twox64Concat, VenueId, Twox64Concat, TransactionId, (), ValueQuery>;
+
+    /// Venue filtering is enabled for the asset.
+    ///
+    /// ticker -> filtering_enabled
+    #[pallet::storage]
+    #[pallet::getter(fn venue_filtering)]
+    pub type VenueFiltering<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, bool, ValueQuery>;
 
     /// Venues that are allowed to create transactions involving a particular ticker.
     ///
@@ -924,11 +935,27 @@ pub mod pallet {
             Self::base_create_venue(did)
         }
 
+        /// Enables or disabled venue filtering for a token.
+        ///
+        /// # Arguments
+        /// * `ticker` - Ticker of the token in question.
+        /// * `enabled` - Boolean that decides if the filtering should be enabled.
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_venue_filtering())]
+        pub fn set_venue_filtering(
+            origin: OriginFor<T>,
+            ticker: Ticker,
+            enabled: bool,
+        ) -> DispatchResult {
+            let did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_set_venue_filtering(did, ticker, enabled)
+        }
+
         /// Allows additional venues to create instructions involving an asset.
         ///
         /// * `ticker` - Ticker of the token in question.
         /// * `venues` - Array of venues that are allowed to create instructions for the token in question.
-        #[pallet::call_index(6)]
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::allow_venues(venues.len() as u32))]
         pub fn allow_venues(
             origin: OriginFor<T>,
@@ -943,7 +970,7 @@ pub mod pallet {
         ///
         /// * `ticker` - Ticker of the token in question.
         /// * `venues` - Array of venues that are no longer allowed to create instructions for the token in question.
-        #[pallet::call_index(7)]
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::disallow_venues(venues.len() as u32))]
         pub fn disallow_venues(
             origin: OriginFor<T>,
@@ -955,7 +982,7 @@ pub mod pallet {
         }
 
         /// Adds a new transaction.
-        #[pallet::call_index(8)]
+        #[pallet::call_index(9)]
         #[pallet::weight({
             // Count the number of mediators.
             let m_count = legs.iter().fold(0, |acc, l| {
@@ -975,7 +1002,7 @@ pub mod pallet {
         }
 
         /// Affirm a transaction.
-        #[pallet::call_index(9)]
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::affirm_transaction(&affirm))]
         pub fn affirm_transaction(
             origin: OriginFor<T>,
@@ -988,7 +1015,7 @@ pub mod pallet {
         }
 
         /// Unaffirm a transaction.
-        #[pallet::call_index(10)]
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::unaffirm_transaction(&unaffirm))]
         pub fn unaffirm_transaction(
             origin: OriginFor<T>,
@@ -1001,7 +1028,7 @@ pub mod pallet {
         }
 
         /// Execute transaction.
-        #[pallet::call_index(11)]
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_transaction(*leg_count))]
         pub fn execute_transaction(
             origin: OriginFor<T>,
@@ -1014,7 +1041,7 @@ pub mod pallet {
         }
 
         /// Reject pending transaction.
-        #[pallet::call_index(12)]
+        #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_transaction(*leg_count))]
         pub fn reject_transaction(
             origin: OriginFor<T>,
@@ -1217,6 +1244,17 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    // Ensure the asset allows the venue.
+    fn ensure_venue_allowed(ticker: Ticker, venue_id: &VenueId) -> DispatchResult {
+        if Self::venue_filtering(ticker) {
+            ensure!(
+                Self::venue_allow_list(ticker, venue_id),
+                Error::<T>::UnauthorizedVenue
+            );
+        }
+        Ok(())
+    }
+
     // Ensure that the required asset auditors/mediators are included and
     // that the asset issuer allows `venue_id`.
     fn ensure_valid_leg(
@@ -1235,10 +1273,7 @@ impl<T: Config> Pallet<T> {
         let required_auditors = match asset_auditors.entry(leg.ticker) {
             Entry::Vacant(entry) => {
                 // Ensure that the asset issuer allows this `venue_id`.
-                ensure!(
-                    Self::venue_allow_list(leg.ticker, venue_id),
-                    Error::<T>::UnauthorizedVenue
-                );
+                Self::ensure_venue_allowed(leg.ticker, venue_id)?;
                 // Load and cache the required auditors for the asset.
                 entry.insert(
                     Self::asset_auditors(leg.ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?,
@@ -1270,6 +1305,16 @@ impl<T: Config> Pallet<T> {
         VenueCreator::<T>::insert(venue_id, did);
         IdentityVenues::<T>::insert(did, venue_id, ());
         Self::deposit_event(Event::<T>::VenueCreated(did, venue_id));
+        Ok(())
+    }
+
+    fn base_set_venue_filtering(did: IdentityId, ticker: Ticker, enabled: bool) -> DispatchResult {
+        if enabled {
+            VenueFiltering::<T>::insert(ticker, enabled);
+        } else {
+            VenueFiltering::<T>::remove(ticker);
+        }
+        Self::deposit_event(Event::<T>::VenueFiltering(did, ticker, enabled));
         Ok(())
     }
 

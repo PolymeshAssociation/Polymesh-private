@@ -125,6 +125,10 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().reads(2))
             .saturating_add(DbWeight::get().writes(3))
     }
+    fn set_venue_filtering() -> Weight {
+        // Minimum execution time: 73_098 nanoseconds.
+        Weight::from_ref_time(76_718_053)
+    }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset Details (r:1 w:0)
