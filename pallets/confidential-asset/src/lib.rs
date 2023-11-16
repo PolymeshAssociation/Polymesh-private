@@ -1056,6 +1056,11 @@ impl<T: Config> Pallet<T> {
         ticker: Ticker,
         account: ConfidentialAccount,
     ) -> DispatchResult {
+        // Ensure the confidential asset exists.
+        ensure!(
+            Details::<T>::contains_key(ticker),
+            Error::<T>::UnknownConfidentialAsset
+        );
         // Ensure the confidential account's balance hasn't been initialized.
         ensure!(
             !AccountBalance::<T>::contains_key(&account, ticker),
@@ -1122,6 +1127,13 @@ impl<T: Config> Pallet<T> {
         ensure!(auditors.is_valid(), Error::<T>::InvalidMediatorAccount);
         // Ensure that there is at least one auditor.
         ensure!(auditors.len() >= 1, Error::<T>::NotEnoughAssetAuditors);
+
+        // Ensure the mediators exist.
+        for mediator in auditors.mediators() {
+            Self::get_mediator_did(mediator)?;
+        }
+
+        // Store asset auditors.
         AssetAuditors::<T>::insert(ticker, auditors);
 
         let details = ConfidentialAssetDetails {
