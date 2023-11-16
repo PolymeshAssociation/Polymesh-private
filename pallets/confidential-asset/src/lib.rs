@@ -505,13 +505,8 @@ pub mod pallet {
         /// (caller DID, transaction_id, memo)
         TransactionRejected(IdentityId, TransactionId, Option<Memo>),
         /// Confidential transaction leg affirmed.
-        /// (caller DID, TransactionId, TransactionLegId, SenderProof)
-        TransactionAffirmed(
-            IdentityId,
-            TransactionId,
-            TransactionLegId,
-            Option<SenderProof>,
-        ),
+        /// (caller DID, TransactionId, TransactionLegId, AffirmParty)
+        TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, AffirmParty),
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
         /// (confidential account, ticker, new encrypted balance)
@@ -1446,7 +1441,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::TransactionAlreadyAffirmed
         );
 
-        match affirm.party {
+        match &affirm.party {
             AffirmParty::Sender(proof) => {
                 let init_tx = proof.into_tx().ok_or(Error::<T>::InvalidSenderProof)?;
                 let sender_did = Self::account_did(&leg.sender);
@@ -1489,13 +1484,6 @@ impl<T: Config> Pallet<T> {
                 TxLegSenderBalance::<T>::insert(&(transaction_id, leg_id), from_current_balance);
                 TxLegSenderAmount::<T>::insert(&(transaction_id, leg_id), sender_amount);
                 TxLegReceiverAmount::<T>::insert(&(transaction_id, leg_id), receiver_amount);
-
-                Self::deposit_event(Event::<T>::TransactionAffirmed(
-                    caller_did,
-                    transaction_id,
-                    leg_id,
-                    Some(*proof),
-                ));
             }
             AffirmParty::Receiver => {
                 let receiver_did = Self::account_did(&leg.receiver);
@@ -1506,6 +1494,7 @@ impl<T: Config> Pallet<T> {
                 ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
             }
         }
+
         // Update affirmations.
         UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, party), true);
         PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> DispatchResult {
@@ -1516,6 +1505,14 @@ impl<T: Config> Pallet<T> {
                 Err(Error::<T>::UnknownTransaction.into())
             }
         })?;
+
+        // Emit affirmation event.
+        Self::deposit_event(Event::<T>::TransactionAffirmed(
+            caller_did,
+            transaction_id,
+            leg_id,
+            affirm.party,
+        ));
 
         Ok(())
     }
