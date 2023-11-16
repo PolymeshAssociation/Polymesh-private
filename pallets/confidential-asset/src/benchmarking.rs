@@ -28,7 +28,7 @@ benchmarks! {
 
     create_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let ticker = Ticker::from_slice_truncated(b"A".as_ref());
+        let (ticker, _issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
         let user = ConfidentialUser::<T>::new("user", &mut rng);
     }: _(user.raw_origin(), ticker, user.account())
 
