@@ -615,14 +615,6 @@ pub mod general {
             authority_discovery: Default::default(),
             babe: BABE_GENESIS,
             grandpa: Default::default(),
-            /*
-            pallet_contracts: Some(pallet_contracts::GenesisConfig {
-                current_schedule: pallet_contracts::Schedule {
-                    enable_println, // this should only be enabled on development chains
-                    ..Default::default()
-                },
-            }),
-            */
             // Governance Council:
             committee_membership: group_membership!(1),
             polymesh_committee: committee!(1),
@@ -770,14 +762,6 @@ pub mod mainnet {
             authority_discovery: Default::default(),
             babe: BABE_GENESIS,
             grandpa: Default::default(),
-            /*
-            pallet_contracts: Some(pallet_contracts::GenesisConfig {
-                current_schedule: pallet_contracts::Schedule {
-                    enable_println, // this should only be enabled on development chains
-                    ..Default::default()
-                },
-            }),
-            */
             // Governing council
             committee_membership: group_membership!(1, 2, 3), // 3 GC members
             polymesh_committee: committee!(1, (2, 3)),        // RC = 1, 2/3 votes required
@@ -962,14 +946,6 @@ pub mod general {
             authority_discovery: Default::default(),
             babe: BABE_GENESIS,
             grandpa: Default::default(),
-            /*
-            pallet_contracts: Some(pallet_contracts::GenesisConfig {
-                current_schedule: pallet_contracts::Schedule {
-                    enable_println, // this should only be enabled on development chains
-                    ..Default::default()
-                },
-            }),
-            */
             // Governing council
             committee_membership: group_membership!(1, 2, 3, 5),
             polymesh_committee: committee!(1, (2, 4)),
@@ -990,6 +966,7 @@ pub mod general {
             },
             corporate_action: corporate_actions!(),
             polymesh_contracts: polymesh_contracts!(),
+            ..Default::default()
         }
     }
 
