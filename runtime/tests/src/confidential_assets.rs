@@ -8,7 +8,8 @@ use test_client::AccountKeyring;
 use confidential_assets::transaction::ConfidentialTransferProof;
 
 use pallet_confidential_asset::{
-    testing::*, AffirmLeg, ConfidentialAssetDetails, Event, TransactionLeg, TransactionLegId,
+    testing::*, AffirmLeg, AffirmParty, ConfidentialAssetDetails, Event, TransactionLeg,
+    TransactionLegId,
 };
 use polymesh_primitives::asset::{AssetName, AssetType};
 use polymesh_primitives::Ticker;
@@ -211,10 +212,10 @@ fn issuers_can_create_and_mint_tokens() {
 #[test]
 fn account_create() {
     ExtBuilder::default().build().execute_with(|| {
-        let ticker = Ticker::from_slice_truncated(b"A".as_ref());
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let (ticker, _, _) = create_confidential_token::<TestRuntime>("A", 0, &mut rng);
 
         // ------------- START: Computations that will happen in Alice's Wallet ----------
-        let mut rng = StdRng::from_seed([10u8; 32]);
         let alice = ConfidentialUser::<TestRuntime>::new("alice", &mut rng);
         // ------------- END: Computations that will happen in the Wallet ----------
 
@@ -328,19 +329,19 @@ fn basic_confidential_settlement() {
             println!("-------------> Bob is going to authorize.");
             let sender_proof = {
                 match System::events().pop().unwrap().event {
-                    EventTest::ConfidentialAsset(Event::TransactionAffirmed(_, _, _, proof)) => {
-                        proof
-                            .expect("Expected Proof")
-                            .into_tx()
-                            .expect("Valid sender proof")
-                    }
+                    EventTest::ConfidentialAsset(Event::TransactionAffirmed(
+                        _,
+                        _,
+                        _,
+                        AffirmParty::Sender(proof),
+                    )) => proof.into_tx().expect("Valid sender proof"),
                     _ => panic!("Exepected TransactionAffirmed event"),
                 }
             };
 
             // Receiver computes the proofs in the wallet.
             sender_proof
-                .receiver_verify(bob.sec.clone(), amount)
+                .receiver_verify(bob.sec.clone(), Some(amount))
                 .unwrap();
             let affirm = AffirmLeg::receiver(leg_id);
 
@@ -352,7 +353,7 @@ fn basic_confidential_settlement() {
             println!("-------------> Charlie is going to authorize.");
 
             // Mediator verifies the proofs in the wallet.
-            auditors.verify_proof(&sender_proof);
+            auditors.verify_proof(&sender_proof, amount);
             for user in auditors.mediators() {
                 let affirm = AffirmLeg::mediator(leg_id, user.mediator_account());
 

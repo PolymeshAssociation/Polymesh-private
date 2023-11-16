@@ -97,13 +97,17 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
             .filter_map(|acc| self.users.get(acc))
     }
 
-    pub fn verify_proof(&self, sender_proof: &ConfidentialTransferProof) {
+    pub fn verify_proof(
+        &self,
+        sender_proof: &ConfidentialTransferProof,
+        amount: ConfidentialBalance,
+    ) {
         let auditors = self.auditors.auditors().enumerate();
         for (idx, (account, role)) in auditors {
             match (role, self.users.get(account)) {
                 (ConfidentialTransactionRole::Mediator, Some(mediator)) => {
                     sender_proof
-                        .auditor_verify(AuditorId(idx as u32), &mediator.sec)
+                        .auditor_verify(AuditorId(idx as u32), &mediator.sec, Some(amount))
                         .expect("Mediator verify proof");
                 }
                 (ConfidentialTransactionRole::Mediator, None) => {
