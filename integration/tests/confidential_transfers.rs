@@ -180,9 +180,17 @@ pub async fn get_transaction_affirmed(
                     _,
                     tx_id,
                     leg_id,
-                    sender_proof,
+                    AffirmParty::Sender(sender_proof),
                 )) => {
-                    return Some((*tx_id, *leg_id, sender_proof.clone()));
+                    return Some((*tx_id, *leg_id, Some(sender_proof.clone())));
+                }
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
+                    _,
+                    tx_id,
+                    leg_id,
+                    _,
+                )) => {
+                    return Some((*tx_id, *leg_id, None));
                 }
                 _ => (),
             }
@@ -258,11 +266,6 @@ async fn confidential_transfer() -> Result<()> {
     // Mediator registers their account.
     mediator.init_account().await?;
 
-    // Initialize the issuer's account.
-    issuer.init_account(ticker).await?;
-    // Initialize the investor's account.
-    investor.init_account(ticker).await?;
-
     // Asset issuer create the confidential asset.
     let mut res_asset = api
         .call()
@@ -275,6 +278,12 @@ async fn confidential_transfer() -> Result<()> {
         )?
         .submit_and_watch(&mut issuer.user)
         .await?;
+
+    // Initialize the issuer's account.
+    issuer.init_account(ticker).await?;
+    // Initialize the investor's account.
+    investor.init_account(ticker).await?;
+
     let total_supply = 1_000_000_000u64;
     api.call()
         .confidential_asset()
