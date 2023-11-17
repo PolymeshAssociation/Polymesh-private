@@ -516,7 +516,13 @@ pub mod pallet {
         /// Confidential transaction leg affirmed.
         ///
         /// (caller DID, TransactionId, TransactionLegId, AffirmParty, PendingAffirms)
-        TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, AffirmParty, u32),
+        TransactionAffirmed(
+            IdentityId,
+            TransactionId,
+            TransactionLegId,
+            AffirmParty,
+            u32,
+        ),
         /// Confidential transaction leg unaffirmed.
         ///
         /// (caller DID, TransactionId, TransactionLegId, LegParty, PendingAffirms)
@@ -1526,14 +1532,17 @@ impl<T: Config> Pallet<T> {
 
         // Update affirmations.
         UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, party), true);
-        let pending = PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> Result<_, DispatchError> {
-            if let Some(ref mut pending) = pending {
-                *pending = pending.saturating_sub(1);
-                Ok(*pending)
-            } else {
-                Err(Error::<T>::UnknownTransaction.into())
-            }
-        })?;
+        let pending = PendingAffirms::<T>::try_mutate(
+            transaction_id,
+            |pending| -> Result<_, DispatchError> {
+                if let Some(ref mut pending) = pending {
+                    *pending = pending.saturating_sub(1);
+                    Ok(*pending)
+                } else {
+                    Err(Error::<T>::UnknownTransaction.into())
+                }
+            },
+        )?;
 
         // Emit affirmation event.
         Self::deposit_event(Event::<T>::TransactionAffirmed(
@@ -1623,14 +1632,17 @@ impl<T: Config> Pallet<T> {
         };
         // Update affirmations.
         UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, unaffirm.party), false);
-        let pending = PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> Result<_, DispatchError> {
-            if let Some(ref mut pending) = pending {
-                *pending = pending.saturating_add(pending_affirms);
-                Ok(*pending)
-            } else {
-                Err(Error::<T>::UnknownTransaction.into())
-            }
-        })?;
+        let pending = PendingAffirms::<T>::try_mutate(
+            transaction_id,
+            |pending| -> Result<_, DispatchError> {
+                if let Some(ref mut pending) = pending {
+                    *pending = pending.saturating_add(pending_affirms);
+                    Ok(*pending)
+                } else {
+                    Err(Error::<T>::UnknownTransaction.into())
+                }
+            },
+        )?;
 
         // Emit unaffirmation event.
         Self::deposit_event(Event::<T>::TransactionUnaffirmed(
