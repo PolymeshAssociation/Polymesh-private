@@ -181,6 +181,7 @@ pub async fn get_transaction_affirmed(
                     tx_id,
                     leg_id,
                     AffirmParty::Sender(sender_proof),
+                    _,
                 )) => {
                     return Some((*tx_id, *leg_id, Some(*sender_proof.clone())));
                 }
@@ -188,6 +189,7 @@ pub async fn get_transaction_affirmed(
                     _,
                     tx_id,
                     leg_id,
+                    _,
                     _,
                 )) => {
                     return Some((*tx_id, *leg_id, None));

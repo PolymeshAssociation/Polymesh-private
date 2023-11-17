@@ -334,6 +334,7 @@ fn basic_confidential_settlement() {
                         _,
                         _,
                         AffirmParty::Sender(proof),
+                        _,
                     )) => proof.into_tx().expect("Valid sender proof"),
                     _ => panic!("Exepected TransactionAffirmed event"),
                 }

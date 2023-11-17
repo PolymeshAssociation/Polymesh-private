@@ -464,30 +464,39 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Event for creation of a Mediator account.
+        ///
         /// caller DID, Mediator confidential account (public key)
         MediatorAccountCreated(IdentityId, MediatorAccount),
         /// Event for creation of a Confidential account.
+        ///
         /// caller DID, confidential account (public key), ticker, encrypted balance
         AccountCreated(IdentityId, ConfidentialAccount, Ticker, CipherText),
         /// Event for creation of a confidential asset.
+        ///
         /// (caller DID, ticker, total supply, asset type)
         ConfidentialAssetCreated(IdentityId, Ticker, Balance, AssetType),
         /// Issued confidential assets.
+        ///
         /// (caller DID, ticker, amount issued, total_supply)
         Issued(IdentityId, Ticker, Balance, Balance),
         /// A new venue has been created.
+        ///
         /// (caller DID, venue_id)
         VenueCreated(IdentityId, VenueId),
         /// Venue filtering changed for an asset.
+        ///
         /// (caller DID, ticker, enabled)
         VenueFiltering(IdentityId, Ticker, bool),
         /// Venues added to allow list.
+        ///
         /// (caller DID, ticker, Vec<VenueId>)
         VenuesAllowed(IdentityId, Ticker, Vec<VenueId>),
         /// Venues removed from the allow list.
+        ///
         /// (caller DID, ticker, Vec<VenueId>)
         VenuesBlocked(IdentityId, Ticker, Vec<VenueId>),
         /// A new transaction has been created
+        ///
         /// (caller DID, venue_id, transaction_id, legs, memo)
         TransactionCreated(
             IdentityId,
@@ -497,25 +506,35 @@ pub mod pallet {
             Option<Memo>,
         ),
         /// Confidential transaction executed.
+        ///
         /// (caller DID, transaction_id, memo)
         TransactionExecuted(IdentityId, TransactionId, Option<Memo>),
         /// Confidential transaction rejected.
+        ///
         /// (caller DID, transaction_id, memo)
         TransactionRejected(IdentityId, TransactionId, Option<Memo>),
         /// Confidential transaction leg affirmed.
-        /// (caller DID, TransactionId, TransactionLegId, AffirmParty)
-        TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, AffirmParty),
+        ///
+        /// (caller DID, TransactionId, TransactionLegId, AffirmParty, PendingAffirms)
+        TransactionAffirmed(IdentityId, TransactionId, TransactionLegId, AffirmParty, u32),
+        /// Confidential transaction leg unaffirmed.
+        ///
+        /// (caller DID, TransactionId, TransactionLegId, LegParty, PendingAffirms)
+        TransactionUnaffirmed(IdentityId, TransactionId, TransactionLegId, LegParty, u32),
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
+        ///
         /// (confidential account, ticker, new encrypted balance)
         AccountWithdraw(ConfidentialAccount, Ticker, CipherText),
         /// Confidential account balance increased.
         /// This happens when the sender unaffirms a transaction or
         /// when the receiver calls `apply_incoming_balance`.
+        ///
         /// (confidential account, ticker, new encrypted balance)
         AccountDeposit(ConfidentialAccount, Ticker, CipherText),
         /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
+        ///
         /// (confidential account, ticker, encrypted amount)
         AccountDepositIncoming(ConfidentialAccount, Ticker, CipherText),
     }
@@ -1507,10 +1526,10 @@ impl<T: Config> Pallet<T> {
 
         // Update affirmations.
         UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, party), true);
-        PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> DispatchResult {
+        let pending = PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> Result<_, DispatchError> {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_sub(1);
-                Ok(())
+                Ok(*pending)
             } else {
                 Err(Error::<T>::UnknownTransaction.into())
             }
@@ -1522,6 +1541,7 @@ impl<T: Config> Pallet<T> {
             transaction_id,
             leg_id,
             affirm.party,
+            pending,
         ));
 
         Ok(())
@@ -1544,7 +1564,7 @@ impl<T: Config> Pallet<T> {
 
         let leg = TransactionLegs::<T>::get(transaction_id, leg_id)
             .ok_or(Error::<T>::UnknownTransactionLeg)?;
-        let pending_affirms = match unaffirm.party {
+        let pending_affirms = match &unaffirm.party {
             LegParty::Sender => {
                 let sender_did = Self::account_did(&leg.sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
@@ -1603,14 +1623,23 @@ impl<T: Config> Pallet<T> {
         };
         // Update affirmations.
         UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, unaffirm.party), false);
-        PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> DispatchResult {
+        let pending = PendingAffirms::<T>::try_mutate(transaction_id, |pending| -> Result<_, DispatchError> {
             if let Some(ref mut pending) = pending {
                 *pending = pending.saturating_add(pending_affirms);
-                Ok(())
+                Ok(*pending)
             } else {
                 Err(Error::<T>::UnknownTransaction.into())
             }
         })?;
+
+        // Emit unaffirmation event.
+        Self::deposit_event(Event::<T>::TransactionUnaffirmed(
+            caller_did,
+            transaction_id,
+            leg_id,
+            unaffirm.party,
+            pending,
+        ));
 
         Ok(())
     }
