@@ -70,9 +70,6 @@ pub trait WeightInfo {
     fn sender_affirm_transaction(a: u32) -> Weight;
     fn receiver_affirm_transaction() -> Weight;
     fn mediator_affirm_transaction() -> Weight;
-    fn sender_unaffirm_transaction() -> Weight;
-    fn receiver_unaffirm_transaction() -> Weight;
-    fn mediator_unaffirm_transaction() -> Weight;
     fn execute_transaction(l: u32) -> Weight;
     fn reject_transaction(l: u32) -> Weight;
 
@@ -84,14 +81,6 @@ pub trait WeightInfo {
             },
             AffirmParty::Receiver => Self::receiver_affirm_transaction(),
             AffirmParty::Mediator(_) => Self::mediator_affirm_transaction(),
-        }
-    }
-
-    fn unaffirm_transaction(unaffirm: &UnaffirmLeg) -> Weight {
-        match unaffirm.party {
-            LegParty::Sender => Self::sender_unaffirm_transaction(),
-            LegParty::Receiver => Self::receiver_unaffirm_transaction(),
-            LegParty::Mediator(_) => Self::mediator_unaffirm_transaction(),
         }
     }
 }
@@ -283,35 +272,6 @@ pub enum LegParty {
     Sender,
     Receiver,
     Mediator(MediatorAccount),
-}
-
-#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
-pub struct UnaffirmLeg {
-    leg_id: TransactionLegId,
-    party: LegParty,
-}
-
-impl UnaffirmLeg {
-    pub fn sender(leg_id: TransactionLegId) -> Self {
-        Self {
-            leg_id,
-            party: LegParty::Sender,
-        }
-    }
-
-    pub fn receiver(leg_id: TransactionLegId) -> Self {
-        Self {
-            leg_id,
-            party: LegParty::Receiver,
-        }
-    }
-
-    pub fn mediator(leg_id: TransactionLegId, account: MediatorAccount) -> Self {
-        Self {
-            leg_id,
-            party: LegParty::Mediator(account),
-        }
-    }
 }
 
 /// Confidential asset details.
@@ -523,18 +483,13 @@ pub mod pallet {
             AffirmParty,
             u32,
         ),
-        /// Confidential transaction leg unaffirmed.
-        ///
-        /// (caller DID, TransactionId, TransactionLegId, LegParty, PendingAffirms)
-        TransactionUnaffirmed(IdentityId, TransactionId, TransactionLegId, LegParty, u32),
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
         ///
         /// (confidential account, ticker, new encrypted balance)
         AccountWithdraw(ConfidentialAccount, Ticker, CipherText),
         /// Confidential account balance increased.
-        /// This happens when the sender unaffirms a transaction or
-        /// when the receiver calls `apply_incoming_balance`.
+        /// This happens when the receiver calls `apply_incoming_balance`.
         ///
         /// (confidential account, ticker, new encrypted balance)
         AccountDeposit(ConfidentialAccount, Ticker, CipherText),
@@ -1032,21 +987,8 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Unaffirm a transaction.
-        #[pallet::call_index(11)]
-        #[pallet::weight(<T as Config>::WeightInfo::unaffirm_transaction(&unaffirm))]
-        pub fn unaffirm_transaction(
-            origin: OriginFor<T>,
-            transaction_id: TransactionId,
-            unaffirm: UnaffirmLeg,
-        ) -> DispatchResultWithPostInfo {
-            let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_unaffirm_transaction(did, transaction_id, unaffirm)?;
-            Ok(().into())
-        }
-
         /// Execute transaction.
-        #[pallet::call_index(12)]
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_transaction(*leg_count))]
         pub fn execute_transaction(
             origin: OriginFor<T>,
@@ -1059,7 +1001,7 @@ pub mod pallet {
         }
 
         /// Reject pending transaction.
-        #[pallet::call_index(13)]
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::execute_transaction(*leg_count))]
         pub fn reject_transaction(
             origin: OriginFor<T>,
@@ -1550,106 +1492,6 @@ impl<T: Config> Pallet<T> {
             transaction_id,
             leg_id,
             affirm.party,
-            pending,
-        ));
-
-        Ok(())
-    }
-
-    fn base_unaffirm_transaction(
-        caller_did: IdentityId,
-        transaction_id: TransactionId,
-        unaffirm: UnaffirmLeg,
-    ) -> DispatchResult {
-        let leg_id = unaffirm.leg_id;
-
-        // Ensure the caller has affirmed this leg.
-        let caller_affirm =
-            UserAffirmations::<T>::get(caller_did, (transaction_id, leg_id, unaffirm.party));
-        ensure!(
-            caller_affirm == Some(true),
-            Error::<T>::TransactionNotAffirmed
-        );
-
-        let leg = TransactionLegs::<T>::get(transaction_id, leg_id)
-            .ok_or(Error::<T>::UnknownTransactionLeg)?;
-        let pending_affirms = match &unaffirm.party {
-            LegParty::Sender => {
-                let sender_did = Self::account_did(&leg.sender);
-                ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
-
-                let mut pending_affirms = 1;
-                // If the receiver has affirmed the leg, then we need to invalid their affirmation.
-                let receiver_did = Self::get_account_did(&leg.receiver)?;
-                UserAffirmations::<T>::mutate(
-                    receiver_did,
-                    (transaction_id, leg_id, LegParty::Receiver),
-                    |affirmed| {
-                        if *affirmed == Some(true) {
-                            pending_affirms += 1;
-                        }
-                        *affirmed = Some(false)
-                    },
-                );
-                // If mediators have affirmed the leg, then we need to invalid their affirmation.
-                for mediator in leg.mediators() {
-                    let mediator_did = Self::get_mediator_did(mediator)?;
-                    UserAffirmations::<T>::mutate(
-                        mediator_did,
-                        (transaction_id, leg_id, LegParty::Mediator(*mediator)),
-                        |affirmed| {
-                            if *affirmed == Some(true) {
-                                pending_affirms += 1;
-                            }
-                            *affirmed = Some(false)
-                        },
-                    );
-                }
-
-                // Take the transaction leg's pending state.
-                TxLegSenderBalance::<T>::remove((transaction_id, leg_id));
-                let sender_amount = TxLegSenderAmount::<T>::take((transaction_id, leg_id))
-                    .ok_or(Error::<T>::TransactionNotAffirmed)?;
-                TxLegReceiverAmount::<T>::remove((transaction_id, leg_id));
-
-                // Deposit the transaction amount back into the sender's account.
-                Self::account_deposit_amount(&leg.sender, leg.ticker, sender_amount)?;
-
-                pending_affirms
-            }
-            LegParty::Receiver => {
-                let receiver_did = Self::account_did(&leg.receiver);
-                ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
-
-                1
-            }
-            LegParty::Mediator(mediator) => {
-                let mediator_did = Self::mediator_account_did(mediator);
-                ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
-
-                1
-            }
-        };
-        // Update affirmations.
-        UserAffirmations::<T>::insert(caller_did, (transaction_id, leg_id, unaffirm.party), false);
-        let pending = PendingAffirms::<T>::try_mutate(
-            transaction_id,
-            |pending| -> Result<_, DispatchError> {
-                if let Some(ref mut pending) = pending {
-                    *pending = pending.saturating_add(pending_affirms);
-                    Ok(*pending)
-                } else {
-                    Err(Error::<T>::UnknownTransaction.into())
-                }
-            },
-        )?;
-
-        // Emit unaffirmation event.
-        Self::deposit_event(Event::<T>::TransactionUnaffirmed(
-            caller_did,
-            transaction_id,
-            leg_id,
-            unaffirm.party,
             pending,
         ));
 

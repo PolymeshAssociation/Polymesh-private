@@ -171,44 +171,6 @@ benchmarks! {
         let affirm = AffirmLeg::mediator(TransactionLegId(0), mediator.mediator_account());
     }: affirm_transaction(mediator.raw_origin(), tx.id, affirm)
 
-    sender_unaffirm_transaction {
-        let mut rng = StdRng::from_seed([10u8; 32]);
-
-        // Setup for transaction.
-        let mut tx = TransactionState::<T>::new(&mut rng);
-        tx.add_transaction();
-        tx.affirm_legs(&mut rng);
-
-        let unaffirm = UnaffirmLeg::sender(TransactionLegId(0));
-        let leg = tx.leg(0);
-    }: unaffirm_transaction(leg.issuer.raw_origin(), tx.id, unaffirm)
-
-    receiver_unaffirm_transaction {
-        let mut rng = StdRng::from_seed([10u8; 32]);
-
-        // Setup for transaction.
-        let mut tx = TransactionState::<T>::new(&mut rng);
-        tx.add_transaction();
-        tx.affirm_legs(&mut rng);
-
-        let unaffirm = UnaffirmLeg::receiver(TransactionLegId(0));
-        let leg = tx.leg(0);
-    }: unaffirm_transaction(leg.investor.raw_origin(), tx.id, unaffirm)
-
-    mediator_unaffirm_transaction {
-        let mut rng = StdRng::from_seed([10u8; 32]);
-
-        // Setup for transaction.
-        let mut tx = TransactionState::<T>::new(&mut rng);
-        tx.add_transaction();
-        tx.affirm_legs(&mut rng);
-
-        let leg = tx.leg(0);
-        let mediator = leg.mediator(0);
-        let affirm = AffirmLeg::mediator(TransactionLegId(0), mediator.mediator_account());
-        let unaffirm = UnaffirmLeg::mediator(TransactionLegId(0), mediator.mediator_account());
-    }: unaffirm_transaction(mediator.raw_origin(), tx.id, unaffirm)
-
     execute_transaction {
         let l in 1..T::MaxNumberOfLegs::get();
 

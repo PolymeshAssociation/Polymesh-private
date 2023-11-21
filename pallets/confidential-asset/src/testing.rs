@@ -405,32 +405,6 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         }
     }
 
-    pub fn sender_unaffirm(&self, id: TransactionId) {
-        assert_ok!(Pallet::<T>::unaffirm_transaction(
-            self.issuer.origin(),
-            id,
-            UnaffirmLeg::sender(self.leg_id),
-        ));
-    }
-
-    pub fn receiver_unaffirm(&self, id: TransactionId) {
-        assert_ok!(Pallet::<T>::unaffirm_transaction(
-            self.investor.origin(),
-            id,
-            UnaffirmLeg::receiver(self.leg_id),
-        ));
-    }
-
-    pub fn mediator_unaffirm(&self, id: TransactionId) {
-        for mediator in self.auditors.mediators() {
-            assert_ok!(Pallet::<T>::unaffirm_transaction(
-                mediator.origin(),
-                id,
-                UnaffirmLeg::mediator(self.leg_id, mediator.mediator_account()),
-            ));
-        }
-    }
-
     pub fn affirm_leg(&self, id: TransactionId, rng: &mut StdRng) {
         self.sender_affirm(id, rng);
         self.receiver_affirm(id);
@@ -539,18 +513,6 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     pub fn mediator_affirm(&self, leg_id: u32) {
         self.leg(leg_id).mediator_affirm(self.id)
-    }
-
-    pub fn sender_unaffirm(&self, leg_id: u32) {
-        self.leg(leg_id).sender_unaffirm(self.id)
-    }
-
-    pub fn receiver_unaffirm(&self, leg_id: u32) {
-        self.leg(leg_id).receiver_unaffirm(self.id)
-    }
-
-    pub fn mediator_unaffirm(&self, leg_id: u32) {
-        self.leg(leg_id).mediator_unaffirm(self.id)
     }
 
     pub fn affirm_leg(&self, leg_id: u32, rng: &mut StdRng) {
