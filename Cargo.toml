@@ -109,9 +109,9 @@ members = [
   "runtime/develop",
   "runtime/mainnet",
   "runtime/tests",
+	"host-functions",
 ]
 exclude = [
-  "contracts",
 	"integration",
 ]
 
@@ -125,6 +125,7 @@ pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", b
 pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
+polymesh-host-functions = { path = "host-functions/", default-features = false }
 pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -205,6 +206,7 @@ sp-transaction-storage-proof = { version = "4.0.0-dev", default-features = false
 sp-io = { version = "7.0.0", default-features = false }
 sp-offchain = { version = "4.0.0-dev", default-features = false }
 sp-runtime = { version = "7.0.0", default-features = false }
+sp-runtime-interface = { version = "7.0.0", default-features = false }
 sp-timestamp = { version = "4.0.0-dev", default-features = false }
 sp-session = { version = "4.0.0-dev", default-features = false }
 sp-staking = { version = "4.0.0-dev", default-features = false }
@@ -227,6 +229,7 @@ pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
+polymesh-host-functions = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -347,5 +350,6 @@ ci-runtime = [ "polymesh-runtime-develop/ci-runtime" ]
 
 std = [
   "polymesh-common-utilities/std",
+  "polymesh-host-functions/std",
   "serde/std"
 ]

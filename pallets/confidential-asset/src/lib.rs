@@ -30,6 +30,7 @@ use pallet_base::try_next_post;
 use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
+use polymesh_host_functions::VerifyConfidentialTransferRequest;
 use polymesh_primitives::{
     asset::{AssetName, AssetType},
     impl_checked_inc,
@@ -41,9 +42,6 @@ use sp_runtime::{traits::Zero, SaturatedConversion};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::{convert::From, prelude::*};
-
-use rand_chacha::ChaCha20Rng as Rng;
-use rand_core::SeedableRng;
 
 type PalletIdentity<T> = pallet_identity::Module<T>;
 type System<T> = frame_system::Pallet<T>;
@@ -124,13 +122,9 @@ pub struct TransactionLegId(#[codec(compact)] pub u32);
 
 /// A confidential account that can hold confidential assets.
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ConfidentialAccount(CompressedElgamalPublicKey);
+pub struct ConfidentialAccount(pub CompressedElgamalPublicKey);
 
 impl ConfidentialAccount {
-    pub fn into_inner(&self) -> Option<ElgamalPublicKey> {
-        self.0.into_public_key()
-    }
-
     pub fn is_valid(&self) -> bool {
         self.0.into_public_key().is_some()
     }
@@ -154,13 +148,9 @@ impl From<&ElgamalPublicKey> for ConfidentialAccount {
 #[derive(
     Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq,
 )]
-pub struct MediatorAccount(CompressedElgamalPublicKey);
+pub struct MediatorAccount(pub CompressedElgamalPublicKey);
 
 impl MediatorAccount {
-    pub fn into_inner(&self) -> Option<ElgamalPublicKey> {
-        self.0.into_public_key()
-    }
-
     pub fn is_valid(&self) -> bool {
         self.0.into_public_key().is_some()
     }
@@ -196,14 +186,6 @@ impl<S: Get<u32>> TransactionLeg<S> {
     /// Check if the sender/receiver/auditor accounts are valid.
     pub fn verify_accounts(&self) -> bool {
         self.sender.is_valid() && self.receiver.is_valid() && self.auditors.is_valid()
-    }
-
-    pub fn sender_account(&self) -> Option<ElgamalPublicKey> {
-        self.sender.into_inner()
-    }
-
-    pub fn receiver_account(&self) -> Option<ElgamalPublicKey> {
-        self.receiver.into_inner()
     }
 
     pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
@@ -311,11 +293,8 @@ impl<S: Get<u32>> ConfidentialAuditors<S> {
     }
 
     /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
-    pub fn build_auditor_set(&self) -> Option<BTreeSet<ElgamalPublicKey>> {
-        self.auditors
-            .keys()
-            .map(|account| account.into_inner())
-            .collect()
+    pub fn build_auditor(&self) -> Vec<CompressedElgamalPublicKey> {
+        self.auditors.keys().map(|account| account.0).collect()
     }
 
     /// Add an auditor/mediator.
@@ -1420,45 +1399,32 @@ impl<T: Config> Pallet<T> {
 
         match &affirm.party {
             AffirmParty::Sender(proof) => {
-                let init_tx = proof.into_tx().ok_or(Error::<T>::InvalidSenderProof)?;
                 let sender_did = Self::account_did(&leg.sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
 
-                // Get sender/receiver accounts from the leg.
-                let sender_account = leg
-                    .sender_account()
-                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
-                let receiver_account = leg
-                    .receiver_account()
-                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
-                let auditors = leg
-                    .auditors
-                    .build_auditor_set()
-                    .ok_or(Error::<T>::InvalidConfidentialAccount)?;
-
                 // Get the sender's current balance.
-                let from_current_balance = Self::account_balance(&leg.sender, leg.ticker)
+                let sender_balance = Self::account_balance(&leg.sender, leg.ticker)
                     .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
+                let req = VerifyConfidentialTransferRequest {
+                    sender: leg.sender.0,
+                    sender_balance,
+                    receiver: leg.receiver.0,
+                    auditors: leg.auditors.build_auditor(),
+                    proof: proof.0.clone(),
+                    seed: Self::get_seed(),
+                };
+
                 // Verify the sender's proof.
-                let mut rng = Self::get_rng();
-                init_tx
-                    .verify(
-                        &sender_account,
-                        &from_current_balance,
-                        &receiver_account,
-                        &auditors,
-                        &mut rng,
-                    )
-                    .map_err(|_| Error::<T>::InvalidSenderProof)?;
+                let resp = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
 
                 // Withdraw the transaction amount when the sender affirms.
-                let sender_amount = init_tx.sender_amount();
+                let sender_amount = resp.sender_amount;
                 Self::account_withdraw_amount(&leg.sender, leg.ticker, sender_amount)?;
 
                 // Store the pending state for this transaction leg.
-                let receiver_amount = init_tx.receiver_amount();
-                TxLegSenderBalance::<T>::insert(&(transaction_id, leg_id), from_current_balance);
+                let receiver_amount = resp.receiver_amount;
+                TxLegSenderBalance::<T>::insert(&(transaction_id, leg_id), sender_balance);
                 TxLegSenderAmount::<T>::insert(&(transaction_id, leg_id), sender_amount);
                 TxLegReceiverAmount::<T>::insert(&(transaction_id, leg_id), receiver_amount);
             }
@@ -1756,7 +1722,7 @@ impl<T: Config> Pallet<T> {
         Self::deposit_event(Event::<T>::AccountDepositIncoming(*account, ticker, amount));
     }
 
-    fn get_rng() -> Rng {
+    fn get_seed() -> [u8; 32] {
         // Increase the nonce each time.
         let nonce = RngNonce::<T>::get();
         RngNonce::<T>::put(nonce.wrapping_add(1));
@@ -1766,6 +1732,6 @@ impl<T: Config> Pallet<T> {
         let mut seed = [0u8; 32];
         let len = seed.len().min(s.len());
         seed[..len].copy_from_slice(&s[..len]);
-        Rng::from_seed(seed)
+        seed
     }
 }

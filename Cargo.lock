@@ -4807,6 +4807,7 @@ dependencies = [
  "pallet-statistics",
  "parity-scale-codec",
  "polymesh-common-utilities",
+ "polymesh-host-functions",
  "polymesh-primitives",
  "polymesh-runtime-common",
  "rand_chacha 0.3.1",
@@ -6036,6 +6037,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "polymesh-host-functions"
+version = "0.1.0"
+dependencies = [
+ "confidential_assets",
+ "parity-scale-codec",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "sp-runtime-interface",
+ "sp-std",
+]
+
+[[package]]
 name = "polymesh-node-rpc"
 version = "0.1.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#5da6564d3a4aa86806de4437d1a325426a254c17"
@@ -6163,6 +6176,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-contracts",
  "polymesh-extensions",
+ "polymesh-host-functions",
  "polymesh-node-rpc",
  "polymesh-primitives",
  "polymesh-runtime-common",

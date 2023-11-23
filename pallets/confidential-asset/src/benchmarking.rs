@@ -5,6 +5,7 @@ use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 
 use rand_chacha::ChaCha20Rng as StdRng;
+use rand_core::SeedableRng;
 
 use confidential_assets::Balance as ConfidentialBalance;
 

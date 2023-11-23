@@ -87,7 +87,11 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
     }
 
     pub fn build_auditor_set(&self) -> BTreeSet<ElgamalPublicKey> {
-        self.auditors.build_auditor_set().expect("auditor set")
+        self.auditors
+            .build_auditor()
+            .iter()
+            .map(|k| k.into_public_key().expect("valid key"))
+            .collect()
     }
 
     pub fn mediators(&self) -> impl Iterator<Item = &ConfidentialUser<T>> {
