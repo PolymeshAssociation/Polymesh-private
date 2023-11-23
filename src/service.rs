@@ -4,7 +4,7 @@ pub use codec::Codec;
 use futures::stream::StreamExt;
 use polymesh_node_rpc as node_rpc;
 pub use polymesh_primitives::{
-    crypto::native_schnorrkel, host_functions::native_rng::native_rng, AccountId, Balance, Block,
+    AccountId, Balance, Block,
     BlockNumber, Hash, IdentityId, Index as Nonce, Moment, Ticker,
 };
 pub use polymesh_runtime_develop;
@@ -73,13 +73,12 @@ macro_rules! native_executor_instance {
 
 type EHF = (
     frame_benchmarking::benchmarking::HostFunctions,
-    native_rng::HostFunctions,
 );
 
 native_executor_instance!(
     GeneralExecutor,
     polymesh_runtime_develop,
-    (EHF, native_schnorrkel::HostFunctions)
+    EHF
 );
 native_executor_instance!(MainnetExecutor, polymesh_runtime_mainnet, EHF);
 
