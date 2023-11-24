@@ -101,7 +101,8 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/s
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+#confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+confidential_assets = { path = "../confidential_assets" }
 
 [workspace]
 members = [
@@ -337,7 +338,25 @@ frame-benchmarking-cli = "4.0.0-dev"
 substrate-build-script-utils = { version = "3.0.0" }
 
 [features]
-default = ["std"]
+default = ["std", "u64_backend"]
+
+# Backends
+u64_backend = [
+	"polymesh-host-functions/u64_backend",
+	"polymesh-runtime-develop/u64_backend",
+	"polymesh-runtime-mainnet/u64_backend",
+]
+simd_backend = [
+	"polymesh-host-functions/simd_backend",
+	"polymesh-runtime-develop/simd_backend",
+	"polymesh-runtime-mainnet/simd_backend",
+]
+avx2_backend = [
+	"polymesh-host-functions/avx2_backend",
+	"polymesh-runtime-develop/avx2_backend",
+	"polymesh-runtime-mainnet/avx2_backend",
+]
+
 running-ci = [ "polymesh-runtime-develop/running-ci" ]
 default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [

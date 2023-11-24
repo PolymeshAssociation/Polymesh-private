@@ -41,8 +41,18 @@ default = ["std", "equalize", "u64_backend"]
 testing = []
 
 # Backends
-u64_backend = ["confidential_assets/u64_backend", "polymesh-host-functions/u64_backend"]
-avx2_backend = ["confidential_assets/avx2_backend", "polymesh-host-functions/avx2_backend"]
+u64_backend = [
+	"confidential_assets/u64_backend",
+	"polymesh-host-functions/u64_backend",
+]
+simd_backend = [
+	"confidential_assets/simd_backend",
+	"polymesh-host-functions/simd_backend",
+]
+avx2_backend = [
+	"confidential_assets/avx2_backend",
+	"polymesh-host-functions/avx2_backend",
+]
 
 no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std", "u64_backend"]
 only-staking = []

@@ -23,6 +23,7 @@ default = ["std", "u64_backend"]
 
 # Backends
 u64_backend = ["confidential_assets/u64_backend"]
+simd_backend = ["confidential_assets/simd_backend"]
 avx2_backend = ["confidential_assets/avx2_backend"]
 
 no_std = ["confidential_assets/no_std", "u64_backend"]
