@@ -63,7 +63,7 @@ benchmarks! {
         tx.affirm_legs(&mut rng);
         tx.execute();
         let leg = tx.leg(0);
-    }: _(leg.issuer.raw_origin(), leg.issuer.account(), leg.ticker)
+    }: _(leg.investor.raw_origin(), leg.investor.account(), leg.ticker)
 
     create_venue {
         let issuer = user::<T>("issuer", SEED);
