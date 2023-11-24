@@ -101,8 +101,8 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/s
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-#confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
-confidential_assets = { path = "../confidential_assets" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+#confidential_assets = { path = "../confidential_assets" }
 
 [workspace]
 members = [
