@@ -189,7 +189,7 @@ frame_support::construct_runtime!(
         ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event} = 43,
         Relayer: pallet_relayer::{Pallet, Call, Storage, Event<T>} = 44,
         Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 46,
-        PolymeshContracts: polymesh_contracts::{Pallet, Call, Storage, Event, Config} = 47,
+        PolymeshContracts: polymesh_contracts::{Pallet, Call, Storage, Event<T>, Config} = 47,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 48,
         TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
         Nft: pallet_nft::{Pallet, Call, Storage, Event} = 51,

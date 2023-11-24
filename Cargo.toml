@@ -151,7 +151,7 @@ polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.gi
 polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-weights = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-weights = { path = "pallets/weights/", default-features = false }
 polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 
 # RPC
