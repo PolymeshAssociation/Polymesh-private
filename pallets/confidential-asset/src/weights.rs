@@ -109,11 +109,15 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountDid (r:1 w:0)
     // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset IncomingBalance (r:1 w:0)
+    // Storage: ConfidentialAsset IncomingBalance (r:1 w:1)
     // Proof Skipped: ConfidentialAsset IncomingBalance (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountBalance (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
     fn apply_incoming_balance() -> Weight {
-        // Minimum execution time: 20_478 nanoseconds.
-        Weight::from_ref_time(20_769_000).saturating_add(DbWeight::get().reads(3))
+        // Minimum execution time: 300_003 nanoseconds.
+        Weight::from_ref_time(301_375_000)
+            .saturating_add(DbWeight::get().reads(4))
+            .saturating_add(DbWeight::get().writes(2))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
