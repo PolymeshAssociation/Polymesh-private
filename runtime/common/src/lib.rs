@@ -55,9 +55,9 @@ pub const fn deposit(items: u32, bytes: u32) -> Balance {
 /// We assume that ~10% of the block weight is consumed by `on_initalize` handlers.
 /// This is used to limit the maximal weight of a single extrinsic.
 pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
-/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
+/// We allow `Normal` extrinsics to fill up the block up to 85%, the rest can be used
 /// by  Operational  extrinsics.
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(85);
 /// We allow for 2 seconds of compute with a 6 second average block time.
 const MAXIMUM_BLOCK_WEIGHT: Weight =
     Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2)).set_proof_size(u64::MAX);
@@ -72,20 +72,18 @@ parameter_types! {
     /// Portion of the block available to normal class of dispatches.
     ///
     /// If this is updated, `PipsEnactSnapshotMaximumWeight` needs to be updated accordingly.
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(85);
     /// Blocks can be of upto 10 MB in size.
     pub const MaximumBlockLength: u32 = 10 * 1024 * 1024;
-    /// 20 ms is needed to create a block.
-    pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MILLIS.saturating_mul(20));
-    /// 0.65 ms is needed to process an empty extrinsic.
-    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(650));
+    /// 0.5 ms is needed to create a block.
+    pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(500));
+    /// 0.30 ms is needed to process an empty extrinsic.
+    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(300));
     /// When the read/writes are cached/buffered, they take 25/100 microseconds on NVMe disks.
     /// When they are uncached, they take 250/450 microseconds on NVMe disks.
-    /// Most read will be cached and writes will be buffered in production.
-    /// We are taking a number slightly higher than what cached suggest to allow for some extra breathing room.
     pub const RocksDbWeight: RuntimeDbWeight = RuntimeDbWeight {
-        read: 50 * WEIGHT_REF_TIME_PER_MICROS,   // ~50 µs @ 100,000 items
-        write: 200 * WEIGHT_REF_TIME_PER_MICROS, // ~200 µs @ 100,000 items
+        read: 25 * WEIGHT_REF_TIME_PER_MICROS,   // ~25 µs
+        write: 100 * WEIGHT_REF_TIME_PER_MICROS, // ~100 µs
     };
     /// This implies a 100 POLYX fee per MB of transaction length
     pub const TransactionByteFee: Balance = 10 * MILLICENTS;
@@ -95,7 +93,7 @@ parameter_types! {
     pub const MultiSigBalanceLimit: Balance = POLY;
     /// The maximum weight of the pips extrinsic `enact_snapshot_results` which equals to
     /// `MaximumBlockWeight * AvailableBlockRatio`.
-    pub const PipsEnactSnapshotMaximumWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_mul(75).saturating_div(100);
+    pub const PipsEnactSnapshotMaximumWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_mul(85).saturating_div(100);
     /// Number of block delay an extrinsic claim surcharge has.
     pub const SignedClaimHandicap: u32 = 2;
     /// The balance every contract needs to deposit to stay alive indefinitely.
