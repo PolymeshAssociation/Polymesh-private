@@ -4541,7 +4541,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop)",
  "rustc-hex",
  "scale-info",
  "serde",
@@ -4809,7 +4809,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-host-functions",
  "polymesh-primitives",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "scale-info",
@@ -5202,7 +5202,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop)",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "scale-info",
@@ -6179,7 +6179,7 @@ dependencies = [
  "polymesh-host-functions",
  "polymesh-node-rpc",
  "polymesh-primitives",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-runtime-develop",
  "polymesh-runtime-mainnet",
  "polymesh-weights",
@@ -6284,7 +6284,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -6308,6 +6308,30 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-test-runtime-client",
+]
+
+[[package]]
+name = "polymesh-runtime-common"
+version = "1.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances 0.1.0",
+ "pallet-bridge",
+ "pallet-committee",
+ "pallet-group-rpc-runtime-api",
+ "pallet-identity",
+ "pallet-multisig",
+ "pallet-relayer",
+ "pallet-test-utils",
+ "parity-scale-codec",
+ "polymesh-common-utilities",
+ "polymesh-primitives",
+ "scale-info",
+ "smallvec",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -6399,7 +6423,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "scale-info",
  "sp-api",
@@ -6480,7 +6504,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "scale-info",
  "sp-api",
@@ -6538,7 +6562,7 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "polymesh-contracts",
- "polymesh-runtime-common",
+ "polymesh-runtime-common 1.0.0",
  "sp-std",
 ]
 

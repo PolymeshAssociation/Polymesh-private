@@ -107,6 +107,7 @@ confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confiden
 [workspace]
 members = [
   "pallets/confidential-asset",
+  "runtime/common",
   "runtime/develop",
   "runtime/mainnet",
   "runtime/tests",
@@ -151,7 +152,7 @@ polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.gi
 
 # Common
 polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-runtime-common = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+polymesh-runtime-common = { path = "runtime/common/", default-features = false }
 polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 polymesh-weights = { path = "pallets/weights/", default-features = false }
 polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
