@@ -82,7 +82,7 @@ pallet-authority-discovery = { workspace = true, default-features = false }
 pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
-test_client = { package = "substrate-test-runtime-client", git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03" }
+test_client = { package = "substrate-test-runtime-client", git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-update-deps" }
 
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
