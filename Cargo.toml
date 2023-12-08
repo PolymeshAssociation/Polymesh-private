@@ -53,6 +53,7 @@ sc-consensus-grandpa-rpc = { git = "https://github.com/PolymeshAssociation/subst
 sc-keystore = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
 sc-network = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
 sc-network-common = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
+sc-network-sync = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
 sc-rpc = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
 sc-rpc-api = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
 sc-rpc-spec-v2 = { git = "https://github.com/PolymeshAssociation/substrate", branch = "polymesh-v6-monthly-2023-03-test-s390x" }
@@ -299,6 +300,7 @@ sc-consensus-slots = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
 sc-network = "0.10.0-dev"
 sc-network-common = { version = "0.10.0-dev" }
+sc-network-sync = "0.10.0-dev"
 sc-rpc = "4.0.0-dev"
 sc-service = { version = "0.10.0-dev" }
 sc-telemetry = "4.0.0-dev"
