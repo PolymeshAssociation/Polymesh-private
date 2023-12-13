@@ -4480,7 +4480,7 @@ dependencies = [
 [[package]]
 name = "node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4506,7 +4506,7 @@ dependencies = [
 [[package]]
 name = "node-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4715,7 +4715,7 @@ dependencies = [
 [[package]]
 name = "pallet-asset"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "arrayvec 0.7.4",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4736,7 +4736,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop)",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo)",
  "rustc-hex",
  "scale-info",
  "serde",
@@ -4846,7 +4846,7 @@ dependencies = [
 [[package]]
 name = "pallet-balances"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4886,21 +4886,21 @@ dependencies = [
 [[package]]
 name = "pallet-base"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
- "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
+ "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "parity-scale-codec",
  "polymesh-common-utilities",
  "polymesh-primitives",
  "scale-info",
  "serde",
- "sp-api 4.0.0-dev (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "sp-core 7.0.0 (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "sp-io 7.0.0 (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "sp-runtime 7.0.0 (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "sp-std 5.0.0 (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
- "sp-version 5.0.0 (git+https://github.com/PolymeshAssociation/substrate?branch=polymesh-v6-monthly-2023-03)",
+ "sp-api 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "sp-core 7.0.0 (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "sp-io 7.0.0 (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "sp-runtime 7.0.0 (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "sp-std 5.0.0 (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
+ "sp-version 5.0.0 (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
 ]
 
 [[package]]
@@ -4949,7 +4949,7 @@ dependencies = [
 [[package]]
 name = "pallet-bridge"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4973,7 +4973,7 @@ dependencies = [
 [[package]]
 name = "pallet-committee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -4998,7 +4998,7 @@ dependencies = [
 [[package]]
 name = "pallet-compliance-manager"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "either",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5105,7 +5105,7 @@ dependencies = [
 [[package]]
 name = "pallet-corporate-actions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5138,7 +5138,7 @@ dependencies = [
 [[package]]
 name = "pallet-external-agents"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5182,7 +5182,7 @@ dependencies = [
 [[package]]
 name = "pallet-group"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5206,7 +5206,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5227,7 +5227,7 @@ dependencies = [
 [[package]]
 name = "pallet-group-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -5240,7 +5240,7 @@ dependencies = [
 [[package]]
 name = "pallet-identity"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "either",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5338,7 +5338,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5361,7 +5361,7 @@ dependencies = [
 [[package]]
 name = "pallet-nft"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5400,7 +5400,7 @@ dependencies = [
 [[package]]
 name = "pallet-permissions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5417,7 +5417,7 @@ dependencies = [
 [[package]]
 name = "pallet-pips"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5435,7 +5435,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop)",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo)",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "scale-info",
@@ -5452,7 +5452,7 @@ dependencies = [
 [[package]]
 name = "pallet-portfolio"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5490,7 +5490,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5510,7 +5510,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5531,7 +5531,7 @@ dependencies = [
 [[package]]
 name = "pallet-protocol-fee-rpc-runtime-api"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "parity-scale-codec",
  "polymesh-common-utilities",
@@ -5543,7 +5543,7 @@ dependencies = [
 [[package]]
 name = "pallet-relayer"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5619,7 +5619,7 @@ dependencies = [
 [[package]]
 name = "pallet-settlement"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5655,7 +5655,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-election-provider-support",
@@ -5696,7 +5696,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5716,7 +5716,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "sp-api 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5726,7 +5726,7 @@ dependencies = [
 [[package]]
 name = "pallet-statistics"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5753,7 +5753,7 @@ dependencies = [
 [[package]]
 name = "pallet-sto"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5786,7 +5786,7 @@ dependencies = [
 [[package]]
 name = "pallet-sudo"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5801,7 +5801,7 @@ dependencies = [
 [[package]]
 name = "pallet-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5856,7 +5856,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5875,7 +5875,7 @@ dependencies = [
 [[package]]
 name = "pallet-treasury"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -5900,7 +5900,7 @@ dependencies = [
 [[package]]
 name = "pallet-utility"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -6244,7 +6244,7 @@ dependencies = [
 [[package]]
 name = "polymesh-build-tool"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "substrate-wasm-builder 5.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
 ]
@@ -6252,7 +6252,7 @@ dependencies = [
 [[package]]
 name = "polymesh-common-utilities"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -6277,7 +6277,7 @@ dependencies = [
 [[package]]
 name = "polymesh-contracts"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -6303,7 +6303,7 @@ dependencies = [
 [[package]]
 name = "polymesh-extensions"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
@@ -6332,7 +6332,7 @@ dependencies = [
 [[package]]
 name = "polymesh-node-rpc"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "jsonrpsee",
  "node-rpc",
@@ -6366,7 +6366,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives"
 version = "5.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "chrono",
  "either",
@@ -6394,7 +6394,7 @@ dependencies = [
 [[package]]
 name = "polymesh-primitives-derive"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6618,7 +6618,7 @@ dependencies = [
 [[package]]
 name = "polymesh-runtime-common"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#9214c272a32530e4c1d4c124e1edaf35db54122c"
+source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=move_to_new_polkadot_sdk_repo#46533f678bcf729cd9db9858f98dbaf4c5d943aa"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
  "frame-system 4.0.0-dev (git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03)",
