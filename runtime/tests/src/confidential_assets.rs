@@ -2,8 +2,8 @@ use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng as StdRng;
-use sp_runtime::traits::Zero;
 use sp_keyring::AccountKeyring;
+use sp_runtime::traits::Zero;
 
 use confidential_assets::transaction::ConfidentialTransferProof;
 

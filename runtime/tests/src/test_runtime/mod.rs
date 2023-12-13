@@ -12,6 +12,7 @@ use frame_support::weights::RuntimeDbWeight;
 use frame_system::EnsureRoot;
 use sp_core::crypto::Pair as PairTrait;
 use sp_core::sr25519::Pair;
+use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{
@@ -24,7 +25,6 @@ use sp_runtime::{Perbill, Permill};
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
-use sp_keyring::AccountKeyring;
 
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_balances as balances;
