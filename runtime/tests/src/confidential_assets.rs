@@ -3,7 +3,7 @@ use frame_support::traits::OnInitialize;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng as StdRng;
 use sp_runtime::traits::Zero;
-use test_client::AccountKeyring;
+use sp_keyring::AccountKeyring;
 
 use confidential_assets::transaction::ConfidentialTransferProof;
 

@@ -24,7 +24,7 @@ use sp_runtime::{Perbill, Permill};
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
-use test_client::AccountKeyring;
+use sp_keyring::AccountKeyring;
 
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_balances as balances;
