@@ -36,7 +36,7 @@ commands:
 jobs:
   lint:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: small
     environment:
       VERBOSE: "1"
@@ -50,7 +50,7 @@ jobs:
           command: ./scripts/check_spec_and_cargo_version.sh
   check-storage-version:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: small
     environment:
       VERBOSE: "1"
@@ -61,7 +61,7 @@ jobs:
           command: ./scripts/check_storage_versions.sh
   build:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -99,7 +99,7 @@ jobs:
             - "~/.cache/sccache"
   benchmark-build:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -144,7 +144,7 @@ jobs:
           no_output_timeout: 30m
   test:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: large
     environment:
       - VERBOSE: "1"
@@ -173,7 +173,7 @@ jobs:
             - "~/.cache/sccache"
   coverage:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -195,7 +195,7 @@ jobs:
             - "/usr/local/cargo"
   rust-integration-test:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: medium+
     environment:
       - VERBOSE: "1"
@@ -226,7 +226,7 @@ jobs:
       - save-sccache-cache
   clippy:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
