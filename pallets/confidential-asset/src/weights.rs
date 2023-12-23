@@ -69,16 +69,6 @@ impl crate::WeightInfo for SubstrateWeight {
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset MediatorAccountDid (r:1 w:1)
-    // Proof Skipped: ConfidentialAsset MediatorAccountDid (max_values: None, max_size: None, mode: Measured)
-    fn add_mediator_account() -> Weight {
-        // Minimum execution time: 35_557 nanoseconds.
-        Weight::from_ref_time(36_298_000)
-            .saturating_add(DbWeight::get().reads(2))
-            .saturating_add(DbWeight::get().writes(1))
-    }
-    // Storage: Identity KeyRecords (r:1 w:0)
-    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset Details (r:1 w:1)
     // Proof Skipped: ConfidentialAsset Details (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset MediatorAccountDid (r:1 w:0)
