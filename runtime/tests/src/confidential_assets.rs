@@ -8,10 +8,8 @@ use sp_runtime::traits::Zero;
 use confidential_assets::transaction::ConfidentialTransferProof;
 
 use pallet_confidential_asset::{
-    testing::*, AffirmLeg, AffirmParty, ConfidentialAssetDetails, Event, TransactionLeg,
-    AffirmTransactions, AffirmTransaction,
-    ConfidentialTransfers,
-    TransactionLegId,
+    testing::*, AffirmLeg, AffirmParty, AffirmTransaction, AffirmTransactions,
+    ConfidentialAssetDetails, ConfidentialTransfers, Event, TransactionLeg, TransactionLegId,
 };
 
 use crate::test_runtime::ext_builder::ExtBuilder;
@@ -21,16 +19,14 @@ type System = frame_system::Pallet<TestRuntime>;
 type ConfidentialAsset = pallet_confidential_asset::Pallet<TestRuntime>;
 
 macro_rules! assert_affirm_confidential_transaction {
-    ($signer:expr, $transaction_id:expr, $data:expr) => {
-        {
-            let mut affirms = AffirmTransactions::new();
-            affirms.push(AffirmTransaction { id: $transaction_id, leg: $data });
-            assert_ok!(ConfidentialAsset::affirm_transactions(
-                $signer,
-                affirms,
-            ));
-        }
-    };
+    ($signer:expr, $transaction_id:expr, $data:expr) => {{
+        let mut affirms = AffirmTransactions::new();
+        affirms.push(AffirmTransaction {
+            id: $transaction_id,
+            leg: $data,
+        });
+        assert_ok!(ConfidentialAsset::affirm_transactions($signer, affirms,));
+    }};
 }
 
 pub fn next_block() {
