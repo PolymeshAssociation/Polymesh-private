@@ -374,6 +374,15 @@ pub struct ConfidentialAuditors<T: Config> {
     pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
 }
 
+impl<T: Config> ConfidentialAuditors<T> {
+    pub fn new() -> Self {
+        Self {
+            auditors: Default::default(),
+            mediators: Default::default(),
+        }
+    }
+}
+
 /// Transaction information.
 #[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
 pub struct Transaction<BlockNumber> {
@@ -448,8 +457,8 @@ pub mod pallet {
         AccountCreated(IdentityId, ConfidentialAccount),
         /// Event for creation of a confidential asset.
         ///
-        /// (caller DID, asset id, total supply)
-        ConfidentialAssetCreated(IdentityId, AssetId, Balance),
+        /// (caller DID, asset id, auditors and mediators)
+        ConfidentialAssetCreated(IdentityId, AssetId, ConfidentialAuditors<T>),
         /// Issued confidential assets.
         ///
         /// (caller DID, asset id, amount issued, total_supply)
@@ -501,18 +510,18 @@ pub mod pallet {
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
         ///
-        /// (confidential account, asset id, new encrypted balance)
-        AccountWithdraw(ConfidentialAccount, AssetId, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted balance)
+        AccountWithdraw(ConfidentialAccount, AssetId, CipherText, CipherText),
         /// Confidential account balance increased.
         /// This happens when the receiver calls `apply_incoming_balance`.
         ///
-        /// (confidential account, asset id, new encrypted balance)
-        AccountDeposit(ConfidentialAccount, AssetId, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted balance)
+        AccountDeposit(ConfidentialAccount, AssetId, CipherText, CipherText),
         /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
         ///
-        /// (confidential account, asset id, encrypted amount)
-        AccountDepositIncoming(ConfidentialAccount, AssetId, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted incoming balance)
+        AccountDepositIncoming(ConfidentialAccount, AssetId, CipherText, CipherText),
     }
 
     #[pallet::error]
@@ -1021,7 +1030,7 @@ impl<T: Config> Pallet<T> {
         }
 
         // Store asset auditors.
-        AssetAuditors::<T>::insert(asset_id, auditors);
+        AssetAuditors::<T>::insert(asset_id, &auditors);
 
         let details = ConfidentialAssetDetails {
             total_supply: Zero::zero(),
@@ -1030,9 +1039,7 @@ impl<T: Config> Pallet<T> {
         Details::<T>::insert(asset_id, details);
 
         Self::deposit_event(Event::<T>::ConfidentialAssetCreated(
-            owner_did,
-            asset_id,
-            Zero::zero(),
+            owner_did, asset_id, auditors,
         ));
         Ok(())
     }
@@ -1072,7 +1079,7 @@ impl<T: Config> Pallet<T> {
 
         // Ensure the confidential account's balance has been initialized.
         ensure!(
-            AccountBalance::<T>::contains_key(&account, asset_id),
+            AccountDid::<T>::contains_key(&account),
             Error::<T>::ConfidentialAccountMissing
         );
 
@@ -1664,7 +1671,9 @@ impl<T: Config> Pallet<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::<T>::AccountWithdraw(*account, asset_id, balance));
+        Self::deposit_event(Event::<T>::AccountWithdraw(
+            *account, asset_id, amount, balance,
+        ));
         Ok(())
     }
 
@@ -1674,19 +1683,19 @@ impl<T: Config> Pallet<T> {
         asset_id: AssetId,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = AccountBalance::<T>::try_mutate(
-            account,
-            asset_id,
-            |balance| -> Result<CipherText, DispatchError> {
-                if let Some(ref mut balance) = balance {
-                    *balance += amount;
-                    Ok(*balance)
-                } else {
-                    Err(Error::<T>::ConfidentialAccountMissing.into())
-                }
-            },
-        )?;
-        Self::deposit_event(Event::<T>::AccountDeposit(*account, asset_id, balance));
+        let balance = AccountBalance::<T>::mutate(account, asset_id, |balance| match balance {
+            Some(balance) => {
+                *balance += amount;
+                *balance
+            }
+            None => {
+                *balance = Some(amount);
+                amount
+            }
+        });
+        Self::deposit_event(Event::<T>::AccountDeposit(
+            *account, asset_id, amount, balance,
+        ));
         Ok(())
     }
 
@@ -1696,20 +1705,24 @@ impl<T: Config> Pallet<T> {
         asset_id: AssetId,
         amount: CipherText,
     ) {
-        IncomingBalance::<T>::mutate(
-            account,
-            asset_id,
-            |incoming_balance| match incoming_balance {
-                Some(previous_balance) => {
-                    *previous_balance += amount;
+        let incoming_balance =
+            IncomingBalance::<T>::mutate(account, asset_id, |incoming_balance| {
+                match incoming_balance {
+                    Some(previous_balance) => {
+                        *previous_balance += amount;
+                        *previous_balance
+                    }
+                    None => {
+                        *incoming_balance = Some(amount);
+                        amount
+                    }
                 }
-                None => {
-                    *incoming_balance = Some(amount);
-                }
-            },
-        );
+            });
         Self::deposit_event(Event::<T>::AccountDepositIncoming(
-            *account, asset_id, amount,
+            *account,
+            asset_id,
+            amount,
+            incoming_balance,
         ));
     }
 

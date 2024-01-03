@@ -27,8 +27,9 @@ pub(crate) const AUDITOR_SEED: u32 = 1_000;
 
 #[derive(Clone)]
 pub struct AuditorState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
-    pub auditors: BTreeSet<AuditorAccount>,
-    pub mediators: BTreeSet<IdentityId>,
+    pub asset: ConfidentialAuditors<T>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
     pub users: BTreeMap<AuditorAccount, ConfidentialUser<T>>,
 }
 
@@ -39,25 +40,42 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
     }
 
     /// Create `auditor_count` auditors with `mediator_count` mediator roles for an asset.
-    pub fn new_full(asset: u32, auditor_count: u32, mediator_count: u32, rng: &mut StdRng) -> Self {
-        let mut auditors = BTreeSet::new();
-        let mut mediators = BTreeSet::new();
+    pub fn new_full(
+        asset_idx: u32,
+        auditor_count: u32,
+        mediator_count: u32,
+        rng: &mut StdRng,
+    ) -> Self {
+        let mut auditors = BoundedBTreeSet::new();
+        let mut mediators = BoundedBTreeSet::new();
         let mut users = BTreeMap::new();
         let auditor_count = auditor_count.clamp(1, T::MaxNumberOfAuditors::get());
         let mut mediator_count = mediator_count.min(auditor_count);
+        let mut asset = ConfidentialAuditors::new();
         // Create auditors.
         for idx in 0..auditor_count {
-            let user = ConfidentialUser::<T>::auditor_user("auditor", asset, idx, rng);
+            let user = ConfidentialUser::<T>::auditor_user("auditor", asset_idx, idx, rng);
+            let did = user.did();
             let account = user.auditor_account();
-            // Make the first `mediator_count` auditors into mediators.
-            if mediator_count > 0 {
-                mediator_count -= 1;
-                mediators.insert(user.did());
-            }
             users.insert(account, user);
-            auditors.insert(account);
+            // Make the first `mediator_count` auditors into mediators.
+            let is_mediator = if mediator_count > 0 { true } else { false };
+            // First add asset-level auditors/mediators.
+            if asset.auditors.try_insert(account).is_ok() {
+                if is_mediator && asset.mediators.try_insert(did).is_ok() {
+                    mediator_count -= 1;
+                }
+            } else {
+                // Then add venue-level auditors/mediators.
+                if auditors.try_insert(account).is_ok() {
+                    if is_mediator && mediators.try_insert(did).is_ok() {
+                        mediator_count -= 1;
+                    }
+                }
+            }
         }
         Self {
+            asset,
             auditors,
             mediators,
             users,
@@ -66,24 +84,13 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
 
     /// Return an `ConfidentialAuditors` limited to just the number of auditors allowed per asset.
     pub fn get_asset_auditors(&self) -> ConfidentialAuditors<T> {
-        let mut asset = ConfidentialAuditors {
-            auditors: Default::default(),
-            mediators: Default::default(),
-        };
-        for auditor in &self.auditors {
-            asset
-                .auditors
-                .try_insert(*auditor)
-                .ok()
-                .and_then(|_| self.users.get(auditor))
-                .and_then(|mediator| asset.mediators.try_insert(mediator.did()).ok());
-        }
-        asset
+        self.asset.clone()
     }
 
     pub fn build_auditor_set(&self) -> BTreeSet<ElgamalPublicKey> {
         self.auditors
             .iter()
+            .chain(self.asset.auditors.iter())
             .map(|k| k.0.into_public_key().expect("valid key"))
             .collect()
     }
@@ -198,7 +205,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     }
 
     pub fn enc_balance(&self, asset: AssetId) -> CipherText {
-        Pallet::<T>::account_balance(self.account(), asset).expect("confidential account balance")
+        Pallet::<T>::account_balance(self.account(), asset).unwrap_or_default()
     }
 
     pub fn ensure_balance(&self, asset: AssetId, balance: ConfidentialBalance) {
@@ -326,9 +333,8 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
             assets: assets.try_into().expect("Shouldn't fail"),
             sender: issuer.account(),
             receiver: investor.account(),
-            // TODO: venue auditors/mediators.
-            auditors: Default::default(),
-            mediators: Default::default(),
+            auditors: auditors.auditors.clone(),
+            mediators: auditors.mediators.clone(),
         };
         Self {
             asset_id,
