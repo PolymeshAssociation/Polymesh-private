@@ -3,22 +3,19 @@ use sp_core::{Decode, Encode};
 use std::collections::{BTreeMap, BTreeSet};
 
 use polymesh_api::types::{
+    confidential_assets::transaction::ConfidentialTransferProof as SenderProof,
     pallet_confidential_asset::{
-        AffirmLeg, AffirmParty, ConfidentialAccount, ConfidentialAuditors,
-        ConfidentialTransactionRole, MediatorAccount, SenderProof, TransactionId, TransactionLeg,
-        TransactionLegId,
+        AffirmLeg, AffirmParty, AffirmTransaction, AffirmTransactions, AuditorAccount,
+        ConfidentialAccount, ConfidentialAuditors, ConfidentialTransfers, TransactionId,
+        TransactionLeg, TransactionLegId,
     },
-    polymesh_primitives::{
-        asset::{AssetName, AssetType},
-        settlement::VenueId,
-    },
+    polymesh_primitives::settlement::VenueId,
 };
 use polymesh_api::TransactionResults;
 
 use confidential_assets::{
-    elgamal::CipherText,
-    transaction::ConfidentialTransferProof,
-    ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
+    elgamal::CipherText, transaction::ConfidentialTransferProof, AssetId, ElgamalKeys,
+    ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 use integration::*;
@@ -35,16 +32,16 @@ pub struct AuditorUser {
     api: Api,
     pub user: User,
     keys: ElgamalKeys,
-    account: MediatorAccount,
+    account: AuditorAccount,
     venue_id: Option<VenueId>,
 }
 
 impl AuditorUser {
     pub fn new(api: &Api, user: User) -> Self {
         let keys = create_keys();
-        // Convert ElgamalPublicKey to on-chain MediatorAccount type.
+        // Convert ElgamalPublicKey to on-chain AuditorAccount type.
         let enc_pub = keys.public.encode();
-        let account = MediatorAccount::decode(&mut enc_pub.as_slice()).expect("MediatorAccount");
+        let account = AuditorAccount::decode(&mut enc_pub.as_slice()).expect("AuditorAccount");
         Self {
             api: api.clone(),
             user,
@@ -54,23 +51,12 @@ impl AuditorUser {
         }
     }
 
-    pub fn account(&self) -> MediatorAccount {
-        self.account
+    pub fn account(&self) -> AuditorAccount {
+        self.account.clone()
     }
 
     pub fn pub_key(&self) -> ElgamalPublicKey {
         self.keys.public
-    }
-
-    /// Initialize the auditor/mediator's account.
-    pub async fn init_account(&mut self) -> Result<TransactionResults> {
-        Ok(self
-            .api
-            .call()
-            .confidential_asset()
-            .add_mediator_account(self.account)?
-            .submit_and_watch(&mut self.user)
-            .await?)
     }
 
     pub async fn create_or_get_venue(&mut self) -> Result<VenueId> {
@@ -123,12 +109,12 @@ impl ConfidentialUser {
     }
 
     /// Initialize the confidential account.
-    pub async fn init_account(&mut self, ticker: Ticker) -> Result<TransactionResults> {
+    pub async fn create_account(&mut self) -> Result<TransactionResults> {
         Ok(self
             .api
             .call()
             .confidential_asset()
-            .create_account(ticker, self.account)?
+            .create_account(self.account)?
             .submit_and_watch(&mut self.user)
             .await?)
     }
@@ -141,6 +127,23 @@ pub async fn get_venue_id(res: &mut TransactionResults) -> Result<Option<VenueId
             match &rec.event {
                 RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
                     return Some(*id);
+                }
+                _ => (),
+            }
+        }
+        None
+    }))
+}
+
+/// Search transaction events for ConfidentialAsset AssetId.
+pub async fn get_asset_id(res: &mut TransactionResults) -> Result<Option<AssetId>> {
+    Ok(res.events().await?.and_then(|events| {
+        for rec in &events.0 {
+            match &rec.event {
+                RuntimeEvent::ConfidentialAsset(
+                    ConfidentialAssetEvent::ConfidentialAssetCreated(_, asset, _),
+                ) => {
+                    return Some(*asset);
                 }
                 _ => (),
             }
@@ -172,7 +175,13 @@ pub async fn get_transaction_id(res: &mut TransactionResults) -> Result<Option<T
 /// Search transaction events for ConfidentialAsset TransactionAffirmed.
 pub async fn get_transaction_affirmed(
     res: &mut TransactionResults,
-) -> Result<Option<(TransactionId, TransactionLegId, Option<SenderProof>)>> {
+) -> Result<
+    Option<(
+        TransactionId,
+        TransactionLegId,
+        Option<ConfidentialTransfers>,
+    )>,
+> {
     Ok(res.events().await?.and_then(|events| {
         for rec in &events.0 {
             match &rec.event {
@@ -180,10 +189,10 @@ pub async fn get_transaction_affirmed(
                     _,
                     tx_id,
                     leg_id,
-                    AffirmParty::Sender(sender_proof),
+                    AffirmParty::Sender(transfers),
                     _,
                 )) => {
-                    return Some((*tx_id, *leg_id, Some(*sender_proof.clone())));
+                    return Some((*tx_id, *leg_id, Some(transfers.clone())));
                 }
                 RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
                     _,
@@ -255,41 +264,38 @@ async fn confidential_transfer() -> Result<()> {
 
     let tester = ConfidentialAssetTester::init(&["Issuer1", "Investor1"], &["Mediator1"]).await?;
     let api = tester.api();
-    let ticker = tester.tester.gen_ticker();
     let mut mediator = tester.auditor("Mediator1");
     let mut investor = tester.investor("Issuer1");
     let mut issuer = tester.investor("Investor1");
 
     let auditors = ConfidentialAuditors {
-        auditors: BTreeMap::from([(mediator.account(), ConfidentialTransactionRole::Mediator)]),
+        auditors: BTreeSet::from([mediator.account()]),
+        mediators: BTreeSet::from([mediator.user.did.expect("mediator did")]),
     };
     let auditors_ids = BTreeSet::from([mediator.pub_key()]);
-
-    // Mediator registers their account.
-    mediator.init_account().await?;
 
     // Asset issuer create the confidential asset.
     let mut res_asset = api
         .call()
         .confidential_asset()
-        .create_confidential_asset(
-            AssetName(b"Test".to_vec()),
-            ticker,
-            AssetType::EquityCommon,
-            auditors.clone(),
-        )?
+        .create_confidential_asset(auditors.clone())?
         .submit_and_watch(&mut issuer.user)
         .await?;
 
     // Initialize the issuer's account.
-    issuer.init_account(ticker).await?;
+    issuer.create_account().await?;
     // Initialize the investor's account.
-    investor.init_account(ticker).await?;
+    investor.create_account().await?;
+
+    // Wait for asset to be created.
+    let asset_id = get_asset_id(&mut res_asset)
+        .await?
+        .expect("Confidential asset created");
 
     let total_supply = 1_000_000_000u64;
     api.call()
         .confidential_asset()
-        .mint_confidential_asset(ticker, total_supply.into(), issuer.account())?
+        .mint_confidential_asset(asset_id, total_supply.into(), issuer.account())?
         .submit_and_watch(&mut issuer.user)
         .await?;
 
@@ -297,25 +303,13 @@ async fn confidential_transfer() -> Result<()> {
     let venue_id = mediator.create_or_get_venue().await?;
     println!("venue_id = {:?}", venue_id);
 
-    // The asset issuer needs to allow the mediator's venue.
-    let mut res_allow_venue = api
-        .call()
-        .confidential_asset()
-        .allow_venues(ticker, vec![venue_id])?
-        .submit_and_watch(&mut issuer.user)
-        .await?;
-
-    // Wait for asset to be created.
-    res_asset.ok().await?;
-    // Wait for venue to be allowed.
-    res_allow_venue.ok().await?;
-
     // Setup confidential transfer.
     let legs = vec![TransactionLeg {
-        ticker,
+        assets: BTreeSet::from([asset_id]),
         sender: issuer.account(),
         receiver: investor.account(),
-        auditors: auditors.clone(),
+        auditors: Default::default(),
+        mediators: Default::default(),
     }];
     let mut res_add_tx = api
         .call()
@@ -333,7 +327,7 @@ async fn confidential_transfer() -> Result<()> {
     let sender_enc_balance = api
         .query()
         .confidential_asset()
-        .account_balance(issuer.account(), ticker)
+        .account_balance(issuer.account(), asset_id)
         .await?
         .and_then(|enc| CipherText::decode(&mut &enc.0[..]).ok())
         .expect("Issuer balance");
@@ -350,16 +344,21 @@ async fn confidential_transfer() -> Result<()> {
         &mut rng,
     )
     .expect("Sender proof");
-    let sender_proof = SenderProof(tx_proof.encode());
-    // Sender affirms the transaction with the sender proof.
-    let sender_affirm = AffirmLeg {
-        leg_id: TransactionLegId(0),
-        party: AffirmParty::Sender(Box::new(sender_proof)),
+    let transfers = ConfidentialTransfers {
+        proofs: BTreeMap::from([(asset_id, SenderProof(tx_proof.encode()))]),
     };
+    // Sender affirms the transaction with the sender proof.
+    let affirms = AffirmTransactions(vec![AffirmTransaction {
+        id: transaction_id,
+        leg: AffirmLeg {
+            leg_id: TransactionLegId(0),
+            party: AffirmParty::Sender(transfers),
+        },
+    }]);
     let mut res_sender_affirm = api
         .call()
         .confidential_asset()
-        .affirm_transaction(transaction_id, sender_affirm)?
+        .affirm_transactions(affirms)?
         .submit_and_watch(&mut issuer.user)
         .await?;
 
@@ -368,26 +367,32 @@ async fn confidential_transfer() -> Result<()> {
         .await?
         .expect("Sender affirm event.");
     // TODO: Receiver should verify transaction amount from `sender_proof`.
-    let receiver_affirm = AffirmLeg {
-        leg_id,
-        party: AffirmParty::Receiver,
-    };
+    let affirms = AffirmTransactions(vec![AffirmTransaction {
+        id: tx_id,
+        leg: AffirmLeg {
+            leg_id,
+            party: AffirmParty::Receiver,
+        },
+    }]);
     // Receiver affirms.
     api.call()
         .confidential_asset()
-        .affirm_transaction(tx_id, receiver_affirm)?
+        .affirm_transactions(affirms)?
         .submit_and_watch(&mut investor.user)
         .await?;
 
     // TODO: Mediator should verify transaction amount from `sender_proof`.
-    let mediator_affirm = AffirmLeg {
-        leg_id,
-        party: AffirmParty::Mediator(mediator.account()),
-    };
+    let affirms = AffirmTransactions(vec![AffirmTransaction {
+        id: tx_id,
+        leg: AffirmLeg {
+            leg_id,
+            party: AffirmParty::Mediator,
+        },
+    }]);
     // Mediator affirms.
     api.call()
         .confidential_asset()
-        .affirm_transaction(tx_id, mediator_affirm)?
+        .affirm_transactions(affirms)?
         .submit_and_watch(&mut mediator.user)
         .await?;
     // Mediator executes transaction.
@@ -404,7 +409,7 @@ async fn confidential_transfer() -> Result<()> {
     let mut res_tx = api
         .call()
         .confidential_asset()
-        .apply_incoming_balance(investor.account(), ticker)?
+        .apply_incoming_balance(investor.account(), asset_id)?
         .submit_and_watch(&mut investor.user)
         .await?;
     // Wait for confidential transaction to be executed.
