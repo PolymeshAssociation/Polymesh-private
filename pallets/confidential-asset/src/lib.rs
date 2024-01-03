@@ -20,11 +20,11 @@ use confidential_assets::{
     CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
+    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
     ensure,
     traits::{Get, Randomness},
     weights::Weight,
-    BoundedBTreeSet, BoundedBTreeMap, BoundedVec,
+    BoundedBTreeMap, BoundedBTreeSet, BoundedVec,
 };
 use pallet_base::try_next_post;
 use polymesh_common_utilities::{
@@ -33,8 +33,8 @@ use polymesh_common_utilities::{
 use polymesh_host_functions::VerifyConfidentialTransferRequest;
 use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
-use sp_runtime::{traits::Zero, SaturatedConversion};
 use sp_io::hashing::blake2_128;
+use sp_runtime::{traits::Zero, SaturatedConversion};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::{convert::From, prelude::*};
@@ -66,14 +66,31 @@ pub trait WeightInfo {
     fn execute_transaction(l: u32) -> Weight;
     fn reject_transaction(l: u32) -> Weight;
 
-    fn affirm_transaction(affirm: &AffirmLeg) -> Weight {
-        match &affirm.party {
-            AffirmParty::Sender(proof) => match proof.into_tx().map(|t| t.auditor_count()) {
-                Some(count) => Self::sender_affirm_transaction(count as u32),
-                _ => Weight::MAX,
-            },
-            AffirmParty::Receiver => Self::receiver_affirm_transaction(),
-            AffirmParty::Mediator => Self::mediator_affirm_transaction(),
+    fn affirm_transactions<T: Config>(transactions: &[AffirmTransaction<T>]) -> Weight {
+        if transactions.len() > 0 {
+            let mut sum = Weight::zero();
+            for tx in transactions {
+                match &tx.leg.party {
+                    AffirmParty::Sender(transfers) => {
+                        for (_, proof) in &transfers.proofs {
+                            sum += match proof.auditor_count() {
+                                Ok(count) => Self::sender_affirm_transaction(count as u32),
+                                _ => Weight::MAX,
+                            };
+                        }
+                    }
+                    AffirmParty::Receiver => {
+                        sum += Self::receiver_affirm_transaction();
+                    }
+                    AffirmParty::Mediator => {
+                        sum += Self::mediator_affirm_transaction();
+                    }
+                }
+            }
+            sum
+        } else {
+            // If no transaction to affirm, use the weight of a single mediator affirm.
+            Self::mediator_affirm_transaction()
         }
     }
 }
@@ -151,35 +168,78 @@ impl From<&ElgamalPublicKey> for AuditorAccount {
     }
 }
 
-/// Confidential transfer sender proof.
-#[derive(Encode, Decode, TypeInfo, Clone, Debug, Eq, PartialEq)]
-pub struct SenderProof(Vec<u8>);
+/// A set of confidential asset transfers between the same sender & receiver.
+#[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialTransfers<T: Config> {
+    // TODO: per-leg limit.
+    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxNumberOfLegs>,
+}
 
-impl SenderProof {
-    pub fn into_tx(&self) -> Option<ConfidentialTransferProof> {
-        ConfidentialTransferProof::decode(&mut self.0.as_slice()).ok()
+impl<T: Config> ConfidentialTransfers<T> {
+    pub fn new() -> Self {
+        Self {
+            proofs: Default::default(),
+        }
+    }
+
+    pub fn insert(&mut self, asset_id: AssetId, proof: ConfidentialTransferProof) -> bool {
+        self.proofs.try_insert(asset_id, proof).is_ok()
     }
 }
 
 /// Who is affirming the transaction leg.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
-pub enum AffirmParty {
-    Sender(Box<SenderProof>),
+#[scale_info(skip_type_params(T))]
+pub enum AffirmParty<T: Config> {
+    Sender(ConfidentialTransfers<T>),
     Receiver,
     Mediator,
 }
 
+/// A batch of transactions to affirm.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
-pub struct AffirmLeg {
-    leg_id: TransactionLegId,
-    party: AffirmParty,
+#[scale_info(skip_type_params(T))]
+pub struct AffirmTransactions<T: Config>(BoundedVec<AffirmTransaction<T>, T::MaxNumberOfLegs>);
+
+impl<T: Config> core::ops::Deref for AffirmTransactions<T> {
+    type Target = BoundedVec<AffirmTransaction<T>, T::MaxNumberOfLegs>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl AffirmLeg {
-    pub fn sender(leg_id: TransactionLegId, tx: ConfidentialTransferProof) -> Self {
+impl<T: Config> AffirmTransactions<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+
+    pub fn push(&mut self, affirm: AffirmTransaction<T>) -> bool {
+        self.0.try_push(affirm).is_ok()
+    }
+}
+
+/// The transaction and leg to affirm.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct AffirmTransaction<T: Config> {
+    pub id: TransactionId,
+    pub leg: AffirmLeg<T>,
+}
+
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct AffirmLeg<T: Config> {
+    leg_id: TransactionLegId,
+    party: AffirmParty<T>,
+}
+
+impl<T: Config> AffirmLeg<T> {
+    pub fn sender(leg_id: TransactionLegId, tx: ConfidentialTransfers<T>) -> Self {
         Self {
             leg_id,
-            party: AffirmParty::Sender(Box::new(SenderProof(tx.encode()))),
+            party: AffirmParty::Sender(tx),
         }
     }
 
@@ -244,7 +304,11 @@ pub struct TransactionLegState {
 pub struct TransactionLegDetails<T: Config> {
     /// Auditors (both Asset & Venue auditors) for each leg asset.
     /// TODO: Per leg asset limit.
-    pub auditors: BoundedBTreeMap<AssetId, BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAuditors>, T::MaxNumberOfAuditors>,
+    pub auditors: BoundedBTreeMap<
+        AssetId,
+        BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAuditors>,
+        T::MaxNumberOfAuditors,
+    >,
     /// Confidential account of the sender.
     pub sender: ConfidentialAccount,
     /// Confidential account of the receiver.
@@ -274,6 +338,22 @@ pub struct TransactionLeg<T: Config> {
 }
 
 impl<T: Config> TransactionLeg<T> {
+    pub fn new(
+        asset_id: AssetId,
+        sender: ConfidentialAccount,
+        receiver: ConfidentialAccount,
+    ) -> Option<Self> {
+        let mut assets = BoundedBTreeSet::new();
+        assets.try_insert(asset_id).ok()?;
+        Some(TransactionLeg {
+            assets,
+            sender,
+            receiver,
+            auditors: Default::default(),
+            mediators: Default::default(),
+        })
+    }
+
     pub fn mediators(&self) -> impl Iterator<Item = &IdentityId> {
         self.mediators.iter()
     }
@@ -288,10 +368,10 @@ impl<T: Config> TransactionLeg<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ConfidentialAuditors<T: Config> {
     /// Auditor public keys.
-    auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
     /// Mediator identities.
     /// TODO: change limit.
-    mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
 }
 
 /// Transaction information.
@@ -332,7 +412,11 @@ pub mod pallet {
     /// Configuration trait.
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + BalancesConfig + IdentityConfig + pallet_statistics::Config + core::fmt::Debug
+        frame_system::Config
+        + BalancesConfig
+        + IdentityConfig
+        + pallet_statistics::Config
+        + core::fmt::Debug
     {
         /// Pallet's events.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -411,7 +495,7 @@ pub mod pallet {
             IdentityId,
             TransactionId,
             TransactionLegId,
-            AffirmParty,
+            AffirmParty<T>,
             u32,
         ),
         /// Confidential account balance decreased.
@@ -856,16 +940,15 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Affirm a transaction.
+        /// Affirm transactions.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::affirm_transaction(&affirm))]
-        pub fn affirm_transaction(
+        #[pallet::weight(<T as Config>::WeightInfo::affirm_transactions(transactions.as_slice()))]
+        pub fn affirm_transactions(
             origin: OriginFor<T>,
-            transaction_id: TransactionId,
-            affirm: AffirmLeg,
+            transactions: AffirmTransactions<T>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_affirm_transaction(did, transaction_id, affirm)?;
+            Self::base_affirm_transactions(did, transactions)?;
             Ok(().into())
         }
 
@@ -898,10 +981,7 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn base_create_account(
-        caller_did: IdentityId,
-        account: ConfidentialAccount,
-    ) -> DispatchResult {
+    fn base_create_account(caller_did: IdentityId, account: ConfidentialAccount) -> DispatchResult {
         // Ensure the confidential account doesn't exist.
         ensure!(
             !AccountDid::<T>::contains_key(&account),
@@ -910,15 +990,12 @@ impl<T: Config> Pallet<T> {
         // Link the confidential account to the caller's identity.
         AccountDid::<T>::insert(&account, caller_did);
 
-        Self::deposit_event(Event::<T>::AccountCreated(
-            caller_did,
-            account,
-        ));
+        Self::deposit_event(Event::<T>::AccountCreated(caller_did, account));
         Ok(())
     }
 
-    fn make_asset_id(owner_did: IdentityId) -> AssetId {
-        let seed = Self::get_seed();
+    pub fn next_asset_id(owner_did: IdentityId, update: bool) -> AssetId {
+        let seed = Self::get_seed(update);
         blake2_128(&(b"modlpy/confidential_asset", owner_did, seed).encode())
     }
 
@@ -926,14 +1003,17 @@ impl<T: Config> Pallet<T> {
         owner_did: IdentityId,
         auditors: ConfidentialAuditors<T>,
     ) -> DispatchResult {
-        let asset_id = Self::make_asset_id(owner_did);
+        let asset_id = Self::next_asset_id(owner_did, true);
         // Ensure the asset hasn't been created yet.
         ensure!(
             !Details::<T>::contains_key(asset_id),
             Error::<T>::ConfidentialAssetAlreadyCreated
         );
         // Ensure that there is at least one auditor.
-        ensure!(auditors.auditors.len() >= 1, Error::<T>::NotEnoughAssetAuditors);
+        ensure!(
+            auditors.auditors.len() >= 1,
+            Error::<T>::NotEnoughAssetAuditors
+        );
 
         // Ensure the mediators exist.
         for _mediator_did in &auditors.mediators {
@@ -1086,16 +1166,19 @@ impl<T: Config> Pallet<T> {
                     // Ensure that the asset issuer allows this `venue_id`.
                     Self::ensure_venue_allowed(asset_id, venue_id)?;
                     // Load and cache the required auditors for the asset.
-                    entry.insert(
-                        Self::asset_auditors(asset_id)
-                            .ok_or(Error::<T>::UnknownConfidentialAsset)?,
-                    ).clone()
+                    entry
+                        .insert(
+                            Self::asset_auditors(asset_id)
+                                .ok_or(Error::<T>::UnknownConfidentialAsset)?,
+                        )
+                        .clone()
                 }
                 Entry::Occupied(entry) => entry.get().clone(),
             };
             // Add the asset mediators to the mediators for this leg.
             leg_mediators.extend(&asset.mediators);
-            let auditors = venue_auditors.iter()
+            let auditors = venue_auditors
+                .iter()
                 .chain(asset.auditors.iter())
                 .copied()
                 .collect::<BTreeSet<_>>()
@@ -1105,12 +1188,14 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok(TransactionLegDetails {
-          auditors: leg_auditors.try_into()
-              .map_err(|_| Error::<T>::TooManyAuditors)?,
-          sender: leg.sender,
-          receiver: leg.receiver,
-          mediators: leg_mediators.try_into()
-              .map_err(|_| Error::<T>::TooManyMediators)?,
+            auditors: leg_auditors
+                .try_into()
+                .map_err(|_| Error::<T>::TooManyAuditors)?,
+            sender: leg.sender,
+            receiver: leg.receiver,
+            mediators: leg_mediators
+                .try_into()
+                .map_err(|_| Error::<T>::TooManyMediators)?,
         })
     }
 
@@ -1252,10 +1337,21 @@ impl<T: Config> Pallet<T> {
         Ok(transaction_id)
     }
 
+    fn base_affirm_transactions(
+        caller_did: IdentityId,
+        transactions: AffirmTransactions<T>,
+    ) -> DispatchResultWithPostInfo {
+        // TODO: Return actual weight.
+        for tx in transactions.0 {
+            Self::base_affirm_transaction(caller_did, tx.id, tx.leg)?;
+        }
+        Ok(().into())
+    }
+
     fn base_affirm_transaction(
         caller_did: IdentityId,
         transaction_id: TransactionId,
-        affirm: AffirmLeg,
+        affirm: AffirmLeg<T>,
     ) -> DispatchResult {
         let leg_id = affirm.leg_id;
         let leg = TransactionLegs::<T>::get(transaction_id, leg_id)
@@ -1270,7 +1366,7 @@ impl<T: Config> Pallet<T> {
         );
 
         match &affirm.party {
-            AffirmParty::Sender(proof) => {
+            AffirmParty::Sender(transfers) => {
                 let mut leg_state = TransactionLegState::default();
                 let sender = leg.sender;
                 let receiver = leg.receiver;
@@ -1278,8 +1374,18 @@ impl<T: Config> Pallet<T> {
                 let sender_did = Self::account_did(&sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
 
+                // Ensure the same number of assets.
+                ensure!(
+                    transfers.proofs.len() == leg.auditors.len(),
+                    Error::<T>::InvalidSenderProof
+                );
+
                 // TODO: Handle multiple assets.
                 for (asset_id, auditors) in leg.auditors {
+                    let proof = transfers
+                        .proofs
+                        .get(&asset_id)
+                        .ok_or(Error::<T>::InvalidSenderProof)?;
                     // Get the sender's current balance.
                     let sender_init_balance = Self::account_balance(&sender, asset_id)
                         .ok_or(Error::<T>::ConfidentialAccountMissing)?;
@@ -1289,8 +1395,8 @@ impl<T: Config> Pallet<T> {
                         sender_balance: sender_init_balance,
                         receiver: receiver.0,
                         auditors: auditors.iter().map(|account| account.0).collect(),
-                        proof: proof.0.clone(),
-                        seed: Self::get_seed(),
+                        proof: proof.encode(),
+                        seed: Self::get_seed(true),
                     };
 
                     // Verify the sender's proof.
@@ -1302,18 +1408,21 @@ impl<T: Config> Pallet<T> {
 
                     // Store the pending state for this transaction leg.
                     let receiver_amount = resp.receiver_amount;
-                    leg_state.asset_state.insert(asset_id, TransactionLegAssetState {
-                        sender_init_balance,
-                        sender_amount,
-                        receiver_amount,
-                    });
+                    leg_state.asset_state.insert(
+                        asset_id,
+                        TransactionLegAssetState {
+                            sender_init_balance,
+                            sender_amount,
+                            receiver_amount,
+                        },
+                    );
                 }
                 TxLegStates::<T>::insert(transaction_id, leg_id, leg_state);
             }
             AffirmParty::Receiver => {
                 let receiver_did = Self::account_did(&leg.receiver);
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
-                // TODO: Create new error, "Sender hasn't affirmed leg". 
+                // TODO: Create new error, "Sender hasn't affirmed leg".
                 ensure!(
                     TxLegStates::<T>::contains_key(transaction_id, leg_id),
                     Error::<T>::TransactionNotAffirmed
@@ -1323,7 +1432,7 @@ impl<T: Config> Pallet<T> {
                 // TODO: check mediator's did.
                 //let mediator_did = Self::mediator_account_did(mediator);
                 //ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
-                // TODO: Create new error, "Sender hasn't affirmed leg". 
+                // TODO: Create new error, "Sender hasn't affirmed leg".
                 ensure!(
                     TxLegStates::<T>::contains_key(transaction_id, leg_id),
                     Error::<T>::TransactionNotAffirmed
@@ -1426,10 +1535,10 @@ impl<T: Config> Pallet<T> {
 
         // Take the transaction leg's pending state.
         let leg_state = TxLegStates::<T>::take(transaction_id, leg_id)
-              .ok_or(Error::<T>::TransactionNotAffirmed)?;
+            .ok_or(Error::<T>::TransactionNotAffirmed)?;
         for (asset_id, state) in leg_state.asset_state {
-          // Deposit the transaction amount into the receiver's account.
-          Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
+            // Deposit the transaction amount into the receiver's account.
+            Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
         }
         Ok(())
     }
@@ -1604,10 +1713,12 @@ impl<T: Config> Pallet<T> {
         ));
     }
 
-    fn get_seed() -> [u8; 32] {
+    fn get_seed(update: bool) -> [u8; 32] {
         // Increase the nonce each time.
         let nonce = RngNonce::<T>::get();
-        RngNonce::<T>::put(nonce.wrapping_add(1));
+        if update {
+            RngNonce::<T>::put(nonce.wrapping_add(1));
+        }
         // Use the `nonce` and chain randomness to generate a new seed.
         let (random_hash, _) = T::Randomness::random(&(b"ConfidentialAsset", nonce).encode());
         let s = random_hash.as_ref();
