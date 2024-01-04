@@ -3,23 +3,18 @@
 
 use frame_support::assert_ok;
 use frame_support::traits::TryCollect;
-use scale_info::prelude::format;
 use sp_runtime::traits::Zero;
 
 use rand_chacha::ChaCha20Rng as StdRng;
 
 use confidential_assets::{
-    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    transaction::ConfidentialTransferProof, AssetId, Balance as ConfidentialBalance, CipherText,
     ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
 
 use polymesh_common_utilities::{
     benchs::{user, AccountIdOf, User},
     traits::TestUtilsFn,
-};
-use polymesh_primitives::{
-    asset::{AssetName, AssetType},
-    Ticker,
 };
 
 use crate::*;
@@ -32,68 +27,78 @@ pub(crate) const AUDITOR_SEED: u32 = 1_000;
 
 #[derive(Clone)]
 pub struct AuditorState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
-    pub auditors: ConfidentialAuditors<T::MaxNumberOfAuditors>,
-    pub users: BTreeMap<MediatorAccount, ConfidentialUser<T>>,
+    pub asset: ConfidentialAuditors<T>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxVenueAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxVenueMediators>,
+    pub users: BTreeMap<AuditorAccount, ConfidentialUser<T>>,
 }
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
-    /// Create maximum number of auditors with one mediator role for a ticker.
-    pub fn new(ticker: u32, rng: &mut StdRng) -> Self {
-        Self::new_full(ticker, T::MaxNumberOfAuditors::get(), 1, rng)
+    /// Create maximum number of auditors with one mediator role for an asset.
+    pub fn new(asset: u32, rng: &mut StdRng) -> Self {
+        let count = T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get();
+        Self::new_full(asset, count, 1, rng)
     }
 
-    /// Create `auditor_count` auditors with `mediator_count` mediator roles for a ticker.
+    /// Create `auditor_count` auditors with `mediator_count` mediator roles for an asset.
     pub fn new_full(
-        ticker: u32,
+        asset_idx: u32,
         auditor_count: u32,
         mediator_count: u32,
         rng: &mut StdRng,
     ) -> Self {
-        let mut auditors = ConfidentialAuditors::default();
+        let mut auditors = BoundedBTreeSet::new();
+        let mut mediators = BoundedBTreeSet::new();
         let mut users = BTreeMap::new();
-        let auditor_count = auditor_count.clamp(1, T::MaxNumberOfAuditors::get());
+        let auditor_count =
+            auditor_count.clamp(1, T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
         let mut mediator_count = mediator_count.min(auditor_count);
+        let mut asset = ConfidentialAuditors::new();
         // Create auditors.
         for idx in 0..auditor_count {
-            let user = ConfidentialUser::<T>::auditor_user("auditor", ticker, idx, rng);
-            let account = user.mediator_account();
-            user.add_mediator();
-            // Make the first `mediator_count` auditors into mediators.
-            let role = if mediator_count > 0 {
-                mediator_count -= 1;
-                ConfidentialTransactionRole::Mediator
-            } else {
-                ConfidentialTransactionRole::Auditor
-            };
+            let user = ConfidentialUser::<T>::auditor_user("auditor", asset_idx, idx, rng);
+            let did = user.did();
+            let account = user.auditor_account();
             users.insert(account, user);
-            auditors.add_auditor(&account, role).expect("Auditor added");
+            // Make the first `mediator_count` auditors into mediators.
+            let is_mediator = if mediator_count > 0 { true } else { false };
+            // First add asset-level auditors/mediators.
+            if asset.auditors.try_insert(account).is_ok() {
+                if is_mediator && asset.mediators.try_insert(did).is_ok() {
+                    mediator_count -= 1;
+                }
+            } else {
+                // Then add venue-level auditors/mediators.
+                if auditors.try_insert(account).is_ok() {
+                    if is_mediator && mediators.try_insert(did).is_ok() {
+                        mediator_count -= 1;
+                    }
+                }
+            }
         }
-        Self { auditors, users }
+        Self {
+            asset,
+            auditors,
+            mediators,
+            users,
+        }
     }
 
     /// Return an `ConfidentialAuditors` limited to just the number of auditors allowed per asset.
-    pub fn get_asset_auditors(&self) -> ConfidentialAuditors<T::MaxNumberOfAssetAuditors> {
-        let mut auditors = ConfidentialAuditors::default();
-        for (account, role) in self
-            .auditors
-            .auditors()
-            .take(T::MaxNumberOfAssetAuditors::get() as usize)
-        {
-            auditors
-                .add_auditor(account, *role)
-                .expect("Shouldn't hit the limit");
-        }
-        auditors
+    pub fn get_asset_auditors(&self) -> ConfidentialAuditors<T> {
+        self.asset.clone()
     }
 
     pub fn build_auditor_set(&self) -> BTreeSet<ElgamalPublicKey> {
-        self.auditors.build_auditor_set().expect("auditor set")
+        self.auditors
+            .iter()
+            .chain(self.asset.auditors.iter())
+            .map(|k| k.0.into_public_key().expect("valid key"))
+            .collect()
     }
 
     pub fn mediators(&self) -> impl Iterator<Item = &ConfidentialUser<T>> {
-        self.auditors
-            .mediators()
-            .filter_map(|acc| self.users.get(acc))
+        self.users.values()
     }
 
     pub fn verify_proof(
@@ -101,40 +106,40 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
         sender_proof: &ConfidentialTransferProof,
         amount: ConfidentialBalance,
     ) {
-        let auditors = self.auditors.auditors().enumerate();
-        for (idx, (account, role)) in auditors {
-            match (role, self.users.get(account)) {
-                (ConfidentialTransactionRole::Mediator, Some(mediator)) => {
+        let auditors = self.auditors.iter().enumerate();
+        for (idx, account) in auditors {
+            match self.users.get(account) {
+                Some(mediator) => {
                     sender_proof
                         .auditor_verify(idx as u8, &mediator.sec, Some(amount))
                         .expect("Mediator verify proof");
                 }
-                (ConfidentialTransactionRole::Mediator, None) => {
+                None => {
                     panic!("Missing mediator");
                 }
-                _ => (),
             }
         }
     }
 }
 
+pub fn next_asset_id<T: Config>(did: IdentityId) -> AssetId {
+    Pallet::<T>::next_asset_id(did, false)
+}
+
 pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     prefix: &'static str,
-    idx: u32,
     rng: &mut StdRng,
-) -> (Ticker, ConfidentialUser<T>, AuditorState<T>) {
+) -> (AssetId, ConfidentialUser<T>, AuditorState<T>) {
     let issuer = ConfidentialUser::<T>::new(prefix, rng);
-    let name = format!("{prefix}{idx}");
-    let ticker = Ticker::from_slice_truncated(name.as_bytes());
     let auditors = AuditorState::new(0, rng);
+    let asset_id = next_asset_id::<T>(issuer.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         issuer.origin(),
-        AssetName(b"Name".to_vec()),
-        ticker,
-        AssetType::default(),
+        None,
+        Default::default(),
         auditors.get_asset_auditors(),
     ));
-    (ticker, issuer, auditors)
+    (asset_id, issuer, auditors)
 }
 
 #[derive(Clone, Debug)]
@@ -149,14 +154,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         Self::new_from_seed(name, SEED, rng)
     }
 
-    /// Creates a confidential user with ticker based seed.
-    pub fn ticker_user(name: &'static str, ticker: u32, rng: &mut StdRng) -> Self {
-        Self::new_from_seed(name, ticker * TICKER_SEED, rng)
+    /// Creates a confidential user with asset based seed.
+    pub fn asset_user(name: &'static str, asset: u32, rng: &mut StdRng) -> Self {
+        Self::new_from_seed(name, asset * TICKER_SEED, rng)
     }
 
-    /// Creates a confidential user with ticker/auditor based seed.
-    pub fn auditor_user(name: &'static str, ticker: u32, auditor: u32, rng: &mut StdRng) -> Self {
-        Self::new_from_seed(name, ticker * TICKER_SEED + auditor * AUDITOR_SEED, rng)
+    /// Creates a confidential user with asset/auditor based seed.
+    pub fn auditor_user(name: &'static str, asset: u32, auditor: u32, rng: &mut StdRng) -> Self {
+        Self::new_from_seed(name, asset * TICKER_SEED + auditor * AUDITOR_SEED, rng)
     }
 
     fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
@@ -178,11 +183,11 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         self.sec.public
     }
 
-    pub fn account(&self) -> ConfidentialAccount {
+    pub fn auditor_account(&self) -> AuditorAccount {
         self.sec.public.into()
     }
 
-    pub fn mediator_account(&self) -> MediatorAccount {
+    pub fn account(&self) -> ConfidentialAccount {
         self.sec.public.into()
     }
 
@@ -198,32 +203,21 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         self.user.origin()
     }
 
-    /// Initialize a new confidential account on-chain for `ticker`.
-    pub fn init_account(&self, ticker: Ticker) {
-        assert_ok!(Pallet::<T>::create_account(
-            self.origin(),
-            ticker,
-            self.account(),
-        ));
+    /// Register a new confidential account on-chain.
+    pub fn create_account(&self) {
+        assert_ok!(Pallet::<T>::create_account(self.origin(), self.account(),));
     }
 
-    pub fn enc_balance(&self, ticker: Ticker) -> CipherText {
-        Pallet::<T>::account_balance(self.account(), ticker).expect("confidential account balance")
+    pub fn enc_balance(&self, asset: AssetId) -> CipherText {
+        Pallet::<T>::account_balance(self.account(), asset).unwrap_or_default()
     }
 
-    pub fn ensure_balance(&self, ticker: Ticker, balance: ConfidentialBalance) {
-        let enc_balance = self.enc_balance(ticker);
+    pub fn ensure_balance(&self, asset: AssetId, balance: ConfidentialBalance) {
+        let enc_balance = self.enc_balance(asset);
         self.sec
             .secret
             .verify(&enc_balance, &balance.into())
             .expect("verify confidential balance")
-    }
-
-    pub fn add_mediator(&self) {
-        assert_ok!(Pallet::<T>::add_mediator_account(
-            self.origin(),
-            self.mediator_account(),
-        ));
     }
 }
 
@@ -236,33 +230,25 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     mediators: u32,
     rng: &mut StdRng,
 ) -> (
-    Ticker,
+    AssetId,
     ConfidentialUser<T>,
     ConfidentialBalance,
     AuditorState<T>,
 ) {
-    let token_name = format!("A{idx}");
-    let owner = ConfidentialUser::ticker_user(name, idx, rng);
-    let token = ConfidentialAssetDetails {
-        name: AssetName(b"Name".to_vec()),
-        total_supply,
-        owner_did: owner.did(),
-        asset_type: AssetType::default(),
-    };
-    let ticker = Ticker::from_slice_truncated(token_name.as_bytes());
+    let owner = ConfidentialUser::asset_user(name, idx, rng);
 
     let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
+    let asset_id = next_asset_id::<T>(owner.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         owner.origin(),
-        AssetName(b"Name".to_vec()),
-        ticker,
-        AssetType::default(),
+        None,
+        Default::default(),
         auditors.get_asset_auditors(),
     ));
 
     // In the initial call, the total_supply must be zero.
     assert_eq!(
-        Pallet::<T>::confidential_asset_details(ticker)
+        Pallet::<T>::confidential_asset_details(asset_id)
             .expect("Asset details")
             .total_supply,
         Zero::zero()
@@ -270,15 +256,15 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     // ---------------- prepare for minting the asset
 
-    owner.init_account(ticker);
+    owner.create_account();
 
     // ------------- Computations that will happen in owner's Wallet ----------
-    let amount: ConfidentialBalance = token.total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
+    let amount: ConfidentialBalance = total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
 
     // Wallet submits the transaction to the chain for verification.
     assert_ok!(Pallet::<T>::mint_confidential_asset(
         owner.origin(),
-        ticker,
+        asset_id,
         amount.into(), // convert to u128
         owner.account(),
     ));
@@ -287,28 +273,28 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     // A correct entry is added.
     assert_eq!(
-        Pallet::<T>::confidential_asset_details(ticker)
+        Pallet::<T>::confidential_asset_details(asset_id)
             .expect("Asset details")
             .owner_did,
-        token.owner_did
+        owner.did()
     );
 
     // -------------------------- Ensure the encrypted balance matches the minted amount.
-    owner.ensure_balance(ticker, amount);
+    owner.ensure_balance(asset_id, amount);
 
-    (ticker, owner, amount, auditors)
+    (asset_id, owner, amount, auditors)
 }
 
 #[derive(Clone)]
 pub struct TransactionLegState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
-    pub ticker: Ticker,
+    pub asset_id: AssetId,
     pub amount: ConfidentialBalance,
     pub issuer_balance: ConfidentialBalance,
     pub issuer: ConfidentialUser<T>,
     pub investor: ConfidentialUser<T>,
     pub auditors: AuditorState<T>,
     pub leg_id: TransactionLegId,
-    pub leg: TransactionLeg<T::MaxNumberOfAuditors>,
+    pub leg: TransactionLeg<T>,
 }
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
@@ -323,7 +309,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         let amount = 4_000_000_000 as ConfidentialBalance;
         let total_supply = amount + 100_000_000;
         // Setup confidential asset.
-        let (ticker, issuer, issuer_balance, auditors) = create_account_and_mint_token::<T>(
+        let (asset_id, issuer, issuer_balance, auditors) = create_account_and_mint_token::<T>(
             "issuer",
             total_supply as u128,
             leg_id,
@@ -335,22 +321,25 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         // Allow our venue.
         assert_ok!(Pallet::<T>::allow_venues(
             issuer.origin(),
-            ticker,
+            asset_id,
             vec![venue_id]
         ));
 
         // Setup investor.
-        let investor = ConfidentialUser::<T>::ticker_user("investor", leg_id, rng);
-        investor.init_account(ticker);
+        let investor = ConfidentialUser::<T>::asset_user("investor", leg_id, rng);
+        investor.create_account();
 
+        let mut assets = BTreeSet::new();
+        assets.insert(asset_id);
         let leg = TransactionLeg {
-            ticker,
+            assets: assets.try_into().expect("Shouldn't fail"),
             sender: issuer.account(),
             receiver: investor.account(),
             auditors: auditors.auditors.clone(),
+            mediators: auditors.mediators.clone(),
         };
         Self {
-            ticker,
+            asset_id,
             amount,
             issuer_balance,
             issuer,
@@ -361,11 +350,11 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         }
     }
 
-    pub fn sender_proof(&self, rng: &mut StdRng) -> AffirmLeg {
+    pub fn sender_proof(&self, rng: &mut StdRng) -> AffirmLeg<T> {
         let investor_pub_account = self.investor.pub_key();
-        let issuer_enc_balance = self.issuer.enc_balance(self.ticker);
+        let issuer_enc_balance = self.issuer.enc_balance(self.asset_id);
         let auditor_keys = self.auditors.build_auditor_set();
-        let sender_tx = ConfidentialTransferProof::new(
+        let proof = ConfidentialTransferProof::new(
             &self.issuer.sec,
             &issuer_enc_balance,
             self.issuer_balance,
@@ -375,33 +364,31 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
             rng,
         )
         .unwrap();
-        AffirmLeg::sender(self.leg_id, sender_tx)
+        let mut transfers = ConfidentialTransfers::new();
+        transfers.insert(self.asset_id, proof);
+        AffirmLeg::sender(self.leg_id, transfers)
+    }
+
+    pub fn affirm(&self, user: &ConfidentialUser<T>, id: TransactionId, leg: AffirmLeg<T>) {
+        let mut affirms = AffirmTransactions::new();
+        affirms.push(AffirmTransaction { id, leg });
+        assert_ok!(Pallet::<T>::affirm_transactions(user.origin(), affirms));
     }
 
     pub fn sender_affirm(&self, id: TransactionId, rng: &mut StdRng) {
         let affirm = self.sender_proof(rng);
-        assert_ok!(Pallet::<T>::affirm_transaction(
-            self.issuer.origin(),
-            id,
-            affirm
-        ));
+        self.affirm(&self.issuer, id, affirm);
     }
 
     pub fn receiver_affirm(&self, id: TransactionId) {
-        assert_ok!(Pallet::<T>::affirm_transaction(
-            self.investor.origin(),
-            id,
-            AffirmLeg::receiver(self.leg_id),
-        ));
+        let affirm = AffirmLeg::receiver(self.leg_id);
+        self.affirm(&self.investor, id, affirm);
     }
 
     pub fn mediator_affirm(&self, id: TransactionId) {
         for mediator in self.auditors.mediators() {
-            assert_ok!(Pallet::<T>::affirm_transaction(
-                mediator.origin(),
-                id,
-                AffirmLeg::mediator(self.leg_id, mediator.mediator_account()),
-            ));
+            let affirm = AffirmLeg::mediator(self.leg_id);
+            self.affirm(mediator, id, affirm);
         }
     }
 
@@ -436,7 +423,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     /// Setup for a transaction with `leg_count` legs each with maximum number of mediators.
     pub fn new_legs(leg_count: u32, rng: &mut StdRng) -> Self {
-        let count = leg_count * T::MaxNumberOfAuditors::get();
+        let count = leg_count * (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
         Self::new_legs_full(leg_count, count, count, rng)
     }
 
@@ -455,12 +442,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         let venue_id = Pallet::<T>::venue_counter();
         assert_ok!(Pallet::<T>::create_venue(custodian.origin()));
 
+        let a_max = T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get();
+        let m_max = T::MaxVenueMediators::get() + T::MaxAssetMediators::get();
         let legs: Vec<_> = (0..leg_count)
             .into_iter()
             .map(|leg_id| {
-                let a_count = auditors.min(T::MaxNumberOfAuditors::get());
+                let a_count = auditors.min(a_max);
                 auditors = auditors.saturating_sub(a_count);
-                let m_count = mediators.min(T::MaxNumberOfAuditors::get());
+                let m_count = mediators.min(m_max);
                 mediators = mediators.saturating_sub(m_count);
                 TransactionLegState::new(venue_id, leg_id, a_count, m_count, rng)
             })
@@ -475,9 +464,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         }
     }
 
-    pub fn get_legs(
-        &self,
-    ) -> BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs> {
+    pub fn get_legs(&self) -> BoundedVec<TransactionLeg<T>, T::MaxNumberOfLegs> {
         self.legs
             .iter()
             .map(|s| s.leg.clone())
@@ -499,7 +486,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         self.legs.get(leg_id as usize).expect("Leg").clone()
     }
 
-    pub fn sender_proof(&self, leg_id: u32, rng: &mut StdRng) -> AffirmLeg {
+    pub fn sender_proof(&self, leg_id: u32, rng: &mut StdRng) -> AffirmLeg<T> {
         self.leg(leg_id).sender_proof(rng)
     }
 
@@ -525,6 +512,17 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         for idx in 0..self.legs.len() {
             self.affirm_leg(idx as _, rng);
         }
+    }
+
+    pub fn affirms(&self, legs: &[AffirmLeg<T>]) -> AffirmTransactions<T> {
+        let mut affirms = AffirmTransactions::new();
+        for leg in legs {
+            affirms.push(AffirmTransaction {
+                id: self.id,
+                leg: leg.clone(),
+            });
+        }
+        affirms
     }
 
     pub fn execute(&self) {

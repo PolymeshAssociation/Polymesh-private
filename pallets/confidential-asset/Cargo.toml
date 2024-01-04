@@ -21,6 +21,7 @@ pallet-statistics = { workspace = true, default-features = false }
 rand_core = { workspace = true, default-features = false }
 rand_chacha = { workspace = true, default-features = false }
 confidential_assets = { workspace = true, default-features = false }
+polymesh-host-functions = { workspace = true, default-features = false }
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
@@ -28,6 +29,7 @@ scale-info = { workspace = true, default-features = false, features = ["derive"]
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 
 # Only Benchmarking
@@ -40,10 +42,20 @@ default = ["std", "equalize", "u64_backend"]
 testing = []
 
 # Backends
-u64_backend = ["confidential_assets/u64_backend"]
-avx2_backend = ["confidential_assets/avx2_backend"]
+u64_backend = [
+	"confidential_assets/u64_backend",
+	"polymesh-host-functions/u64_backend",
+]
+simd_backend = [
+	"confidential_assets/simd_backend",
+	"polymesh-host-functions/simd_backend",
+]
+avx2_backend = [
+	"confidential_assets/avx2_backend",
+	"polymesh-host-functions/avx2_backend",
+]
 
-no_std = ["confidential_assets/no_std", "u64_backend"]
+no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std", "u64_backend"]
 only-staking = []
 std = [
     "rand_core/std",
@@ -59,8 +71,10 @@ std = [
     "polymesh-common-utilities/std",
     "polymesh-runtime-common/std",
     "polymesh-primitives/std",
+    "polymesh-host-functions/std",
     "sp-runtime/std",
     "sp-std/std",
+    "sp-io/std",
 ]
 runtime-benchmarks = [
 		"testing",

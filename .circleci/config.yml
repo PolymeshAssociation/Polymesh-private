@@ -14,7 +14,7 @@ commands:
     steps:
       - restore_cache:
           name: Restore sccache cache
-          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
+          key: sccache-cache-stable-v1-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
       - run:
           name: Show cache size
           command: /usr/local/cargo/bin/sccache -s
@@ -29,14 +29,14 @@ commands:
           # Of course, restore_cache will not find this exact key,
           # but it will fall back to the closest key (aka the most recent).
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ epoch }}
+          key: sccache-cache-stable-v1-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ epoch }}
           paths:
             - "/usr/local/cargo"
             - "~/.cache/sccache"
 jobs:
   lint:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: small
     environment:
       VERBOSE: "1"
@@ -50,7 +50,7 @@ jobs:
           command: ./scripts/check_spec_and_cargo_version.sh
   check-storage-version:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: small
     environment:
       VERBOSE: "1"
@@ -61,7 +61,7 @@ jobs:
           command: ./scripts/check_storage_versions.sh
   build:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -99,7 +99,7 @@ jobs:
             - "~/.cache/sccache"
   benchmark-build:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -144,7 +144,7 @@ jobs:
           no_output_timeout: 30m
   test:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: large
     environment:
       - VERBOSE: "1"
@@ -173,7 +173,7 @@ jobs:
             - "~/.cache/sccache"
   coverage:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"
@@ -195,7 +195,7 @@ jobs:
             - "/usr/local/cargo"
   rust-integration-test:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: medium+
     environment:
       - VERBOSE: "1"
@@ -226,7 +226,7 @@ jobs:
       - save-sccache-cache
   clippy:
     docker:
-      - image: polymeshassociation/rust:debian-nightly-2022-11-02
+      - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
       - VERBOSE: "1"

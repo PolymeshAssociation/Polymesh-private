@@ -145,11 +145,21 @@ parameter_types! {
 }
 
 #[cfg(feature = "runtime-benchmarks")]
-type MaxNumberOfConfidentialLegs = ConstSize<100>;
+type ConfidentialAssetMaxNumberOfAffirms = ConstSize<100>;
 #[cfg(not(feature = "runtime-benchmarks"))]
-type MaxNumberOfConfidentialLegs = ConstSize<10>;
-type MaxNumberOfConfidentialAuditors = ConstSize<8>;
-type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+type ConfidentialAssetMaxNumberOfAffirms = ConstSize<10>;
+#[cfg(feature = "runtime-benchmarks")]
+type ConfidentialAssetMaxNumberOfLegs = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type ConfidentialAssetMaxNumberOfLegs = ConstSize<10>;
+type ConfidentialAssetMaxAssetsPerLeg = ConstSize<4>;
+type ConfidentialAssetMaxAuditorsPerLeg = ConstSize<{ 4 + 4 }>;
+type ConfidentialAssetMaxMediatorsPerLeg = ConstSize<{ 4 * 8 }>;
+type ConfidentialAssetMaxVenueAuditors = ConstSize<4>;
+type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
+type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
+type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
+type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -315,9 +325,16 @@ impl pallet_confidential_asset::Config for Runtime {
     type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
-    type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
-    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
-    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
+    type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
+    type MaxNumberOfAffirms = ConfidentialAssetMaxNumberOfAffirms;
+    type MaxNumberOfLegs = ConfidentialAssetMaxNumberOfLegs;
+    type MaxAssetsPerLeg = ConfidentialAssetMaxAssetsPerLeg;
+    type MaxAuditorsPerLeg = ConfidentialAssetMaxAuditorsPerLeg;
+    type MaxMediatorsPerLeg = ConfidentialAssetMaxMediatorsPerLeg;
+    type MaxVenueAuditors = ConfidentialAssetMaxVenueAuditors;
+    type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
+    type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
+    type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
 }
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
