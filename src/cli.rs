@@ -5,12 +5,12 @@ pub struct Cli {
     pub subcommand: Option<Subcommand>,
     #[allow(missing_docs)]
     #[clap(flatten)]
-    pub run: RunCmd,
+    pub run: PolymeshRunCmd,
 }
 
 #[allow(missing_docs)]
 #[derive(Debug, clap::Parser)]
-pub struct RunCmd {
+pub struct PolymeshRunCmd {
     #[allow(missing_docs)]
     #[clap(flatten)]
     pub base: sc_cli::RunCmd,

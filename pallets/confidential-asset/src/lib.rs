@@ -16,15 +16,15 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use confidential_assets::{
-    transaction::ConfidentialTransferProof, Balance as ConfidentialBalance, CipherText,
+    transaction::ConfidentialTransferProof, AssetId, Balance as ConfidentialBalance, CipherText,
     CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
+    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
     ensure,
     traits::{Get, Randomness},
     weights::Weight,
-    BoundedBTreeMap, BoundedVec,
+    BoundedBTreeMap, BoundedBTreeSet, BoundedVec,
 };
 use pallet_base::try_next_post;
 use polymesh_common_utilities::{
@@ -32,12 +32,10 @@ use polymesh_common_utilities::{
 };
 use polymesh_host_functions::VerifyConfidentialTransferRequest;
 use polymesh_primitives::{
-    asset::{AssetName, AssetType},
-    impl_checked_inc,
-    settlement::VenueId,
-    Balance, IdentityId, Memo, Ticker,
+    impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo, Ticker,
 };
 use scale_info::TypeInfo;
+use sp_io::hashing::blake2_128;
 use sp_runtime::{traits::Zero, SaturatedConversion};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
@@ -56,7 +54,6 @@ pub mod weights;
 
 pub trait WeightInfo {
     fn create_account() -> Weight;
-    fn add_mediator_account() -> Weight;
     fn create_confidential_asset() -> Weight;
     fn mint_confidential_asset() -> Weight;
     fn apply_incoming_balance() -> Weight;
@@ -71,14 +68,31 @@ pub trait WeightInfo {
     fn execute_transaction(l: u32) -> Weight;
     fn reject_transaction(l: u32) -> Weight;
 
-    fn affirm_transaction(affirm: &AffirmLeg) -> Weight {
-        match &affirm.party {
-            AffirmParty::Sender(proof) => match proof.into_tx().map(|t| t.auditor_count()) {
-                Some(count) => Self::sender_affirm_transaction(count as u32),
-                _ => Weight::MAX,
-            },
-            AffirmParty::Receiver => Self::receiver_affirm_transaction(),
-            AffirmParty::Mediator(_) => Self::mediator_affirm_transaction(),
+    fn affirm_transactions<T: Config>(transactions: &[AffirmTransaction<T>]) -> Weight {
+        if transactions.len() > 0 {
+            let mut sum = Weight::zero();
+            for tx in transactions {
+                match &tx.leg.party {
+                    AffirmParty::Sender(transfers) => {
+                        for (_, proof) in &transfers.proofs {
+                            sum += match proof.auditor_count() {
+                                Ok(count) => Self::sender_affirm_transaction(count as u32),
+                                _ => Weight::MAX,
+                            };
+                        }
+                    }
+                    AffirmParty::Receiver => {
+                        sum += Self::receiver_affirm_transaction();
+                    }
+                    AffirmParty::Mediator => {
+                        sum += Self::mediator_affirm_transaction();
+                    }
+                }
+            }
+            sum
+        } else {
+            // If no transaction to affirm, use the weight of a single mediator affirm.
+            Self::mediator_affirm_transaction()
         }
     }
 }
@@ -124,12 +138,6 @@ pub struct TransactionLegId(#[codec(compact)] pub u32);
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ConfidentialAccount(pub CompressedElgamalPublicKey);
 
-impl ConfidentialAccount {
-    pub fn is_valid(&self) -> bool {
-        self.0.into_public_key().is_some()
-    }
-}
-
 impl From<ElgamalPublicKey> for ConfidentialAccount {
     fn from(data: ElgamalPublicKey) -> Self {
         Self(data.into())
@@ -142,86 +150,97 @@ impl From<&ElgamalPublicKey> for ConfidentialAccount {
     }
 }
 
-/// A mediator account.
+/// An auditor account.
 ///
-/// Mediator accounts can't hold confidential assets.
+/// Auditor accounts can't hold confidential assets.
 #[derive(
     Encode, Decode, MaxEncodedLen, TypeInfo, Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq,
 )]
-pub struct MediatorAccount(pub CompressedElgamalPublicKey);
+pub struct AuditorAccount(pub CompressedElgamalPublicKey);
 
-impl MediatorAccount {
-    pub fn is_valid(&self) -> bool {
-        self.0.into_public_key().is_some()
-    }
-}
-
-impl From<ElgamalPublicKey> for MediatorAccount {
+impl From<ElgamalPublicKey> for AuditorAccount {
     fn from(data: ElgamalPublicKey) -> Self {
         Self(data.into())
     }
 }
 
-impl From<&ElgamalPublicKey> for MediatorAccount {
+impl From<&ElgamalPublicKey> for AuditorAccount {
     fn from(data: &ElgamalPublicKey) -> Self {
         Self(data.into())
     }
 }
 
-/// Confidential transaction leg.
-#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
-#[scale_info(skip_type_params(S))]
-pub struct TransactionLeg<S: Get<u32>> {
-    /// Asset ticker.
-    pub ticker: Ticker,
-    /// Confidential account of the sender.
-    pub sender: ConfidentialAccount,
-    /// Confidential account of the receiver.
-    pub receiver: ConfidentialAccount,
-    /// Auditors.
-    pub auditors: ConfidentialAuditors<S>,
+/// A set of confidential asset transfers between the same sender & receiver.
+#[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialTransfers<T: Config> {
+    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerLeg>,
 }
 
-impl<S: Get<u32>> TransactionLeg<S> {
-    /// Check if the sender/receiver/auditor accounts are valid.
-    pub fn verify_accounts(&self) -> bool {
-        self.sender.is_valid() && self.receiver.is_valid() && self.auditors.is_valid()
+impl<T: Config> ConfidentialTransfers<T> {
+    pub fn new() -> Self {
+        Self {
+            proofs: Default::default(),
+        }
     }
 
-    pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
-        self.auditors.mediators()
-    }
-}
-
-/// Confidential transfer sender proof.
-#[derive(Encode, Decode, TypeInfo, Clone, Debug, Eq, PartialEq)]
-pub struct SenderProof(Vec<u8>);
-
-impl SenderProof {
-    pub fn into_tx(&self) -> Option<ConfidentialTransferProof> {
-        ConfidentialTransferProof::decode(&mut self.0.as_slice()).ok()
+    pub fn insert(&mut self, asset_id: AssetId, proof: ConfidentialTransferProof) -> bool {
+        self.proofs.try_insert(asset_id, proof).is_ok()
     }
 }
 
 /// Who is affirming the transaction leg.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
-pub enum AffirmParty {
-    Sender(Box<SenderProof>),
+#[scale_info(skip_type_params(T))]
+pub enum AffirmParty<T: Config> {
+    Sender(ConfidentialTransfers<T>),
     Receiver,
-    Mediator(MediatorAccount),
+    Mediator,
+}
+
+/// A batch of transactions to affirm.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct AffirmTransactions<T: Config>(BoundedVec<AffirmTransaction<T>, T::MaxNumberOfAffirms>);
+
+impl<T: Config> core::ops::Deref for AffirmTransactions<T> {
+    type Target = BoundedVec<AffirmTransaction<T>, T::MaxNumberOfAffirms>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T: Config> AffirmTransactions<T> {
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+
+    pub fn push(&mut self, affirm: AffirmTransaction<T>) -> bool {
+        self.0.try_push(affirm).is_ok()
+    }
+}
+
+/// The transaction and leg to affirm.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
+#[scale_info(skip_type_params(T))]
+pub struct AffirmTransaction<T: Config> {
+    pub id: TransactionId,
+    pub leg: AffirmLeg<T>,
 }
 
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
-pub struct AffirmLeg {
+#[scale_info(skip_type_params(T))]
+pub struct AffirmLeg<T: Config> {
     leg_id: TransactionLegId,
-    party: AffirmParty,
+    party: AffirmParty<T>,
 }
 
-impl AffirmLeg {
-    pub fn sender(leg_id: TransactionLegId, tx: ConfidentialTransferProof) -> Self {
+impl<T: Config> AffirmLeg<T> {
+    pub fn sender(leg_id: TransactionLegId, tx: ConfidentialTransfers<T>) -> Self {
         Self {
             leg_id,
-            party: AffirmParty::Sender(Box::new(SenderProof(tx.encode()))),
+            party: AffirmParty::Sender(tx),
         }
     }
 
@@ -232,10 +251,10 @@ impl AffirmLeg {
         }
     }
 
-    pub fn mediator(leg_id: TransactionLegId, account: MediatorAccount) -> Self {
+    pub fn mediator(leg_id: TransactionLegId) -> Self {
         Self {
             leg_id,
-            party: AffirmParty::Mediator(account),
+            party: AffirmParty::Mediator,
         }
     }
 
@@ -243,7 +262,7 @@ impl AffirmLeg {
         match self.party {
             AffirmParty::Sender(_) => LegParty::Sender,
             AffirmParty::Receiver => LegParty::Receiver,
-            AffirmParty::Mediator(account) => LegParty::Mediator(account),
+            AffirmParty::Mediator => LegParty::Mediator,
         }
     }
 }
@@ -253,88 +272,114 @@ impl AffirmLeg {
 pub enum LegParty {
     Sender,
     Receiver,
-    Mediator(MediatorAccount),
+    Mediator,
 }
 
 /// Confidential asset details.
 #[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
-pub struct ConfidentialAssetDetails {
-    /// Confidential asset name.
-    pub name: AssetName,
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialAssetDetails<T: Config> {
     /// Total supply of the asset.
     pub total_supply: Balance,
     /// Asset's owner DID.
     pub owner_did: IdentityId,
-    /// Type of the asset.
-    pub asset_type: AssetType,
+    /// Asset data.
+    pub data: BoundedVec<u8, T::MaxAssetDataLength>,
+    /// Asset ticker (optional)
+    pub ticker: Option<Ticker>,
 }
 
-/// Confidential transaction role auditor/mediator.
-#[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ConfidentialTransactionRole {
-    /// An auditor that only needs to audit confidential transactions.
-    Auditor,
-    /// A mediator needs to affirm confidential transactions between identities.
-    Mediator,
+/// Confidential transaction leg asset pending state.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
+pub struct TransactionLegAssetState {
+    pub sender_init_balance: CipherText,
+    pub sender_amount: CipherText,
+    pub receiver_amount: CipherText,
+}
+
+/// Confidential transaction leg pending state.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, Default, PartialEq, Eq)]
+pub struct TransactionLegState {
+    /// Leg asset pending state.
+    pub asset_state: BTreeMap<AssetId, TransactionLegAssetState>,
+}
+
+/// Confidential transaction leg details.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
+#[scale_info(skip_type_params(T))]
+pub struct TransactionLegDetails<T: Config> {
+    /// Asset auditors (both Asset & Venue auditors) for each leg asset.
+    pub auditors: BoundedBTreeMap<
+        AssetId,
+        BoundedBTreeSet<AuditorAccount, T::MaxAuditorsPerLeg>,
+        T::MaxAssetsPerLeg,
+    >,
+    /// Confidential account of the sender.
+    pub sender: ConfidentialAccount,
+    /// Confidential account of the receiver.
+    pub receiver: ConfidentialAccount,
+    /// Leg mediators (both Asset & Venue mediators).
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxMediatorsPerLeg>,
+}
+
+/// Confidential transaction leg.
+#[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
+#[scale_info(skip_type_params(T))]
+pub struct TransactionLeg<T: Config> {
+    /// Leg assets.
+    pub assets: BoundedBTreeSet<AssetId, T::MaxAssetsPerLeg>,
+    /// Confidential account of the sender.
+    pub sender: ConfidentialAccount,
+    /// Confidential account of the receiver.
+    pub receiver: ConfidentialAccount,
+    /// Venue auditors.
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxVenueAuditors>,
+    /// Venue mediators.
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxVenueMediators>,
+}
+
+impl<T: Config> TransactionLeg<T> {
+    pub fn new(
+        asset_id: AssetId,
+        sender: ConfidentialAccount,
+        receiver: ConfidentialAccount,
+    ) -> Option<Self> {
+        let mut assets = BoundedBTreeSet::new();
+        assets.try_insert(asset_id).ok()?;
+        Some(TransactionLeg {
+            assets,
+            sender,
+            receiver,
+            auditors: Default::default(),
+            mediators: Default::default(),
+        })
+    }
+
+    pub fn mediators(&self) -> impl Iterator<Item = &IdentityId> {
+        self.mediators.iter()
+    }
+
+    pub fn mediators_len(&self) -> usize {
+        self.mediators.len()
+    }
 }
 
 /// Confidential auditors and/or mediators.
 #[derive(Encode, Decode, MaxEncodedLen, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
-#[scale_info(skip_type_params(S))]
-pub struct ConfidentialAuditors<S: Get<u32>> {
-    /// Auditors/Mediators and their role in confidential transactions.
-    auditors: BoundedBTreeMap<MediatorAccount, ConfidentialTransactionRole, S>,
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialAuditors<T: Config> {
+    /// Auditor public keys.
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxAssetAuditors>,
+    /// Mediator identities.
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxAssetMediators>,
 }
 
-impl<S: Get<u32>> ConfidentialAuditors<S> {
-    /// Check if the auditor accounts are valid.
-    pub fn is_valid(&self) -> bool {
-        self.auditors.keys().all(|m| m.is_valid())
-    }
-
-    /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
-    pub fn build_auditor(&self) -> Vec<CompressedElgamalPublicKey> {
-        self.auditors.keys().map(|account| account.0).collect()
-    }
-
-    /// Add an auditor/mediator.
-    pub fn add_auditor(
-        &mut self,
-        account: &MediatorAccount,
-        role: ConfidentialTransactionRole,
-    ) -> Result<Option<ConfidentialTransactionRole>, (MediatorAccount, ConfidentialTransactionRole)>
-    {
-        self.auditors.try_insert(*account, role)
-    }
-
-    /// Get an auditors role.
-    pub fn get_auditor_role(
-        &self,
-        account: &MediatorAccount,
-    ) -> Option<ConfidentialTransactionRole> {
-        self.auditors.get(account).copied()
-    }
-
-    /// Get only the mediators.
-    pub fn mediators(&self) -> impl Iterator<Item = &MediatorAccount> {
-        self.auditors
-            .iter()
-            .filter_map(|(account, role)| match role {
-                ConfidentialTransactionRole::Mediator => Some(account),
-                _ => None,
-            })
-    }
-
-    /// Get an iterator over all auditors.
-    pub fn auditors(
-        &self,
-    ) -> impl Iterator<Item = (&MediatorAccount, &ConfidentialTransactionRole)> {
-        self.auditors.iter()
-    }
-
-    /// Returns the number of all auditors (including mediators).
-    pub fn len(&self) -> usize {
-        self.auditors.len()
+impl<T: Config> ConfidentialAuditors<T> {
+    pub fn new() -> Self {
+        Self {
+            auditors: Default::default(),
+            mediators: Default::default(),
+        }
     }
 }
 
@@ -376,7 +421,11 @@ pub mod pallet {
     /// Configuration trait.
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + BalancesConfig + IdentityConfig + pallet_statistics::Config
+        frame_system::Config
+        + BalancesConfig
+        + IdentityConfig
+        + pallet_statistics::Config
+        + core::fmt::Debug
     {
         /// Pallet's events.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -389,51 +438,68 @@ pub mod pallet {
         /// Maximum total supply.
         type MaxTotalSupply: Get<Balance>;
 
+        /// Maximum length of asset data.
+        type MaxAssetDataLength: GetExtra<u32>;
+
+        /// Maximum number of affirms in a batch.
+        type MaxNumberOfAffirms: GetExtra<u32>;
+
         /// Maximum number of legs in a confidential transaction.
         type MaxNumberOfLegs: GetExtra<u32>;
 
-        /// Maximum number of auditors (to limit SenderProof verification time).
-        type MaxNumberOfAuditors: GetExtra<u32>;
+        /// Maximum number of assets per leg.
+        type MaxAssetsPerLeg: GetExtra<u32>;
 
-        /// Maximum number of confidential asset auditors (should be lower then `MaxNumberOfAuditors`).
-        type MaxNumberOfAssetAuditors: GetExtra<u32>;
+        /// Maximum number of auditors per leg.
+        type MaxAuditorsPerLeg: GetExtra<u32>;
+
+        /// Maximum number of mediators per leg.
+        type MaxMediatorsPerLeg: GetExtra<u32>;
+
+        /// Maximum number of confidential venue auditors.
+        type MaxVenueAuditors: GetExtra<u32>;
+
+        /// Maximum number of confidential venue mediators.
+        type MaxVenueMediators: GetExtra<u32>;
+
+        /// Maximum number of confidential asset auditors.
+        type MaxAssetAuditors: GetExtra<u32>;
+
+        /// Maximum number of confidential asset mediators.
+        type MaxAssetMediators: GetExtra<u32>;
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Event for creation of a Mediator account.
-        ///
-        /// caller DID, Mediator confidential account (public key)
-        MediatorAccountCreated(IdentityId, MediatorAccount),
         /// Event for creation of a Confidential account.
         ///
-        /// caller DID, confidential account (public key), ticker, encrypted balance
-        AccountCreated(IdentityId, ConfidentialAccount, Ticker, CipherText),
+        /// caller DID, confidential account (public key)
+        AccountCreated(IdentityId, ConfidentialAccount),
         /// Event for creation of a confidential asset.
         ///
-        /// (caller DID, ticker, total supply, asset type)
-        ConfidentialAssetCreated(IdentityId, Ticker, Balance, AssetType),
+        /// (caller DID, asset id, auditors and mediators)
+        ConfidentialAssetCreated(IdentityId, AssetId, ConfidentialAuditors<T>),
         /// Issued confidential assets.
         ///
-        /// (caller DID, ticker, amount issued, total_supply)
-        Issued(IdentityId, Ticker, Balance, Balance),
+        /// (caller DID, asset id, amount issued, total_supply)
+        Issued(IdentityId, AssetId, Balance, Balance),
         /// A new venue has been created.
         ///
         /// (caller DID, venue_id)
         VenueCreated(IdentityId, VenueId),
         /// Venue filtering changed for an asset.
         ///
-        /// (caller DID, ticker, enabled)
-        VenueFiltering(IdentityId, Ticker, bool),
+        /// (caller DID, asset id, enabled)
+        VenueFiltering(IdentityId, AssetId, bool),
         /// Venues added to allow list.
         ///
-        /// (caller DID, ticker, Vec<VenueId>)
-        VenuesAllowed(IdentityId, Ticker, Vec<VenueId>),
+        /// (caller DID, asset id, Vec<VenueId>)
+        VenuesAllowed(IdentityId, AssetId, Vec<VenueId>),
         /// Venues removed from the allow list.
         ///
-        /// (caller DID, ticker, Vec<VenueId>)
-        VenuesBlocked(IdentityId, Ticker, Vec<VenueId>),
+        /// (caller DID, asset id, Vec<VenueId>)
+        VenuesBlocked(IdentityId, AssetId, Vec<VenueId>),
         /// A new transaction has been created
         ///
         /// (caller DID, venue_id, transaction_id, legs, memo)
@@ -441,7 +507,7 @@ pub mod pallet {
             IdentityId,
             VenueId,
             TransactionId,
-            BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
+            BoundedVec<TransactionLegDetails<T>, T::MaxNumberOfLegs>,
             Option<Memo>,
         ),
         /// Confidential transaction executed.
@@ -459,40 +525,42 @@ pub mod pallet {
             IdentityId,
             TransactionId,
             TransactionLegId,
-            AffirmParty,
+            AffirmParty<T>,
             u32,
         ),
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
         ///
-        /// (confidential account, ticker, new encrypted balance)
-        AccountWithdraw(ConfidentialAccount, Ticker, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted balance)
+        AccountWithdraw(ConfidentialAccount, AssetId, CipherText, CipherText),
         /// Confidential account balance increased.
         /// This happens when the receiver calls `apply_incoming_balance`.
         ///
-        /// (confidential account, ticker, new encrypted balance)
-        AccountDeposit(ConfidentialAccount, Ticker, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted balance)
+        AccountDeposit(ConfidentialAccount, AssetId, CipherText, CipherText),
         /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
         ///
-        /// (confidential account, ticker, encrypted amount)
-        AccountDepositIncoming(ConfidentialAccount, Ticker, CipherText),
+        /// (confidential account, asset id, encrypted amount, new encrypted incoming balance)
+        AccountDepositIncoming(ConfidentialAccount, AssetId, CipherText, CipherText),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         /// Mediator account hasn't been created yet.
-        MediatorAccountMissing,
+        AuditorAccountMissing,
         /// Confidential account hasn't been created yet.
         ConfidentialAccountMissing,
         /// A required auditor/mediator is missing.
         RequiredAssetAuditorMissing,
-        /// A required auditor/mediator has the wrong role.
-        RequiredAssetAuditorWrongRole,
         /// The number of confidential asset auditors doesn't meet the minimum requirement.
         NotEnoughAssetAuditors,
+        /// Asset or leg has too many auditors.
+        TooManyAuditors,
+        /// Asset or leg has too many mediators.
+        TooManyMediators,
         /// Confidential mediator account already created.
-        MediatorAccountAlreadyCreated,
+        AuditorAccountAlreadyCreated,
         /// Confidential account already created.
         ConfidentialAccountAlreadyCreated,
         /// Confidential account's balance already initialized.
@@ -500,12 +568,12 @@ pub mod pallet {
         /// Confidential account isn't a valid CompressedEncryptionPubKey.
         InvalidConfidentialAccount,
         /// Mediator account isn't a valid CompressedEncryptionPubKey.
-        InvalidMediatorAccount,
+        InvalidAuditorAccount,
         /// The balance values does not fit a confidential balance.
         TotalSupplyAboveConfidentialBalanceLimit,
         /// The user is not authorized.
         Unauthorized,
-        /// The ticker is not a registered confidential asset.
+        /// The asset id is not a registered confidential asset.
         UnknownConfidentialAsset,
         /// The confidential asset has already been created.
         ConfidentialAssetAlreadyCreated,
@@ -562,46 +630,46 @@ pub mod pallet {
 
     /// Venue filtering is enabled for the asset.
     ///
-    /// ticker -> filtering_enabled
+    /// asset id -> filtering_enabled
     #[pallet::storage]
     #[pallet::getter(fn venue_filtering)]
-    pub type VenueFiltering<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, bool, ValueQuery>;
+    pub type VenueFiltering<T: Config> = StorageMap<_, Blake2_128Concat, AssetId, bool, ValueQuery>;
 
-    /// Venues that are allowed to create transactions involving a particular ticker.
+    /// Venues that are allowed to create transactions involving a particular asset id.
     ///
-    /// ticker -> venue_id -> allowed
+    /// asset id -> venue_id -> allowed
     #[pallet::storage]
     #[pallet::getter(fn venue_allow_list)]
     pub type VenueAllowList<T: Config> =
-        StorageDoubleMap<_, Blake2_128Concat, Ticker, Twox64Concat, VenueId, bool, ValueQuery>;
+        StorageDoubleMap<_, Blake2_128Concat, AssetId, Twox64Concat, VenueId, bool, ValueQuery>;
 
     /// Number of venues in the system (It's one more than the actual number)
     #[pallet::storage]
     #[pallet::getter(fn venue_counter)]
     pub type VenueCounter<T: Config> = StorageValue<_, VenueId, ValueQuery>;
 
+    /// Map a ticker to a confidential asset id.
+    ///
+    /// ticker -> asset id
+    #[pallet::storage]
+    #[pallet::getter(fn ticker_to_asset_id)]
+    pub type TickerToAsset<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, AssetId>;
+
     /// Details of the confidential asset.
     ///
-    /// ticker -> Option<ConfidentialAssetDetails>
+    /// asset id -> Option<ConfidentialAssetDetails>
     #[pallet::storage]
     #[pallet::getter(fn confidential_asset_details)]
-    pub type Details<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, ConfidentialAssetDetails>;
+    pub type Details<T: Config> =
+        StorageMap<_, Blake2_128Concat, AssetId, ConfidentialAssetDetails<T>>;
 
     /// Confidential asset's auditor/mediators.
     ///
-    /// ticker -> Option<ConfidentialAuditors>
+    /// asset id -> Option<ConfidentialAuditors>
     #[pallet::storage]
     #[pallet::getter(fn asset_auditors)]
     pub type AssetAuditors<T: Config> =
-        StorageMap<_, Blake2_128Concat, Ticker, ConfidentialAuditors<T::MaxNumberOfAssetAuditors>>;
-
-    /// Records the did for a mediator account.
-    ///
-    /// mediator_account -> Option<IdentityId>.
-    #[pallet::storage]
-    #[pallet::getter(fn mediator_account_did)]
-    pub type MediatorAccountDid<T: Config> =
-        StorageMap<_, Blake2_128Concat, MediatorAccount, IdentityId>;
+        StorageMap<_, Blake2_128Concat, AssetId, ConfidentialAuditors<T>>;
 
     /// Records the did for a confidential account.
     ///
@@ -613,7 +681,7 @@ pub mod pallet {
 
     /// Contains the encrypted balance of a confidential account.
     ///
-    /// account -> ticker -> Option<CipherText>
+    /// account -> asset id -> Option<CipherText>
     #[pallet::storage]
     #[pallet::getter(fn account_balance)]
     pub type AccountBalance<T: Config> = StorageDoubleMap<
@@ -621,13 +689,13 @@ pub mod pallet {
         Blake2_128Concat,
         ConfidentialAccount,
         Blake2_128Concat,
-        Ticker,
+        AssetId,
         CipherText,
     >;
 
     /// Accumulates the encrypted incoming balance for a confidential account.
     ///
-    /// account -> ticker -> Option<CipherText>
+    /// account -> asset id -> Option<CipherText>
     #[pallet::storage]
     #[pallet::getter(fn incoming_balance)]
     pub type IncomingBalance<T: Config> = StorageDoubleMap<
@@ -635,13 +703,13 @@ pub mod pallet {
         Blake2_128Concat,
         ConfidentialAccount,
         Blake2_128Concat,
-        Ticker,
+        AssetId,
         CipherText,
     >;
 
     /// Legs of a transaction.
     ///
-    /// transaction_id -> leg_id -> Option<Leg>
+    /// transaction_id -> leg_id -> Option<TransactionLegDetails>
     #[pallet::storage]
     #[pallet::getter(fn transaction_legs)]
     pub type TransactionLegs<T: Config> = StorageDoubleMap<
@@ -650,39 +718,22 @@ pub mod pallet {
         TransactionId,
         Twox64Concat,
         TransactionLegId,
-        TransactionLeg<T::MaxNumberOfAuditors>,
+        TransactionLegDetails<T>,
     >;
 
-    /// Stores the sender's initial balance when they affirmed the transaction leg.
+    /// Pending state for each leg of a transaction.
     ///
-    /// This is needed to verify the sender's proof.  It is only stored
-    /// for clients to use during off-chain proof verification.
-    ///
-    /// (transaction_id, leg_id) -> Option<CipherText>
+    /// transaction_id -> leg_id -> Option<TransactionLegState>
     #[pallet::storage]
-    #[pallet::getter(fn tx_leg_sender_balance)]
-    pub type TxLegSenderBalance<T: Config> =
-        StorageMap<_, Blake2_128Concat, (TransactionId, TransactionLegId), CipherText>;
-
-    /// Stores the transfer amount encrypted using the sender's public key.
-    ///
-    /// This is needed to revert the transaction leg.
-    ///
-    /// (transaction_id, leg_id) -> Option<CipherText>
-    #[pallet::storage]
-    #[pallet::getter(fn tx_leg_sender_amount)]
-    pub type TxLegSenderAmount<T: Config> =
-        StorageMap<_, Blake2_128Concat, (TransactionId, TransactionLegId), CipherText>;
-
-    /// Stores the transfer amount encrypted using the receiver's public key.
-    ///
-    /// This is needed to execute the transaction.
-    ///
-    /// (transaction_id, leg_id) -> Option<CipherText>
-    #[pallet::storage]
-    #[pallet::getter(fn tx_leg_receiver_amount)]
-    pub type TxLegReceiverAmount<T: Config> =
-        StorageMap<_, Blake2_128Concat, (TransactionId, TransactionLegId), CipherText>;
+    #[pallet::getter(fn transaction_leg_states)]
+    pub type TxLegStates<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        TransactionId,
+        Twox64Concat,
+        TransactionLegId,
+        TransactionLegState,
+    >;
 
     /// Number of affirmations pending before transaction is executed.
     ///
@@ -767,11 +818,10 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Initializes a confidential account for an asset.
+        /// Register a confidential account.
         ///
         /// # Arguments
-        /// * `ticker` the asset.
-        /// * `account` the confidential account to initialize for `ticker`.
+        /// * `account` the confidential account to register.
         ///
         /// # Errors
         /// * `BadOrigin` if `origin` isn't signed.
@@ -779,28 +829,10 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_account())]
         pub fn create_account(
             origin: OriginFor<T>,
-            ticker: Ticker,
             account: ConfidentialAccount,
         ) -> DispatchResult {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_account(caller_did, ticker, account)
-        }
-
-        /// Stores mediator's public key.
-        ///
-        /// # Arguments
-        /// * `mediator` the public key of the mediator.
-        ///
-        /// # Errors
-        /// * `BadOrigin` if `origin` isn't signed.
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::add_mediator_account())]
-        pub fn add_mediator_account(
-            origin: OriginFor<T>,
-            mediator: MediatorAccount,
-        ) -> DispatchResult {
-            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_add_mediator_account(caller_did, mediator)
+            Self::base_create_account(caller_did, account)
         }
 
         /// Initializes a new confidential security token.
@@ -810,33 +842,27 @@ pub mod pallet {
         ///
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
-        /// * `name` - the name of the token.
-        /// * `ticker` - the ticker symbol of the token.
-        /// * `asset_type` - the asset type.
         ///
         /// # Errors
-        /// - `TickerAlreadyRegistered` if the ticker was already registered, e.g., by `origin`.
-        /// - `TickerRegistrationExpired` if the ticker's registration has expired.
         /// - `TotalSupplyAboveLimit` if `total_supply` exceeds the limit.
         /// - `BadOrigin` if not signed.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::create_confidential_asset())]
         pub fn create_confidential_asset(
             origin: OriginFor<T>,
-            name: AssetName,
-            ticker: Ticker,
-            asset_type: AssetType,
-            auditors: ConfidentialAuditors<T::MaxNumberOfAssetAuditors>,
+            ticker: Option<Ticker>,
+            data: BoundedVec<u8, T::MaxAssetDataLength>,
+            auditors: ConfidentialAuditors<T>,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_confidential_asset(owner_did, name, ticker, asset_type, auditors)
+            Self::base_create_confidential_asset(owner_did, ticker, data, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
         ///
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
-        /// * `ticker` - the ticker symbol of the token.
+        /// * `asset_id` - the asset_id symbol of the token.
         /// * `amount` - amount of tokens to mint.
         /// * `account` - the asset isser's confidential account to receive the minted assets.
         ///
@@ -845,17 +871,17 @@ pub mod pallet {
         /// - `Unauthorized` if origin is not the owner of the asset.
         /// - `TotalSupplyMustBePositive` if `amount` is zero.
         /// - `TotalSupplyAboveConfidentialBalanceLimit` if `total_supply` exceeds the confidential balance limit.
-        /// - `UnknownConfidentialAsset` The ticker is not a confidential asset.
+        /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::mint_confidential_asset())]
         pub fn mint_confidential_asset(
             origin: OriginFor<T>,
-            ticker: Ticker,
+            asset_id: AssetId,
             amount: Balance,
             account: ConfidentialAccount,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_mint_confidential_asset(owner_did, ticker, amount, account)
+            Self::base_mint_confidential_asset(owner_did, asset_id, amount, account)
         }
 
         /// Applies any incoming balance to the confidential account balance.
@@ -863,7 +889,7 @@ pub mod pallet {
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         /// * `account` - the confidential account (Elgamal public key) of the `origin`.
-        /// * `ticker` - Ticker of confidential account.
+        /// * `asset_id` - AssetId of confidential account.
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
@@ -872,10 +898,10 @@ pub mod pallet {
         pub fn apply_incoming_balance(
             origin: OriginFor<T>,
             account: ConfidentialAccount,
-            ticker: Ticker,
+            asset_id: AssetId,
         ) -> DispatchResult {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_apply_incoming_balance(caller_did, account, ticker)
+            Self::base_apply_incoming_balance(caller_did, account, asset_id)
         }
 
         /// Registers a new venue.
@@ -890,47 +916,47 @@ pub mod pallet {
         /// Enables or disabled venue filtering for a token.
         ///
         /// # Arguments
-        /// * `ticker` - Ticker of the token in question.
+        /// * `asset_id` - AssetId of the token in question.
         /// * `enabled` - Boolean that decides if the filtering should be enabled.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_venue_filtering())]
         pub fn set_venue_filtering(
             origin: OriginFor<T>,
-            ticker: Ticker,
+            asset_id: AssetId,
             enabled: bool,
         ) -> DispatchResult {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_set_venue_filtering(did, ticker, enabled)
+            Self::base_set_venue_filtering(did, asset_id, enabled)
         }
 
         /// Allows additional venues to create instructions involving an asset.
         ///
-        /// * `ticker` - Ticker of the token in question.
+        /// * `asset_id` - AssetId of the token in question.
         /// * `venues` - Array of venues that are allowed to create instructions for the token in question.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::allow_venues(venues.len() as u32))]
         pub fn allow_venues(
             origin: OriginFor<T>,
-            ticker: Ticker,
+            asset_id: AssetId,
             venues: Vec<VenueId>,
         ) -> DispatchResult {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_update_venue_allow_list(did, ticker, venues, true)
+            Self::base_update_venue_allow_list(did, asset_id, venues, true)
         }
 
         /// Revokes permission given to venues for creating instructions involving a particular asset.
         ///
-        /// * `ticker` - Ticker of the token in question.
+        /// * `asset_id` - AssetId of the token in question.
         /// * `venues` - Array of venues that are no longer allowed to create instructions for the token in question.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::disallow_venues(venues.len() as u32))]
         pub fn disallow_venues(
             origin: OriginFor<T>,
-            ticker: Ticker,
+            asset_id: AssetId,
             venues: Vec<VenueId>,
         ) -> DispatchResult {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_update_venue_allow_list(did, ticker, venues, false)
+            Self::base_update_venue_allow_list(did, asset_id, venues, false)
         }
 
         /// Adds a new transaction.
@@ -938,14 +964,14 @@ pub mod pallet {
         #[pallet::weight({
             // Count the number of mediators.
             let m_count = legs.iter().fold(0, |acc, l| {
-                acc + l.mediators().count()
+                acc + l.mediators_len()
             });
             <T as Config>::WeightInfo::add_transaction(legs.len() as u32, m_count as u32)
         })]
         pub fn add_transaction(
             origin: OriginFor<T>,
             venue_id: VenueId,
-            legs: BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
+            legs: BoundedVec<TransactionLeg<T>, T::MaxNumberOfLegs>,
             memo: Option<Memo>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
@@ -953,16 +979,15 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Affirm a transaction.
+        /// Affirm transactions.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::affirm_transaction(&affirm))]
-        pub fn affirm_transaction(
+        #[pallet::weight(<T as Config>::WeightInfo::affirm_transactions(transactions.as_slice()))]
+        pub fn affirm_transactions(
             origin: OriginFor<T>,
-            transaction_id: TransactionId,
-            affirm: AffirmLeg,
+            transactions: AffirmTransactions<T>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_affirm_transaction(did, transaction_id, affirm)?;
+            Self::base_affirm_transactions(did, transactions)?;
             Ok(().into())
         }
 
@@ -995,111 +1020,77 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn base_create_account(
-        caller_did: IdentityId,
-        ticker: Ticker,
-        account: ConfidentialAccount,
-    ) -> DispatchResult {
-        // Ensure the confidential asset exists.
+    fn base_create_account(caller_did: IdentityId, account: ConfidentialAccount) -> DispatchResult {
+        // Ensure the confidential account doesn't exist.
         ensure!(
-            Details::<T>::contains_key(ticker),
-            Error::<T>::UnknownConfidentialAsset
+            !AccountDid::<T>::contains_key(&account),
+            Error::<T>::ConfidentialAccountAlreadyCreated
         );
-        // Ensure the confidential account's balance hasn't been initialized.
-        ensure!(
-            !AccountBalance::<T>::contains_key(&account, ticker),
-            Error::<T>::ConfidentialAccountAlreadyInitialized
-        );
-        // Ensure the confidential account doesn't exist, or is already linked to the caller's identity.
-        match Self::account_did(&account) {
-            Some(account_did) => {
-                // Ensure the caller's identity is the same.
-                ensure!(
-                    account_did == caller_did,
-                    Error::<T>::ConfidentialAccountAlreadyCreated
-                );
-            }
-            None => {
-                // Link the confidential account to the caller's identity.
-                AccountDid::<T>::insert(&account, caller_did);
-            }
-        }
+        // Link the confidential account to the caller's identity.
+        AccountDid::<T>::insert(&account, caller_did);
 
-        // Initialize the confidential account balance to zero.
-        let enc_balance = CipherText::zero();
-        AccountBalance::<T>::insert(&account, ticker, enc_balance);
-
-        Self::deposit_event(Event::<T>::AccountCreated(
-            caller_did,
-            account,
-            ticker,
-            enc_balance,
-        ));
+        Self::deposit_event(Event::<T>::AccountCreated(caller_did, account));
         Ok(())
     }
 
-    fn base_add_mediator_account(
-        caller_did: IdentityId,
-        account: MediatorAccount,
-    ) -> DispatchResult {
-        // Ensure the confidential mediator account hasn't been created.
-        ensure!(
-            !MediatorAccountDid::<T>::contains_key(&account),
-            Error::<T>::MediatorAccountAlreadyCreated
-        );
-        ensure!(account.is_valid(), Error::<T>::InvalidConfidentialAccount);
-
-        MediatorAccountDid::<T>::insert(&account, &caller_did);
-
-        Self::deposit_event(Event::<T>::MediatorAccountCreated(caller_did, account));
-        Ok(())
+    pub fn next_asset_id(owner_did: IdentityId, update: bool) -> AssetId {
+        let seed = Self::get_seed(update);
+        blake2_128(&(b"modlpy/confidential_asset", owner_did, seed).encode())
     }
 
     fn base_create_confidential_asset(
         owner_did: IdentityId,
-        name: AssetName,
-        ticker: Ticker,
-        asset_type: AssetType,
-        auditors: ConfidentialAuditors<T::MaxNumberOfAssetAuditors>,
+        ticker: Option<Ticker>,
+        data: BoundedVec<u8, T::MaxAssetDataLength>,
+        auditors: ConfidentialAuditors<T>,
     ) -> DispatchResult {
+        let asset_id = Self::next_asset_id(owner_did, true);
         // Ensure the asset hasn't been created yet.
         ensure!(
-            !Details::<T>::contains_key(ticker),
+            !Details::<T>::contains_key(asset_id),
             Error::<T>::ConfidentialAssetAlreadyCreated
         );
-        // Ensure the auditor accounts are valid.
-        ensure!(auditors.is_valid(), Error::<T>::InvalidMediatorAccount);
         // Ensure that there is at least one auditor.
-        ensure!(auditors.len() >= 1, Error::<T>::NotEnoughAssetAuditors);
+        ensure!(
+            auditors.auditors.len() >= 1,
+            Error::<T>::NotEnoughAssetAuditors
+        );
+
+        if let Some(ticker) = ticker {
+            // Ensure unique tickers.
+            // TODO: new error variant.
+            ensure!(
+                !TickerToAsset::<T>::contains_key(ticker),
+                Error::<T>::ConfidentialAssetAlreadyCreated
+            );
+            TickerToAsset::<T>::insert(ticker, asset_id);
+        }
 
         // Ensure the mediators exist.
-        for mediator in auditors.mediators() {
-            Self::get_mediator_did(mediator)?;
+        for _mediator_did in &auditors.mediators {
+            // TODO: validate mediator identity.
         }
 
         // Store asset auditors.
-        AssetAuditors::<T>::insert(ticker, auditors);
+        AssetAuditors::<T>::insert(asset_id, &auditors);
 
         let details = ConfidentialAssetDetails {
-            name,
             total_supply: Zero::zero(),
             owner_did,
-            asset_type,
+            ticker,
+            data,
         };
-        Details::<T>::insert(ticker, details);
+        Details::<T>::insert(asset_id, details);
 
         Self::deposit_event(Event::<T>::ConfidentialAssetCreated(
-            owner_did,
-            ticker,
-            Zero::zero(),
-            asset_type,
+            owner_did, asset_id, auditors,
         ));
         Ok(())
     }
 
     fn base_mint_confidential_asset(
         owner_did: IdentityId,
-        ticker: Ticker,
+        asset_id: AssetId,
         amount: Balance,
         account: ConfidentialAccount,
     ) -> DispatchResult {
@@ -1108,7 +1099,7 @@ impl<T: Config> Pallet<T> {
         ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
 
         // Ensure the caller is the asset owner and get the asset details.
-        let mut details = Self::ensure_asset_owner(ticker, owner_did)?;
+        let mut details = Self::ensure_asset_owner(asset_id, owner_did)?;
 
         // The mint amount must be positive.
         ensure!(
@@ -1132,41 +1123,41 @@ impl<T: Config> Pallet<T> {
 
         // Ensure the confidential account's balance has been initialized.
         ensure!(
-            AccountBalance::<T>::contains_key(&account, ticker),
+            AccountDid::<T>::contains_key(&account),
             Error::<T>::ConfidentialAccountMissing
         );
 
         let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's confidential account.
-        Self::account_deposit_amount(&account, ticker, enc_issued_amount)?;
+        Self::account_deposit_amount(&account, asset_id, enc_issued_amount)?;
 
         // Emit Issue event with new `total_supply`.
         Self::deposit_event(Event::<T>::Issued(
             owner_did,
-            ticker,
+            asset_id,
             amount,
             details.total_supply,
         ));
 
         // Update `total_supply`.
-        Details::<T>::insert(ticker, details);
+        Details::<T>::insert(asset_id, details);
         Ok(())
     }
 
     fn base_apply_incoming_balance(
         caller_did: IdentityId,
         account: ConfidentialAccount,
-        ticker: Ticker,
+        asset_id: AssetId,
     ) -> DispatchResult {
         let account_did = Self::get_account_did(&account)?;
         // Ensure the caller is the owner of the confidential account.
         ensure!(account_did == caller_did, Error::<T>::Unauthorized);
 
         // Take the incoming balance.
-        match IncomingBalance::<T>::take(&account, ticker) {
+        match IncomingBalance::<T>::take(&account, asset_id) {
             Some(incoming_balance) => {
                 // If there is an incoming balance, deposit it into the confidential account balance.
-                Self::account_deposit_amount(&account, ticker, incoming_balance)?;
+                Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
             }
             None => (),
         }
@@ -1176,11 +1167,11 @@ impl<T: Config> Pallet<T> {
 
     // Ensure the caller is the asset owner.
     fn ensure_asset_owner(
-        ticker: Ticker,
+        asset_id: AssetId,
         did: IdentityId,
-    ) -> Result<ConfidentialAssetDetails, DispatchError> {
-        let details =
-            Self::confidential_asset_details(ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?;
+    ) -> Result<ConfidentialAssetDetails<T>, DispatchError> {
+        let details = Self::confidential_asset_details(asset_id)
+            .ok_or(Error::<T>::UnknownConfidentialAsset)?;
 
         // Ensure that the caller is the asset owner.
         ensure!(details.owner_did == did, Error::<T>::Unauthorized);
@@ -1196,55 +1187,67 @@ impl<T: Config> Pallet<T> {
     }
 
     // Ensure the asset allows the venue.
-    fn ensure_venue_allowed(ticker: Ticker, venue_id: &VenueId) -> DispatchResult {
-        if Self::venue_filtering(ticker) {
+    fn ensure_venue_allowed(asset_id: AssetId, venue_id: &VenueId) -> DispatchResult {
+        if Self::venue_filtering(asset_id) {
             ensure!(
-                Self::venue_allow_list(ticker, venue_id),
+                Self::venue_allow_list(asset_id, venue_id),
                 Error::<T>::UnauthorizedVenue
             );
         }
         Ok(())
     }
 
-    // Ensure that the required asset auditors/mediators are included and
-    // that the asset issuer allows `venue_id`.
-    fn ensure_valid_leg(
-        leg: &TransactionLeg<T::MaxNumberOfAuditors>,
+    // Ensure that the asset issuers allows `venue_id`.
+    // Also collect mediators and auditors for the leg details.
+    fn build_leg_details(
+        leg: TransactionLeg<T>,
         venue_id: &VenueId,
-        asset_auditors: &mut BTreeMap<Ticker, ConfidentialAuditors<T::MaxNumberOfAssetAuditors>>,
-    ) -> DispatchResult {
+        asset_auditors: &mut BTreeMap<AssetId, ConfidentialAuditors<T>>,
+    ) -> Result<TransactionLegDetails<T>, DispatchError> {
         use sp_std::collections::btree_map::Entry;
 
-        // Ensure all accounts in the leg are valid.
-        ensure!(
-            leg.verify_accounts(),
-            Error::<T>::InvalidConfidentialAccount
-        );
+        // leg auditors/mediators.
+        let mut leg_auditors = BTreeMap::new();
+        let mut leg_mediators = leg.mediators.into_inner();
+        let venue_auditors = leg.auditors.into_inner();
 
-        let required_auditors = match asset_auditors.entry(leg.ticker) {
-            Entry::Vacant(entry) => {
-                // Ensure that the asset issuer allows this `venue_id`.
-                Self::ensure_venue_allowed(leg.ticker, venue_id)?;
-                // Load and cache the required auditors for the asset.
-                entry.insert(
-                    Self::asset_auditors(leg.ticker).ok_or(Error::<T>::UnknownConfidentialAsset)?,
-                )
-            }
-            Entry::Occupied(entry) => entry.into_mut(),
-        };
-
-        // Ensure all required auditors are included in the leg.
-        for (account, required_role) in required_auditors.auditors() {
-            let role = leg
-                .auditors
-                .get_auditor_role(account)
-                .ok_or(Error::<T>::RequiredAssetAuditorMissing)?;
-            ensure!(
-                *required_role == role,
-                Error::<T>::RequiredAssetAuditorWrongRole
-            );
+        for asset_id in leg.assets {
+            let asset = match asset_auditors.entry(asset_id) {
+                Entry::Vacant(entry) => {
+                    // Ensure that the asset issuer allows this `venue_id`.
+                    Self::ensure_venue_allowed(asset_id, venue_id)?;
+                    // Load and cache the required auditors for the asset.
+                    entry
+                        .insert(
+                            Self::asset_auditors(asset_id)
+                                .ok_or(Error::<T>::UnknownConfidentialAsset)?,
+                        )
+                        .clone()
+                }
+                Entry::Occupied(entry) => entry.get().clone(),
+            };
+            // Add the asset mediators to the mediators for this leg.
+            leg_mediators.extend(&asset.mediators);
+            let auditors = venue_auditors
+                .iter()
+                .chain(asset.auditors.iter())
+                .copied()
+                .collect::<BTreeSet<_>>()
+                .try_into()
+                .map_err(|_| Error::<T>::TooManyAuditors)?;
+            leg_auditors.insert(asset_id, auditors);
         }
-        Ok(())
+
+        Ok(TransactionLegDetails {
+            auditors: leg_auditors
+                .try_into()
+                .map_err(|_| Error::<T>::TooManyAuditors)?,
+            sender: leg.sender,
+            receiver: leg.receiver,
+            mediators: leg_mediators
+                .try_into()
+                .map_err(|_| Error::<T>::TooManyMediators)?,
+        })
     }
 
     fn base_create_venue(did: IdentityId) -> DispatchResult {
@@ -1259,34 +1262,38 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn base_set_venue_filtering(did: IdentityId, ticker: Ticker, enabled: bool) -> DispatchResult {
+    fn base_set_venue_filtering(
+        did: IdentityId,
+        asset_id: AssetId,
+        enabled: bool,
+    ) -> DispatchResult {
         if enabled {
-            VenueFiltering::<T>::insert(ticker, enabled);
+            VenueFiltering::<T>::insert(asset_id, enabled);
         } else {
-            VenueFiltering::<T>::remove(ticker);
+            VenueFiltering::<T>::remove(asset_id);
         }
-        Self::deposit_event(Event::<T>::VenueFiltering(did, ticker, enabled));
+        Self::deposit_event(Event::<T>::VenueFiltering(did, asset_id, enabled));
         Ok(())
     }
 
     fn base_update_venue_allow_list(
         did: IdentityId,
-        ticker: Ticker,
+        asset_id: AssetId,
         venues: Vec<VenueId>,
         allow: bool,
     ) -> DispatchResult {
         // Ensure the caller is the asset owner.
-        Self::ensure_asset_owner(ticker, did)?;
+        Self::ensure_asset_owner(asset_id, did)?;
         if allow {
             for venue in &venues {
-                VenueAllowList::<T>::insert(&ticker, venue, true);
+                VenueAllowList::<T>::insert(&asset_id, venue, true);
             }
-            Self::deposit_event(Event::<T>::VenuesAllowed(did, ticker, venues));
+            Self::deposit_event(Event::<T>::VenuesAllowed(did, asset_id, venues));
         } else {
             for venue in &venues {
-                VenueAllowList::<T>::remove(&ticker, venue);
+                VenueAllowList::<T>::remove(&asset_id, venue);
             }
-            Self::deposit_event(Event::<T>::VenuesBlocked(did, ticker, venues));
+            Self::deposit_event(Event::<T>::VenuesBlocked(did, asset_id, venues));
         }
         Ok(())
     }
@@ -1294,7 +1301,7 @@ impl<T: Config> Pallet<T> {
     pub fn base_add_transaction(
         did: IdentityId,
         venue_id: VenueId,
-        legs: BoundedVec<TransactionLeg<T::MaxNumberOfAuditors>, T::MaxNumberOfLegs>,
+        legs: BoundedVec<TransactionLeg<T>, T::MaxNumberOfLegs>,
         memo: Option<Memo>,
     ) -> Result<TransactionId, DispatchError> {
         // Ensure transaction does not have too many legs.
@@ -1314,10 +1321,10 @@ impl<T: Config> Pallet<T> {
 
         let mut pending_affirms = 0u32;
         let mut asset_auditors = BTreeMap::new();
-        for (i, leg) in legs.iter().enumerate() {
-            // Ensure the required asset auditors are included and
-            // check venue filtering.
-            Self::ensure_valid_leg(&leg, &venue_id, &mut asset_auditors)?;
+        let mut leg_details = Vec::new();
+        for (i, leg) in legs.into_iter().enumerate() {
+            // Check venue filtering and get asset auditors/mediators.
+            let leg = Self::build_leg_details(leg, &venue_id, &mut asset_auditors)?;
 
             let leg_id = TransactionLegId(i as _);
             let sender_did = Self::get_account_did(&leg.sender)?;
@@ -1335,18 +1342,18 @@ impl<T: Config> Pallet<T> {
                 false,
             );
             pending_affirms += 2;
-            // Get the mediators from the auditors list.
-            for mediator in leg.mediators() {
-                let mediator_did = Self::get_mediator_did(mediator)?;
-                parties.insert(mediator_did);
+            // Add pending affirmations from all Venue & Asset mediators.
+            for mediator_did in &leg.mediators {
+                parties.insert(*mediator_did);
                 pending_affirms += 1;
                 UserAffirmations::<T>::insert(
                     mediator_did,
-                    (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+                    (transaction_id, leg_id, LegParty::Mediator),
                     false,
                 );
             }
             TransactionLegs::<T>::insert(transaction_id, leg_id, &leg);
+            leg_details.push(leg);
         }
 
         // Track pending affirms.
@@ -1373,17 +1380,29 @@ impl<T: Config> Pallet<T> {
             did,
             venue_id,
             transaction_id,
-            legs,
+            // Should never be truncated.
+            BoundedVec::truncate_from(leg_details),
             memo,
         ));
 
         Ok(transaction_id)
     }
 
+    fn base_affirm_transactions(
+        caller_did: IdentityId,
+        transactions: AffirmTransactions<T>,
+    ) -> DispatchResultWithPostInfo {
+        // TODO: Return actual weight.
+        for tx in transactions.0 {
+            Self::base_affirm_transaction(caller_did, tx.id, tx.leg)?;
+        }
+        Ok(().into())
+    }
+
     fn base_affirm_transaction(
         caller_did: IdentityId,
         transaction_id: TransactionId,
-        affirm: AffirmLeg,
+        affirm: AffirmLeg<T>,
     ) -> DispatchResult {
         let leg_id = affirm.leg_id;
         let leg = TransactionLegs::<T>::get(transaction_id, leg_id)
@@ -1398,43 +1417,76 @@ impl<T: Config> Pallet<T> {
         );
 
         match &affirm.party {
-            AffirmParty::Sender(proof) => {
-                let sender_did = Self::account_did(&leg.sender);
+            AffirmParty::Sender(transfers) => {
+                let mut leg_state = TransactionLegState::default();
+                let sender = leg.sender;
+                let receiver = leg.receiver;
+
+                let sender_did = Self::account_did(&sender);
                 ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
 
-                // Get the sender's current balance.
-                let sender_balance = Self::account_balance(&leg.sender, leg.ticker)
-                    .ok_or(Error::<T>::ConfidentialAccountMissing)?;
+                // Ensure the same number of assets.
+                ensure!(
+                    transfers.proofs.len() == leg.auditors.len(),
+                    Error::<T>::InvalidSenderProof
+                );
 
-                let req = VerifyConfidentialTransferRequest {
-                    sender: leg.sender.0,
-                    sender_balance,
-                    receiver: leg.receiver.0,
-                    auditors: leg.auditors.build_auditor(),
-                    proof: proof.0.clone(),
-                    seed: Self::get_seed(),
-                };
+                for (asset_id, auditors) in leg.auditors {
+                    let proof = transfers
+                        .proofs
+                        .get(&asset_id)
+                        .ok_or(Error::<T>::InvalidSenderProof)?;
+                    // Get the sender's current balance.
+                    let sender_init_balance = Self::account_balance(&sender, asset_id)
+                        .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-                // Verify the sender's proof.
-                let resp = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+                    let req = VerifyConfidentialTransferRequest {
+                        sender: sender.0,
+                        sender_balance: sender_init_balance,
+                        receiver: receiver.0,
+                        auditors: auditors.iter().map(|account| account.0).collect(),
+                        proof: proof.encode(),
+                        seed: Self::get_seed(true),
+                    };
 
-                // Withdraw the transaction amount when the sender affirms.
-                let sender_amount = resp.sender_amount;
-                Self::account_withdraw_amount(&leg.sender, leg.ticker, sender_amount)?;
+                    // Verify the sender's proof.
+                    let resp = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
 
-                // Store the pending state for this transaction leg.
-                let receiver_amount = resp.receiver_amount;
-                TxLegSenderBalance::<T>::insert(&(transaction_id, leg_id), sender_balance);
-                TxLegSenderAmount::<T>::insert(&(transaction_id, leg_id), sender_amount);
-                TxLegReceiverAmount::<T>::insert(&(transaction_id, leg_id), receiver_amount);
+                    // Withdraw the transaction amount when the sender affirms.
+                    let sender_amount = resp.sender_amount;
+                    Self::account_withdraw_amount(&sender, asset_id, sender_amount)?;
+
+                    // Store the pending state for this transaction leg.
+                    let receiver_amount = resp.receiver_amount;
+                    leg_state.asset_state.insert(
+                        asset_id,
+                        TransactionLegAssetState {
+                            sender_init_balance,
+                            sender_amount,
+                            receiver_amount,
+                        },
+                    );
+                }
+                TxLegStates::<T>::insert(transaction_id, leg_id, leg_state);
             }
             AffirmParty::Receiver => {
                 let receiver_did = Self::account_did(&leg.receiver);
                 ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
+                // TODO: Create new error, "Sender hasn't affirmed leg".
+                ensure!(
+                    TxLegStates::<T>::contains_key(transaction_id, leg_id),
+                    Error::<T>::TransactionNotAffirmed
+                );
             }
-            AffirmParty::Mediator(mediator) => {
-                let mediator_did = Self::mediator_account_did(mediator);
-                ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
+            AffirmParty::Mediator => {
+                // TODO: check mediator's did.
+                //let mediator_did = Self::mediator_account_did(mediator);
+                //ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
+                // TODO: Create new error, "Sender hasn't affirmed leg".
+                ensure!(
+                    TxLegStates::<T>::contains_key(transaction_id, leg_id),
+                    Error::<T>::TransactionNotAffirmed
+                );
             }
         }
 
@@ -1469,11 +1521,12 @@ impl<T: Config> Pallet<T> {
         transaction_id: TransactionId,
         leg_count: usize,
     ) -> DispatchResult {
-        // Check if the caller is a party of the transaction.
-        ensure!(
-            TransactionParties::<T>::get(transaction_id, caller_did),
-            Error::<T>::Unauthorized
-        );
+        // Get and remove transaction details.
+        let details =
+            <Transactions<T>>::take(transaction_id).ok_or(Error::<T>::UnknownTransaction)?;
+
+        // Ensure the caller is the venue creator.
+        Self::ensure_venue_creator(details.venue_id, caller_did)?;
 
         // Take transaction legs.
         let legs = TransactionLegs::<T>::drain_prefix(transaction_id).collect::<Vec<_>>();
@@ -1485,10 +1538,6 @@ impl<T: Config> Pallet<T> {
             pending_affirms == Some(0),
             Error::<T>::TransactionNotAffirmed
         );
-
-        // Remove transaction details.
-        let details =
-            <Transactions<T>>::take(transaction_id).ok_or(Error::<T>::UnknownTransactionLeg)?;
 
         // Execute transaction legs.
         for (leg_id, leg) in legs {
@@ -1505,10 +1554,8 @@ impl<T: Config> Pallet<T> {
     fn execute_leg(
         transaction_id: TransactionId,
         leg_id: TransactionLegId,
-        leg: TransactionLeg<T::MaxNumberOfAuditors>,
+        leg: TransactionLegDetails<T>,
     ) -> DispatchResult {
-        let ticker = leg.ticker;
-
         // Check affirmations and remove them.
         let sender_did = Self::get_account_did(&leg.sender)?;
         let sender_affirm =
@@ -1524,11 +1571,11 @@ impl<T: Config> Pallet<T> {
             receiver_affirm == Some(true),
             Error::<T>::TransactionNotAffirmed
         );
-        for mediator in leg.mediators() {
-            let mediator_did = Self::get_mediator_did(mediator)?;
+        // Check mediator affirmations.
+        for mediator_did in leg.mediators {
             let mediator_affirm = UserAffirmations::<T>::take(
                 mediator_did,
-                (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+                (transaction_id, leg_id, LegParty::Mediator),
             );
             ensure!(
                 mediator_affirm == Some(true),
@@ -1537,13 +1584,12 @@ impl<T: Config> Pallet<T> {
         }
 
         // Take the transaction leg's pending state.
-        TxLegSenderBalance::<T>::remove((transaction_id, leg_id));
-        TxLegSenderAmount::<T>::remove((transaction_id, leg_id));
-        let receiver_amount = TxLegReceiverAmount::<T>::take((transaction_id, leg_id))
+        let leg_state = TxLegStates::<T>::take(transaction_id, leg_id)
             .ok_or(Error::<T>::TransactionNotAffirmed)?;
-
-        // Deposit the transaction amount into the receiver's account.
-        Self::account_deposit_amount_incoming(&leg.receiver, ticker, receiver_amount);
+        for (asset_id, state) in leg_state.asset_state {
+            // Deposit the transaction amount into the receiver's account.
+            Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
+        }
         Ok(())
     }
 
@@ -1585,33 +1631,27 @@ impl<T: Config> Pallet<T> {
     fn revert_leg(
         transaction_id: TransactionId,
         leg_id: TransactionLegId,
-        leg: TransactionLeg<T::MaxNumberOfAuditors>,
+        leg: TransactionLegDetails<T>,
     ) -> DispatchResult {
         // Remove user affirmations.
         let sender_did = Self::get_account_did(&leg.sender)?;
-        let sender_affirm =
-            UserAffirmations::<T>::take(sender_did, (transaction_id, leg_id, LegParty::Sender));
+        UserAffirmations::<T>::remove(sender_did, (transaction_id, leg_id, LegParty::Sender));
         let receiver_did = Self::get_account_did(&leg.receiver)?;
         UserAffirmations::<T>::remove(receiver_did, (transaction_id, leg_id, LegParty::Receiver));
-        for mediator in leg.mediators() {
-            let mediator_did = Self::get_mediator_did(mediator)?;
+        // Remove mediator affirmations.
+        for mediator_did in leg.mediators {
             UserAffirmations::<T>::remove(
                 mediator_did,
-                (transaction_id, leg_id, LegParty::Mediator(*mediator)),
+                (transaction_id, leg_id, LegParty::Mediator),
             );
         }
 
-        if sender_affirm == Some(true) {
-            // Take the transaction leg's pending state.
-            match TxLegSenderAmount::<T>::take((transaction_id, leg_id)) {
-                Some(sender_amount) => {
-                    // Deposit the transaction amount back into the sender's incoming account.
-                    Self::account_deposit_amount_incoming(&leg.sender, leg.ticker, sender_amount);
-                }
-                None => (),
+        // If the sender affirmed, then return the assets to them.
+        if let Some(leg_state) = TxLegStates::<T>::take(transaction_id, leg_id) {
+            for (asset_id, state) in leg_state.asset_state {
+                // Deposit the transaction amount back into the sender's incoming account.
+                Self::account_deposit_amount_incoming(&leg.sender, asset_id, state.sender_amount);
             }
-            TxLegSenderBalance::<T>::remove((transaction_id, leg_id));
-            TxLegReceiverAmount::<T>::remove((transaction_id, leg_id));
         }
 
         Ok(())
@@ -1656,20 +1696,15 @@ impl<T: Config> Pallet<T> {
         Self::account_did(account).ok_or_else(|| Error::<T>::ConfidentialAccountMissing.into())
     }
 
-    pub fn get_mediator_did(mediator: &MediatorAccount) -> Result<IdentityId, DispatchError> {
-        Self::mediator_account_did(mediator)
-            .ok_or_else(|| Error::<T>::MediatorAccountMissing.into())
-    }
-
     /// Subtract the `amount` from the confidential account balance.
     fn account_withdraw_amount(
         account: &ConfidentialAccount,
-        ticker: Ticker,
+        asset_id: AssetId,
         amount: CipherText,
     ) -> DispatchResult {
         let balance = AccountBalance::<T>::try_mutate(
             account,
-            ticker,
+            asset_id,
             |balance| -> Result<CipherText, DispatchError> {
                 if let Some(ref mut balance) = balance {
                     *balance -= amount;
@@ -1679,53 +1714,67 @@ impl<T: Config> Pallet<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::<T>::AccountWithdraw(*account, ticker, balance));
+        Self::deposit_event(Event::<T>::AccountWithdraw(
+            *account, asset_id, amount, balance,
+        ));
         Ok(())
     }
 
     /// Add the `amount` to the confidential account's balance.
     fn account_deposit_amount(
         account: &ConfidentialAccount,
-        ticker: Ticker,
+        asset_id: AssetId,
         amount: CipherText,
     ) -> DispatchResult {
-        let balance = AccountBalance::<T>::try_mutate(
-            account,
-            ticker,
-            |balance| -> Result<CipherText, DispatchError> {
-                if let Some(ref mut balance) = balance {
-                    *balance += amount;
-                    Ok(*balance)
-                } else {
-                    Err(Error::<T>::ConfidentialAccountMissing.into())
-                }
-            },
-        )?;
-        Self::deposit_event(Event::<T>::AccountDeposit(*account, ticker, balance));
+        let balance = AccountBalance::<T>::mutate(account, asset_id, |balance| match balance {
+            Some(balance) => {
+                *balance += amount;
+                *balance
+            }
+            None => {
+                *balance = Some(amount);
+                amount
+            }
+        });
+        Self::deposit_event(Event::<T>::AccountDeposit(
+            *account, asset_id, amount, balance,
+        ));
         Ok(())
     }
 
     /// Add the `amount` to the confidential account's `IncomingBalance` accumulator.
     fn account_deposit_amount_incoming(
         account: &ConfidentialAccount,
-        ticker: Ticker,
+        asset_id: AssetId,
         amount: CipherText,
     ) {
-        IncomingBalance::<T>::mutate(account, ticker, |incoming_balance| match incoming_balance {
-            Some(previous_balance) => {
-                *previous_balance += amount;
-            }
-            None => {
-                *incoming_balance = Some(amount);
-            }
-        });
-        Self::deposit_event(Event::<T>::AccountDepositIncoming(*account, ticker, amount));
+        let incoming_balance =
+            IncomingBalance::<T>::mutate(account, asset_id, |incoming_balance| {
+                match incoming_balance {
+                    Some(previous_balance) => {
+                        *previous_balance += amount;
+                        *previous_balance
+                    }
+                    None => {
+                        *incoming_balance = Some(amount);
+                        amount
+                    }
+                }
+            });
+        Self::deposit_event(Event::<T>::AccountDepositIncoming(
+            *account,
+            asset_id,
+            amount,
+            incoming_balance,
+        ));
     }
 
-    fn get_seed() -> [u8; 32] {
+    fn get_seed(update: bool) -> [u8; 32] {
         // Increase the nonce each time.
         let nonce = RngNonce::<T>::get();
-        RngNonce::<T>::put(nonce.wrapping_add(1));
+        if update {
+            RngNonce::<T>::put(nonce.wrapping_add(1));
+        }
         // Use the `nonce` and chain randomness to generate a new seed.
         let (random_hash, _) = T::Randomness::random(&(b"ConfidentialAsset", nonce).encode());
         let s = random_hash.as_ref();

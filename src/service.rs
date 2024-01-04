@@ -1,34 +1,25 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
-pub use codec::Codec;
 use futures::stream::StreamExt;
 use polymesh_node_rpc as node_rpc;
 pub use polymesh_primitives::{
-    crypto::native_schnorrkel, AccountId, Balance, Block, BlockNumber, Hash, IdentityId,
-    Index as Nonce, Moment, Ticker,
+    crypto::native_schnorrkel, AccountId, Block, IdentityId, Index as Nonce, Moment, Ticker,
 };
 pub use polymesh_runtime_develop;
 pub use polymesh_runtime_mainnet;
 use prometheus_endpoint::Registry;
-pub use sc_client_api::backend::Backend;
 use sc_client_api::BlockBackend;
-pub use sc_consensus::LongestChain;
 use sc_consensus_slots::SlotProportion;
 use sc_executor::NativeElseWasmExecutor;
-pub use sc_executor::{NativeExecutionDispatch, RuntimeVersionOf};
+pub use sc_executor::NativeExecutionDispatch;
 use sc_network::NetworkService;
 use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{
     config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager, WarpSyncParams,
 };
-pub use sc_service::{
-    config::{PrometheusConfig, Role},
-    ChainSpec, Error, PruningMode, RuntimeGenesis, TFullBackend, TFullCallExecutor, TFullClient,
-    TransactionPoolOptions,
-};
+pub use sc_service::{config::PrometheusConfig, ChainSpec, Error};
 use sc_telemetry::{Telemetry, TelemetryWorker};
-pub use sp_api::{ConstructRuntimeApi, Core as CoreApi, ProvideRuntimeApi, StateBackend};
-pub use sp_consensus::SelectChain;
+pub use sp_api::ConstructRuntimeApi;
 pub use sp_runtime::traits::BlakeTwo256;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;

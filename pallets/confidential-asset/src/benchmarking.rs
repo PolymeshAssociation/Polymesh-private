@@ -13,10 +13,6 @@ use polymesh_common_utilities::{
     benchs::{user, AccountIdOf},
     traits::TestUtilsFn,
 };
-use polymesh_primitives::{
-    asset::{AssetName, AssetType},
-    Ticker,
-};
 
 use crate::testing::*;
 use crate::*;
@@ -29,30 +25,23 @@ benchmarks! {
 
     create_account {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let (ticker, _issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
         let user = ConfidentialUser::<T>::new("user", &mut rng);
-    }: _(user.raw_origin(), ticker, user.account())
-
-    add_mediator_account {
-        let mut rng = StdRng::from_seed([10u8; 32]);
-        let mediator = ConfidentialUser::<T>::new("mediator", &mut rng);
-        let account = mediator.mediator_account();
-    }: _(mediator.raw_origin(), account)
+    }: _(user.raw_origin(), user.account())
 
     create_confidential_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         let issuer = user::<T>("issuer", SEED);
         let auditors = AuditorState::<T>::new(0, &mut rng).get_asset_auditors();
-    }: _(issuer.origin(), AssetName(b"Name".to_vec()), ticker, AssetType::default(), auditors)
+    }: _(issuer.origin(), Some(ticker), Default::default(), auditors)
 
     mint_confidential_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let (ticker, issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
-        issuer.init_account(ticker);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
+        issuer.create_account();
 
         let total_supply = 4_000_000_000 as ConfidentialBalance;
-    }: _(issuer.raw_origin(), ticker, total_supply.into(), issuer.account())
+    }: _(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
 
     apply_incoming_balance {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -63,7 +52,7 @@ benchmarks! {
         tx.affirm_legs(&mut rng);
         tx.execute();
         let leg = tx.leg(0);
-    }: _(leg.investor.raw_origin(), leg.investor.account(), leg.ticker)
+    }: _(leg.investor.raw_origin(), leg.investor.account(), leg.asset_id)
 
     create_venue {
         let issuer = user::<T>("issuer", SEED);
@@ -71,24 +60,24 @@ benchmarks! {
 
     set_venue_filtering {
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let (ticker, issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
-    }: _(issuer.raw_origin(), ticker, true)
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
+    }: _(issuer.raw_origin(), asset_id, true)
 
     allow_venues {
         // Count of venues.
         let v in 0 .. 100;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let (ticker, issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
         let mut venues = Vec::new();
         for i in 0 .. v {
             venues.push(VenueId(i.into()));
         }
         let s_venues = venues.clone();
-    }: _(issuer.raw_origin(), ticker, s_venues)
+    }: _(issuer.raw_origin(), asset_id, s_venues)
     verify {
         for v in venues.iter() {
-            assert!(Pallet::<T>::venue_allow_list(ticker, v), "Fail: allow_venue dispatch");
+            assert!(Pallet::<T>::venue_allow_list(asset_id, v), "Fail: allow_venue dispatch");
         }
     }
 
@@ -97,21 +86,21 @@ benchmarks! {
         let v in 0 .. 100;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
-        let (ticker, issuer, _) = create_confidential_token::<T>("A", 0, &mut rng);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
         let mut venues = Vec::new();
         for i in 0 .. v {
             venues.push(VenueId(i.into()));
         }
         assert_ok!(Pallet::<T>::allow_venues(
             issuer.origin(),
-            ticker,
+            asset_id,
             venues.clone(),
         ));
         let s_venues = venues.clone();
-    }: _(issuer.raw_origin(), ticker, s_venues)
+    }: _(issuer.raw_origin(), asset_id, s_venues)
     verify {
         for v in venues.iter() {
-            assert!(!Pallet::<T>::venue_allow_list(ticker, v), "Fail: allow_venue dispatch");
+            assert!(!Pallet::<T>::venue_allow_list(asset_id, v), "Fail: allow_venue dispatch");
         }
     }
 
@@ -122,7 +111,7 @@ benchmarks! {
         let m in 0 .. MAX_MEDIATORS;
 
         // Always use the maximum number of auditors per leg.
-        let a_count = l * T::MaxNumberOfAuditors::get();
+        let a_count = l * (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -134,7 +123,7 @@ benchmarks! {
 
     sender_affirm_transaction {
         // Number of auditors in the sender proof.
-        let a in 0 .. T::MaxNumberOfAuditors::get();
+        let a in 0 .. (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -142,9 +131,9 @@ benchmarks! {
         let mut tx = TransactionState::<T>::new_legs_full(1, a, a, &mut rng);
         tx.add_transaction();
 
-        let affirm = tx.sender_proof(0, &mut rng);
+        let affirms = tx.affirms(&[tx.sender_proof(0, &mut rng)]);
         let leg = tx.leg(0);
-    }: affirm_transaction(leg.issuer.raw_origin(), tx.id, affirm)
+    }: affirm_transactions(leg.issuer.raw_origin(), affirms)
 
     receiver_affirm_transaction {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -154,9 +143,9 @@ benchmarks! {
         tx.add_transaction();
         tx.sender_affirm(0, &mut rng);
 
-        let affirm = AffirmLeg::receiver(TransactionLegId(0));
+        let affirms = tx.affirms(&[AffirmLeg::receiver(TransactionLegId(0))]);
         let leg = tx.leg(0);
-    }: affirm_transaction(leg.investor.raw_origin(), tx.id, affirm)
+    }: affirm_transactions(leg.investor.raw_origin(), affirms)
 
     mediator_affirm_transaction {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -169,8 +158,8 @@ benchmarks! {
 
         let leg = tx.leg(0);
         let mediator = leg.mediator(0);
-        let affirm = AffirmLeg::mediator(TransactionLegId(0), mediator.mediator_account());
-    }: affirm_transaction(mediator.raw_origin(), tx.id, affirm)
+        let affirms = tx.affirms(&[AffirmLeg::mediator(TransactionLegId(0))]);
+    }: affirm_transactions(mediator.raw_origin(), affirms)
 
     execute_transaction {
         let l in 1..T::MaxNumberOfLegs::get();
