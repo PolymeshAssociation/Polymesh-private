@@ -46,11 +46,6 @@ fn issuers_can_create_confidential_tokens() {
         let mut rng = StdRng::from_seed([10u8; 32]);
 
         let owner = User::new(AccountKeyring::Dave);
-        // Expected token entry
-        let token = ConfidentialAssetDetails {
-            owner_did: owner.did,
-            total_supply: 1_000_000,
-        };
 
         let auditors = create_auditors(0, &mut rng);
 
@@ -58,13 +53,17 @@ fn issuers_can_create_confidential_tokens() {
         let asset = next_asset_id::<TestRuntime>(owner.did);
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
+            None,
+            Default::default(),
             auditors.get_asset_auditors(),
         ));
 
         // A correct entry is added.
         let token_with_zero_supply = ConfidentialAssetDetails {
-            owner_did: token.owner_did,
+            owner_did: owner.did,
             total_supply: Zero::zero(),
+            ticker: None,
+            data: Default::default(),
         };
         assert_eq!(
             ConfidentialAsset::confidential_asset_details(asset).expect("Asset details"),
@@ -72,22 +71,21 @@ fn issuers_can_create_confidential_tokens() {
         );
 
         // Add another STO.
-        // Expected token entry.
-        let token = ConfidentialAssetDetails {
-            owner_did: owner.did,
-            total_supply: 1_000_000,
-        };
 
         // Second Issuance is successful.
         let asset2 = next_asset_id::<TestRuntime>(owner.did);
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
+            None,
+            Default::default(),
             auditors.get_asset_auditors(),
         ));
 
         let token_with_zero_supply = ConfidentialAssetDetails {
-            owner_did: token.owner_did,
+            owner_did: owner.did,
             total_supply: Zero::zero(),
+            ticker: None,
+            data: Default::default(),
         };
 
         // A correct entry is added.
@@ -119,11 +117,15 @@ fn issuers_can_create_and_mint_tokens() {
         let token = ConfidentialAssetDetails {
             owner_did: owner.did(),
             total_supply,
+            ticker: None,
+            data: Default::default(),
         };
 
         let asset = next_asset_id::<TestRuntime>(owner.did());
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
+            None,
+            Default::default(),
             auditors.get_asset_auditors(),
         ));
 

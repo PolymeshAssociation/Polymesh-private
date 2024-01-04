@@ -278,7 +278,7 @@ async fn confidential_transfer() -> Result<()> {
     let mut res_asset = api
         .call()
         .confidential_asset()
-        .create_confidential_asset(auditors.clone())?
+        .create_confidential_asset(None, vec![], auditors.clone())?
         .submit_and_watch(&mut issuer.user)
         .await?;
 

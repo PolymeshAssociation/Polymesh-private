@@ -30,9 +30,10 @@ benchmarks! {
 
     create_confidential_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
+        let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         let issuer = user::<T>("issuer", SEED);
         let auditors = AuditorState::<T>::new(0, &mut rng).get_asset_auditors();
-    }: _(issuer.origin(), auditors)
+    }: _(issuer.origin(), Some(ticker), Default::default(), auditors)
 
     mint_confidential_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -110,7 +111,7 @@ benchmarks! {
         let m in 0 .. MAX_MEDIATORS;
 
         // Always use the maximum number of auditors per leg.
-        let a_count = l * T::MaxNumberOfAuditors::get();
+        let a_count = l * (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -122,7 +123,7 @@ benchmarks! {
 
     sender_affirm_transaction {
         // Number of auditors in the sender proof.
-        let a in 0 .. T::MaxNumberOfAuditors::get();
+        let a in 0 .. (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 

@@ -31,7 +31,9 @@ use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
 use polymesh_host_functions::VerifyConfidentialTransferRequest;
-use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
+use polymesh_primitives::{
+    impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo, Ticker,
+};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{traits::Zero, SaturatedConversion};
@@ -172,8 +174,7 @@ impl From<&ElgamalPublicKey> for AuditorAccount {
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct ConfidentialTransfers<T: Config> {
-    // TODO: per-leg limit.
-    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxNumberOfLegs>,
+    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerLeg>,
 }
 
 impl<T: Config> ConfidentialTransfers<T> {
@@ -200,10 +201,10 @@ pub enum AffirmParty<T: Config> {
 /// A batch of transactions to affirm.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq)]
 #[scale_info(skip_type_params(T))]
-pub struct AffirmTransactions<T: Config>(BoundedVec<AffirmTransaction<T>, T::MaxNumberOfLegs>);
+pub struct AffirmTransactions<T: Config>(BoundedVec<AffirmTransaction<T>, T::MaxNumberOfAffirms>);
 
 impl<T: Config> core::ops::Deref for AffirmTransactions<T> {
-    type Target = BoundedVec<AffirmTransaction<T>, T::MaxNumberOfLegs>;
+    type Target = BoundedVec<AffirmTransaction<T>, T::MaxNumberOfAffirms>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -276,11 +277,16 @@ pub enum LegParty {
 
 /// Confidential asset details.
 #[derive(Encode, Decode, TypeInfo, Clone, Default, Debug, PartialEq, Eq)]
-pub struct ConfidentialAssetDetails {
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialAssetDetails<T: Config> {
     /// Total supply of the asset.
     pub total_supply: Balance,
     /// Asset's owner DID.
     pub owner_did: IdentityId,
+    /// Asset data.
+    pub data: BoundedVec<u8, T::MaxAssetDataLength>,
+    /// Asset ticker (optional)
+    pub ticker: Option<Ticker>,
 }
 
 /// Confidential transaction leg asset pending state.
@@ -302,20 +308,18 @@ pub struct TransactionLegState {
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct TransactionLegDetails<T: Config> {
-    /// Auditors (both Asset & Venue auditors) for each leg asset.
-    /// TODO: Per leg asset limit.
+    /// Asset auditors (both Asset & Venue auditors) for each leg asset.
     pub auditors: BoundedBTreeMap<
         AssetId,
-        BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAuditors>,
-        T::MaxNumberOfAuditors,
+        BoundedBTreeSet<AuditorAccount, T::MaxAuditorsPerLeg>,
+        T::MaxAssetsPerLeg,
     >,
     /// Confidential account of the sender.
     pub sender: ConfidentialAccount,
     /// Confidential account of the receiver.
     pub receiver: ConfidentialAccount,
     /// Leg mediators (both Asset & Venue mediators).
-    /// TODO: Per leg mediator limit.
-    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxMediatorsPerLeg>,
 }
 
 /// Confidential transaction leg.
@@ -323,18 +327,15 @@ pub struct TransactionLegDetails<T: Config> {
 #[scale_info(skip_type_params(T))]
 pub struct TransactionLeg<T: Config> {
     /// Leg assets.
-    /// TODO: Change limit (assets per leg).
-    pub assets: BoundedBTreeSet<AssetId, T::MaxNumberOfAuditors>,
+    pub assets: BoundedBTreeSet<AssetId, T::MaxAssetsPerLeg>,
     /// Confidential account of the sender.
     pub sender: ConfidentialAccount,
     /// Confidential account of the receiver.
     pub receiver: ConfidentialAccount,
     /// Venue auditors.
-    /// TODO: change limit (venue auditors per leg).
-    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxVenueAuditors>,
     /// Venue mediators.
-    /// TODO: change limit (venue mediators per leg).
-    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxVenueMediators>,
 }
 
 impl<T: Config> TransactionLeg<T> {
@@ -368,10 +369,9 @@ impl<T: Config> TransactionLeg<T> {
 #[scale_info(skip_type_params(T))]
 pub struct ConfidentialAuditors<T: Config> {
     /// Auditor public keys.
-    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxAssetAuditors>,
     /// Mediator identities.
-    /// TODO: change limit.
-    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxAssetMediators>,
 }
 
 impl<T: Config> ConfidentialAuditors<T> {
@@ -438,14 +438,35 @@ pub mod pallet {
         /// Maximum total supply.
         type MaxTotalSupply: Get<Balance>;
 
+        /// Maximum length of asset data.
+        type MaxAssetDataLength: GetExtra<u32>;
+
+        /// Maximum number of affirms in a batch.
+        type MaxNumberOfAffirms: GetExtra<u32>;
+
         /// Maximum number of legs in a confidential transaction.
         type MaxNumberOfLegs: GetExtra<u32>;
 
-        /// Maximum number of auditors (to limit SenderProof verification time).
-        type MaxNumberOfAuditors: GetExtra<u32>;
+        /// Maximum number of assets per leg.
+        type MaxAssetsPerLeg: GetExtra<u32>;
 
-        /// Maximum number of confidential asset auditors (should be lower then `MaxNumberOfAuditors`).
-        type MaxNumberOfAssetAuditors: GetExtra<u32>;
+        /// Maximum number of auditors per leg.
+        type MaxAuditorsPerLeg: GetExtra<u32>;
+
+        /// Maximum number of mediators per leg.
+        type MaxMediatorsPerLeg: GetExtra<u32>;
+
+        /// Maximum number of confidential venue auditors.
+        type MaxVenueAuditors: GetExtra<u32>;
+
+        /// Maximum number of confidential venue mediators.
+        type MaxVenueMediators: GetExtra<u32>;
+
+        /// Maximum number of confidential asset auditors.
+        type MaxAssetAuditors: GetExtra<u32>;
+
+        /// Maximum number of confidential asset mediators.
+        type MaxAssetMediators: GetExtra<u32>;
     }
 
     #[pallet::event]
@@ -627,13 +648,20 @@ pub mod pallet {
     #[pallet::getter(fn venue_counter)]
     pub type VenueCounter<T: Config> = StorageValue<_, VenueId, ValueQuery>;
 
+    /// Map a ticker to a confidential asset id.
+    ///
+    /// ticker -> asset id
+    #[pallet::storage]
+    #[pallet::getter(fn ticker_to_asset_id)]
+    pub type TickerToAsset<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, AssetId>;
+
     /// Details of the confidential asset.
     ///
     /// asset id -> Option<ConfidentialAssetDetails>
     #[pallet::storage]
     #[pallet::getter(fn confidential_asset_details)]
     pub type Details<T: Config> =
-        StorageMap<_, Blake2_128Concat, AssetId, ConfidentialAssetDetails>;
+        StorageMap<_, Blake2_128Concat, AssetId, ConfidentialAssetDetails<T>>;
 
     /// Confidential asset's auditor/mediators.
     ///
@@ -822,10 +850,12 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_confidential_asset())]
         pub fn create_confidential_asset(
             origin: OriginFor<T>,
+            ticker: Option<Ticker>,
+            data: BoundedVec<u8, T::MaxAssetDataLength>,
             auditors: ConfidentialAuditors<T>,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_confidential_asset(owner_did, auditors)
+            Self::base_create_confidential_asset(owner_did, ticker, data, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
@@ -1010,6 +1040,8 @@ impl<T: Config> Pallet<T> {
 
     fn base_create_confidential_asset(
         owner_did: IdentityId,
+        ticker: Option<Ticker>,
+        data: BoundedVec<u8, T::MaxAssetDataLength>,
         auditors: ConfidentialAuditors<T>,
     ) -> DispatchResult {
         let asset_id = Self::next_asset_id(owner_did, true);
@@ -1024,6 +1056,16 @@ impl<T: Config> Pallet<T> {
             Error::<T>::NotEnoughAssetAuditors
         );
 
+        if let Some(ticker) = ticker {
+            // Ensure unique tickers.
+            // TODO: new error variant.
+            ensure!(
+                !TickerToAsset::<T>::contains_key(ticker),
+                Error::<T>::ConfidentialAssetAlreadyCreated
+            );
+            TickerToAsset::<T>::insert(ticker, asset_id);
+        }
+
         // Ensure the mediators exist.
         for _mediator_did in &auditors.mediators {
             // TODO: validate mediator identity.
@@ -1035,6 +1077,8 @@ impl<T: Config> Pallet<T> {
         let details = ConfidentialAssetDetails {
             total_supply: Zero::zero(),
             owner_did,
+            ticker,
+            data,
         };
         Details::<T>::insert(asset_id, details);
 
@@ -1125,7 +1169,7 @@ impl<T: Config> Pallet<T> {
     fn ensure_asset_owner(
         asset_id: AssetId,
         did: IdentityId,
-    ) -> Result<ConfidentialAssetDetails, DispatchError> {
+    ) -> Result<ConfidentialAssetDetails<T>, DispatchError> {
         let details = Self::confidential_asset_details(asset_id)
             .ok_or(Error::<T>::UnknownConfidentialAsset)?;
 
@@ -1387,7 +1431,6 @@ impl<T: Config> Pallet<T> {
                     Error::<T>::InvalidSenderProof
                 );
 
-                // TODO: Handle multiple assets.
                 for (asset_id, auditors) in leg.auditors {
                     let proof = transfers
                         .proofs

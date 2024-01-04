@@ -124,9 +124,16 @@ parameter_types! {
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
 }
 
-pub type MaxNumberOfConfidentialLegs = ConstSize<10>;
-pub type MaxNumberOfConfidentialAuditors = ConstSize<8>;
-pub type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxNumberOfAffirms = ConstSize<10>;
+pub type ConfidentialAssetMaxNumberOfLegs = ConstSize<10>;
+pub type ConfidentialAssetMaxAssetsPerLeg = ConstSize<4>;
+pub type ConfidentialAssetMaxAuditorsPerLeg = ConstSize<{ 4 + 4 }>;
+pub type ConfidentialAssetMaxMediatorsPerLeg = ConstSize<{ 4 * 8 }>;
+pub type ConfidentialAssetMaxVenueAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
 impl TestUtilsFn<AccountId> for Runtime {
@@ -296,9 +303,16 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
-    type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
-    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
-    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
+    type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
+    type MaxNumberOfAffirms = ConfidentialAssetMaxNumberOfAffirms;
+    type MaxNumberOfLegs = ConfidentialAssetMaxNumberOfLegs;
+    type MaxAssetsPerLeg = ConfidentialAssetMaxAssetsPerLeg;
+    type MaxAuditorsPerLeg = ConfidentialAssetMaxAuditorsPerLeg;
+    type MaxMediatorsPerLeg = ConfidentialAssetMaxMediatorsPerLeg;
+    type MaxVenueAuditors = ConfidentialAssetMaxVenueAuditors;
+    type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
+    type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
+    type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {

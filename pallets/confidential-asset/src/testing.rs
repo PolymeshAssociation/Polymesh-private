@@ -28,15 +28,16 @@ pub(crate) const AUDITOR_SEED: u32 = 1_000;
 #[derive(Clone)]
 pub struct AuditorState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub asset: ConfidentialAuditors<T>,
-    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxNumberOfAssetAuditors>,
-    pub mediators: BoundedBTreeSet<IdentityId, T::MaxNumberOfAssetAuditors>,
+    pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxVenueAuditors>,
+    pub mediators: BoundedBTreeSet<IdentityId, T::MaxVenueMediators>,
     pub users: BTreeMap<AuditorAccount, ConfidentialUser<T>>,
 }
 
 impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
     /// Create maximum number of auditors with one mediator role for an asset.
     pub fn new(asset: u32, rng: &mut StdRng) -> Self {
-        Self::new_full(asset, T::MaxNumberOfAuditors::get(), 1, rng)
+        let count = T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get();
+        Self::new_full(asset, count, 1, rng)
     }
 
     /// Create `auditor_count` auditors with `mediator_count` mediator roles for an asset.
@@ -49,7 +50,8 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
         let mut auditors = BoundedBTreeSet::new();
         let mut mediators = BoundedBTreeSet::new();
         let mut users = BTreeMap::new();
-        let auditor_count = auditor_count.clamp(1, T::MaxNumberOfAuditors::get());
+        let auditor_count =
+            auditor_count.clamp(1, T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
         let mut mediator_count = mediator_count.min(auditor_count);
         let mut asset = ConfidentialAuditors::new();
         // Create auditors.
@@ -133,6 +135,8 @@ pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let asset_id = next_asset_id::<T>(issuer.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         issuer.origin(),
+        None,
+        Default::default(),
         auditors.get_asset_auditors(),
     ));
     (asset_id, issuer, auditors)
@@ -232,15 +236,13 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     AuditorState<T>,
 ) {
     let owner = ConfidentialUser::asset_user(name, idx, rng);
-    let token = ConfidentialAssetDetails {
-        total_supply,
-        owner_did: owner.did(),
-    };
 
     let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
     let asset_id = next_asset_id::<T>(owner.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         owner.origin(),
+        None,
+        Default::default(),
         auditors.get_asset_auditors(),
     ));
 
@@ -257,7 +259,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     owner.create_account();
 
     // ------------- Computations that will happen in owner's Wallet ----------
-    let amount: ConfidentialBalance = token.total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
+    let amount: ConfidentialBalance = total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
 
     // Wallet submits the transaction to the chain for verification.
     assert_ok!(Pallet::<T>::mint_confidential_asset(
@@ -274,7 +276,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
         Pallet::<T>::confidential_asset_details(asset_id)
             .expect("Asset details")
             .owner_did,
-        token.owner_did
+        owner.did()
     );
 
     // -------------------------- Ensure the encrypted balance matches the minted amount.
@@ -421,7 +423,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     /// Setup for a transaction with `leg_count` legs each with maximum number of mediators.
     pub fn new_legs(leg_count: u32, rng: &mut StdRng) -> Self {
-        let count = leg_count * T::MaxNumberOfAuditors::get();
+        let count = leg_count * (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
         Self::new_legs_full(leg_count, count, count, rng)
     }
 
@@ -440,12 +442,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
         let venue_id = Pallet::<T>::venue_counter();
         assert_ok!(Pallet::<T>::create_venue(custodian.origin()));
 
+        let a_max = T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get();
+        let m_max = T::MaxVenueMediators::get() + T::MaxAssetMediators::get();
         let legs: Vec<_> = (0..leg_count)
             .into_iter()
             .map(|leg_id| {
-                let a_count = auditors.min(T::MaxNumberOfAuditors::get());
+                let a_count = auditors.min(a_max);
                 auditors = auditors.saturating_sub(a_count);
-                let m_count = mediators.min(T::MaxNumberOfAuditors::get());
+                let m_count = mediators.min(m_max);
                 mediators = mediators.saturating_sub(m_count);
                 TransactionLegState::new(venue_id, leg_id, a_count, m_count, rng)
             })
