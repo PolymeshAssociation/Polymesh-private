@@ -345,7 +345,7 @@ async fn confidential_transfer() -> Result<()> {
     )
     .expect("Sender proof");
     let transfers = ConfidentialTransfers {
-        proofs: BTreeMap::from([(asset_id, SenderProof(tx_proof.encode()))]),
+        proofs: BTreeMap::from([(asset_id, SenderProof(tx_proof.as_bytes()))]),
     };
     // Sender affirms the transaction with the sender proof.
     let affirms = AffirmTransactions(vec![AffirmTransaction {
