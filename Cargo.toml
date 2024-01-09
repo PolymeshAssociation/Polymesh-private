@@ -101,7 +101,7 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/p
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2127-part-2" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
 #confidential_assets = { path = "../confidential_assets" }
 
 [workspace]
