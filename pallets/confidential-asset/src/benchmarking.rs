@@ -43,6 +43,17 @@ benchmarks! {
         let total_supply = 4_000_000_000 as ConfidentialBalance;
     }: _(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
 
+    set_asset_frozen {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
+    }: _(issuer.raw_origin(), asset_id, true)
+
+    set_account_asset_frozen {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
+        let user = ConfidentialUser::<T>::new("user", &mut rng);
+    }: _(issuer.raw_origin(), user.account(), asset_id, true)
+
     apply_incoming_balance {
         let mut rng = StdRng::from_seed([10u8; 32]);
 

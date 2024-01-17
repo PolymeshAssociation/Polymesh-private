@@ -95,6 +95,16 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().reads(4))
             .saturating_add(DbWeight::get().writes(2))
     }
+    fn set_asset_frozen() -> Weight {
+        // TODO: Run benchmarks.
+        // Minimum execution time: 155_161 nanoseconds.
+        Weight::from_ref_time(155_982_000)
+    }
+    fn set_account_asset_frozen() -> Weight {
+        // TODO: Run benchmarks.
+        // Minimum execution time: 155_161 nanoseconds.
+        Weight::from_ref_time(155_982_000)
+    }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountDid (r:1 w:0)

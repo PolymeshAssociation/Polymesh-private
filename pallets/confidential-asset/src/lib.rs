@@ -56,6 +56,8 @@ pub trait WeightInfo {
     fn create_account() -> Weight;
     fn create_confidential_asset() -> Weight;
     fn mint_confidential_asset() -> Weight;
+    fn set_asset_frozen() -> Weight;
+    fn set_account_asset_frozen() -> Weight;
     fn apply_incoming_balance() -> Weight;
     fn create_venue() -> Weight;
     fn set_venue_filtering() -> Weight;
@@ -543,6 +545,22 @@ pub mod pallet {
         ///
         /// (confidential account, asset id, encrypted amount, new encrypted incoming balance)
         AccountDepositIncoming(ConfidentialAccount, AssetId, CipherText, CipherText),
+        /// Confidential asset frozen.
+        ///
+        /// (identity, asset id)
+        AssetFrozen(IdentityId, AssetId),
+        /// Confidential asset unfrozen.
+        ///
+        /// (identity, asset id)
+        AssetUnfrozen(IdentityId, AssetId),
+        /// Confidential account asset frozen.
+        ///
+        /// (identity, confidential account, asset id)
+        AccountAssetFrozen(IdentityId, ConfidentialAccount, AssetId),
+        /// Confidential account asset unfrozen.
+        ///
+        /// (identity, confidential account, asset id)
+        AccountAssetUnfrozen(IdentityId, ConfidentialAccount, AssetId),
     }
 
     #[pallet::error]
@@ -551,6 +569,18 @@ pub mod pallet {
         AuditorAccountMissing,
         /// Confidential account hasn't been created yet.
         ConfidentialAccountMissing,
+        /// Confidential account is frozen for the asset.
+        AccountAssetFrozen,
+        /// Confidential account for the asset is already frozen.
+        AccountAssetAlreadyFrozen,
+        /// Confidential account for the asset wasn't frozen.
+        AccountAssetNotFrozen,
+        /// Confidential asset is frozen.
+        AssetFrozen,
+        /// Confidential asset is already frozen.
+        AlreadyFrozen,
+        /// Confidential asset wasn't frozen.
+        NotFrozen,
         /// A required auditor/mediator is missing.
         RequiredAssetAuditorMissing,
         /// The number of confidential asset auditors doesn't meet the minimum requirement.
@@ -663,6 +693,19 @@ pub mod pallet {
     pub type Details<T: Config> =
         StorageMap<_, Blake2_128Concat, AssetId, ConfidentialAssetDetails<T>>;
 
+    /// Is the confidential asset frozen.
+    ///
+    /// asset id -> bool
+    #[pallet::storage]
+    #[pallet::getter(fn asset_frozen)]
+    pub type AssetFrozen<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        AssetId,
+        bool,
+        ValueQuery,
+    >;
+
     /// Confidential asset's auditor/mediators.
     ///
     /// asset id -> Option<ConfidentialAuditors>
@@ -678,6 +721,21 @@ pub mod pallet {
     #[pallet::getter(fn account_did)]
     pub type AccountDid<T: Config> =
         StorageMap<_, Blake2_128Concat, ConfidentialAccount, IdentityId>;
+
+    /// Is the confidential account asset frozen.
+    ///
+    /// account -> asset id -> bool
+    #[pallet::storage]
+    #[pallet::getter(fn account_asset_frozen)]
+    pub type AccountAssetFrozen<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        ConfidentialAccount,
+        Blake2_128Concat,
+        AssetId,
+        bool,
+        ValueQuery,
+    >;
 
     /// Contains the encrypted balance of a confidential account.
     ///
@@ -1016,6 +1074,48 @@ pub mod pallet {
             Self::base_reject_transaction(did, transaction_id, leg_count as usize)?;
             Ok(().into())
         }
+
+        /// Freeze/unfreeze a confidential asset.
+        ///
+        /// # Arguments
+        /// * `origin` - Must be the asset issuer.
+        /// * `asset_id` - confidential asset to freeze/unfreeze.
+        /// * `freeze` - freeze/unfreeze.
+        ///
+        /// # Errors
+        /// - `BadOrigin` if not signed.
+        #[pallet::call_index(13)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_asset_frozen())]
+        pub fn set_asset_frozen(
+            origin: OriginFor<T>,
+            asset_id: AssetId,
+            freeze: bool,
+        ) -> DispatchResult {
+            let did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_set_asset_frozen(did, asset_id, freeze)
+        }
+
+        /// The confidential asset issuer can freeze/unfreeze accounts.
+        ///
+        /// # Arguments
+        /// * `origin` - Must be the asset issuer.
+        /// * `account` - the confidential account to lock/unlock.
+        /// * `asset_id` - AssetId of confidential account.
+        /// * `freeze` - freeze/unfreeze.
+        ///
+        /// # Errors
+        /// - `BadOrigin` if not signed.
+        #[pallet::call_index(14)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_account_asset_frozen())]
+        pub fn set_account_asset_frozen(
+            origin: OriginFor<T>,
+            account: ConfidentialAccount,
+            asset_id: AssetId,
+            freeze: bool,
+        ) -> DispatchResult {
+            let did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_set_account_asset_frozen(did, account, asset_id, freeze)
+        }
     }
 }
 
@@ -1144,6 +1244,63 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn base_set_asset_frozen(
+        did: IdentityId,
+        asset_id: AssetId,
+        freeze: bool,
+    ) -> DispatchResult {
+        // Ensure the caller is the asset owner.
+        Self::ensure_asset_owner(asset_id, did)?;
+
+        match (Self::asset_frozen(&asset_id), freeze) {
+            (true, true) => {
+                Err(Error::<T>::AlreadyFrozen)?;
+            }
+            (false, false) => {
+                Err(Error::<T>::NotFrozen)?
+            }
+            (false, true) => {
+                AssetFrozen::<T>::insert(&asset_id, true);
+                Self::deposit_event(Event::<T>::AssetFrozen(did, asset_id))
+            }
+            (true, false) => {
+                AssetFrozen::<T>::insert(&asset_id, false);
+                Self::deposit_event(Event::<T>::AssetUnfrozen(did, asset_id))
+            }
+        }
+
+        Ok(())
+    }
+
+    fn base_set_account_asset_frozen(
+        did: IdentityId,
+        account: ConfidentialAccount,
+        asset_id: AssetId,
+        freeze: bool,
+    ) -> DispatchResult {
+        // Ensure the caller is the asset owner.
+        Self::ensure_asset_owner(asset_id, did)?;
+
+        match (Self::account_asset_frozen(&account, &asset_id), freeze) {
+            (true, true) => {
+                Err(Error::<T>::AccountAssetAlreadyFrozen)?;
+            }
+            (false, false) => {
+                Err(Error::<T>::AccountAssetNotFrozen)?
+            }
+            (false, true) => {
+                AccountAssetFrozen::<T>::insert(&account, &asset_id, true);
+                Self::deposit_event(Event::<T>::AccountAssetFrozen(did, account, asset_id))
+            }
+            (true, false) => {
+                AccountAssetFrozen::<T>::insert(&account, &asset_id, false);
+                Self::deposit_event(Event::<T>::AccountAssetUnfrozen(did, account, asset_id))
+            }
+        }
+
+        Ok(())
+    }
+
     fn base_apply_incoming_balance(
         caller_did: IdentityId,
         account: ConfidentialAccount,
@@ -1216,6 +1373,8 @@ impl<T: Config> Pallet<T> {
                 Entry::Vacant(entry) => {
                     // Ensure that the asset issuer allows this `venue_id`.
                     Self::ensure_venue_allowed(asset_id, venue_id)?;
+                    // Ensure that the asset isn't frozen.
+                    ensure!(!Self::asset_frozen(asset_id), Error::<T>::AssetFrozen);
                     // Load and cache the required auditors for the asset.
                     entry
                         .insert(
@@ -1226,6 +1385,8 @@ impl<T: Config> Pallet<T> {
                 }
                 Entry::Occupied(entry) => entry.get().clone(),
             };
+            // Ensure that the sender's asset isn't frozen.
+            ensure!(!Self::account_asset_frozen(leg.sender, asset_id), Error::<T>::AccountAssetFrozen);
             // Add the asset mediators to the mediators for this leg.
             leg_mediators.extend(&asset.mediators);
             let auditors = venue_auditors
@@ -1587,6 +1748,10 @@ impl<T: Config> Pallet<T> {
         let leg_state = TxLegStates::<T>::take(transaction_id, leg_id)
             .ok_or(Error::<T>::TransactionNotAffirmed)?;
         for (asset_id, state) in leg_state.asset_state {
+            // Ensure that the asset isn't frozen.
+            ensure!(!Self::asset_frozen(asset_id), Error::<T>::AssetFrozen);
+            // Ensure that the sender's asset isn't frozen.
+            ensure!(!Self::account_asset_frozen(leg.sender, asset_id), Error::<T>::AccountAssetFrozen);
             // Deposit the transaction amount into the receiver's account.
             Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
         }
