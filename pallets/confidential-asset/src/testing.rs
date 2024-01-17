@@ -25,6 +25,10 @@ pub(crate) const SEED: u32 = 42;
 pub(crate) const TICKER_SEED: u32 = 1_000_000;
 pub(crate) const AUDITOR_SEED: u32 = 1_000;
 
+pub(crate) fn gen_asset_id(u: u128) -> AssetId {
+    u.to_be_bytes()
+}
+
 #[derive(Clone)]
 pub struct AuditorState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub asset: ConfidentialAuditors<T>,
@@ -206,6 +210,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     /// Register a new confidential account on-chain.
     pub fn create_account(&self) {
         assert_ok!(Pallet::<T>::create_account(self.origin(), self.account(),));
+    }
+
+    pub fn set_balance(&self, asset: AssetId, balance: CipherText) {
+        AccountBalance::<T>::insert(self.account(), asset, balance)
+    }
+
+    pub fn set_incoming_balance(&self, asset: AssetId, balance: CipherText) {
+        IncomingBalance::<T>::insert(self.account(), asset, balance)
     }
 
     pub fn enc_balance(&self, asset: AssetId) -> CipherText {

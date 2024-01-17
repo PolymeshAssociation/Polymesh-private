@@ -59,6 +59,7 @@ pub trait WeightInfo {
     fn set_asset_frozen() -> Weight;
     fn set_account_asset_frozen() -> Weight;
     fn apply_incoming_balance() -> Weight;
+    fn apply_incoming_balances(l: u32) -> Weight;
     fn create_venue() -> Weight;
     fn set_venue_filtering() -> Weight;
     fn allow_venues(l: u32) -> Weight;
@@ -1110,6 +1111,26 @@ pub mod pallet {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
             Self::base_set_account_asset_frozen(did, account, asset_id, freeze)
         }
+
+        /// Applies any incoming balance to the confidential account balance.
+        ///
+        /// # Arguments
+        /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
+        /// * `account` - the confidential account (Elgamal public key) of the `origin`.
+        /// * `max_updates` - The maximum number of incoming balances to apply.
+        ///
+        /// # Errors
+        /// - `BadOrigin` if not signed.
+        #[pallet::call_index(15)]
+        #[pallet::weight(<T as Config>::WeightInfo::apply_incoming_balances(*max_updates as _))]
+        pub fn apply_incoming_balances(
+            origin: OriginFor<T>,
+            account: ConfidentialAccount,
+            max_updates: u16,
+        ) -> DispatchResult {
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_apply_incoming_balances(caller_did, account, max_updates)
+        }
     }
 }
 
@@ -1303,6 +1324,33 @@ impl<T: Config> Pallet<T> {
                 Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
             }
             None => (),
+        }
+
+        Ok(())
+    }
+
+    fn base_apply_incoming_balances(
+        caller_did: IdentityId,
+        account: ConfidentialAccount,
+        max_updates: u16,
+    ) -> DispatchResult {
+        let account_did = Self::get_account_did(&account)?;
+        // Ensure the caller is the owner of the confidential account.
+        ensure!(account_did == caller_did, Error::<T>::Unauthorized);
+
+        let assets: Vec<_> = IncomingBalance::<T>::iter_prefix(&account)
+            .take(max_updates as _)
+            .map(|(id, _)| id)
+            .collect();
+        for asset_id in assets {
+            // Take the incoming balance.
+            match IncomingBalance::<T>::take(&account, asset_id) {
+                Some(incoming_balance) => {
+                    // If there is an incoming balance, deposit it into the confidential account balance.
+                    Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
+                }
+                None => (),
+            }
         }
 
         Ok(())

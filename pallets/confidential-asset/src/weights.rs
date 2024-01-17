@@ -135,6 +135,24 @@ impl crate::WeightInfo for SubstrateWeight {
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountDid (r:1 w:0)
+    // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset IncomingBalance (r:201 w:200)
+    // Proof Skipped: ConfidentialAsset IncomingBalance (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountBalance (r:200 w:200)
+    // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
+    /// The range of component `b` is `[0, 200]`.
+    fn apply_incoming_balances(b: u32) -> Weight {
+        // Minimum execution time: 91_931 nanoseconds.
+        Weight::from_ref_time(91_931_000)
+            // Standard Error: 4_457_133
+            .saturating_add(Weight::from_ref_time(524_174_218).saturating_mul(b.into()))
+            .saturating_add(DbWeight::get().reads(3))
+            .saturating_add(DbWeight::get().reads((2_u64).saturating_mul(b.into())))
+            .saturating_add(DbWeight::get().writes((2_u64).saturating_mul(b.into())))
+    }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset VenueCounter (r:1 w:1)
     // Proof Skipped: ConfidentialAsset VenueCounter (max_values: Some(1), max_size: None, mode: Measured)
     // Storage: ConfidentialAsset VenueCreator (r:0 w:1)
