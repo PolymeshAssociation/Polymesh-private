@@ -95,15 +95,29 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().reads(4))
             .saturating_add(DbWeight::get().writes(2))
     }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset Details (r:1 w:0)
+    // Proof Skipped: ConfidentialAsset Details (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AssetFrozen (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset AssetFrozen (max_values: None, max_size: None, mode: Measured)
     fn set_asset_frozen() -> Weight {
-        // TODO: Run benchmarks.
-        // Minimum execution time: 155_161 nanoseconds.
-        Weight::from_ref_time(155_982_000)
+        // Minimum execution time: 88_925 nanoseconds.
+        Weight::from_ref_time(88_925_000)
+            .saturating_add(DbWeight::get().reads(3))
+            .saturating_add(DbWeight::get().writes(1))
     }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset Details (r:1 w:0)
+    // Proof Skipped: ConfidentialAsset Details (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountAssetFrozen (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset AccountAssetFrozen (max_values: None, max_size: None, mode: Measured)
     fn set_account_asset_frozen() -> Weight {
-        // TODO: Run benchmarks.
-        // Minimum execution time: 155_161 nanoseconds.
-        Weight::from_ref_time(155_982_000)
+        // Minimum execution time: 128_656 nanoseconds.
+        Weight::from_ref_time(128_656_000)
+            .saturating_add(DbWeight::get().reads(3))
+            .saturating_add(DbWeight::get().writes(1))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
