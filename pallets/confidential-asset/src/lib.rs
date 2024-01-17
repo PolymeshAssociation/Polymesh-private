@@ -698,13 +698,7 @@ pub mod pallet {
     /// asset id -> bool
     #[pallet::storage]
     #[pallet::getter(fn asset_frozen)]
-    pub type AssetFrozen<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        AssetId,
-        bool,
-        ValueQuery,
-    >;
+    pub type AssetFrozen<T: Config> = StorageMap<_, Blake2_128Concat, AssetId, bool, ValueQuery>;
 
     /// Confidential asset's auditor/mediators.
     ///
@@ -1244,11 +1238,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn base_set_asset_frozen(
-        did: IdentityId,
-        asset_id: AssetId,
-        freeze: bool,
-    ) -> DispatchResult {
+    fn base_set_asset_frozen(did: IdentityId, asset_id: AssetId, freeze: bool) -> DispatchResult {
         // Ensure the caller is the asset owner.
         Self::ensure_asset_owner(asset_id, did)?;
 
@@ -1256,9 +1246,7 @@ impl<T: Config> Pallet<T> {
             (true, true) => {
                 Err(Error::<T>::AlreadyFrozen)?;
             }
-            (false, false) => {
-                Err(Error::<T>::NotFrozen)?
-            }
+            (false, false) => Err(Error::<T>::NotFrozen)?,
             (false, true) => {
                 AssetFrozen::<T>::insert(&asset_id, true);
                 Self::deposit_event(Event::<T>::AssetFrozen(did, asset_id))
@@ -1285,9 +1273,7 @@ impl<T: Config> Pallet<T> {
             (true, true) => {
                 Err(Error::<T>::AccountAssetAlreadyFrozen)?;
             }
-            (false, false) => {
-                Err(Error::<T>::AccountAssetNotFrozen)?
-            }
+            (false, false) => Err(Error::<T>::AccountAssetNotFrozen)?,
             (false, true) => {
                 AccountAssetFrozen::<T>::insert(&account, &asset_id, true);
                 Self::deposit_event(Event::<T>::AccountAssetFrozen(did, account, asset_id))
@@ -1386,7 +1372,10 @@ impl<T: Config> Pallet<T> {
                 Entry::Occupied(entry) => entry.get().clone(),
             };
             // Ensure that the sender's asset isn't frozen.
-            ensure!(!Self::account_asset_frozen(leg.sender, asset_id), Error::<T>::AccountAssetFrozen);
+            ensure!(
+                !Self::account_asset_frozen(leg.sender, asset_id),
+                Error::<T>::AccountAssetFrozen
+            );
             // Add the asset mediators to the mediators for this leg.
             leg_mediators.extend(&asset.mediators);
             let auditors = venue_auditors
@@ -1751,7 +1740,10 @@ impl<T: Config> Pallet<T> {
             // Ensure that the asset isn't frozen.
             ensure!(!Self::asset_frozen(asset_id), Error::<T>::AssetFrozen);
             // Ensure that the sender's asset isn't frozen.
-            ensure!(!Self::account_asset_frozen(leg.sender, asset_id), Error::<T>::AccountAssetFrozen);
+            ensure!(
+                !Self::account_asset_frozen(leg.sender, asset_id),
+                Error::<T>::AccountAssetFrozen
+            );
             // Deposit the transaction amount into the receiver's account.
             Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
         }
