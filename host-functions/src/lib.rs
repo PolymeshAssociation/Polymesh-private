@@ -14,12 +14,12 @@ use rand_core::SeedableRng;
 #[cfg(feature = "std")]
 use sp_std::collections::btree_set::BTreeSet;
 
+use confidential_assets::{
+    burn::ConfidentialBurnProof, Balance as ConfidentialBalance, CipherText,
+    CompressedElgamalPublicKey, Result,
+};
 #[cfg(feature = "std")]
 use confidential_assets::{transaction::ConfidentialTransferProof, ElgamalPublicKey};
-use confidential_assets::{
-  CipherText, CompressedElgamalPublicKey, burn::ConfidentialBurnProof, Result,
-  Balance as ConfidentialBalance,
-};
 
 /// Verify confidential asset transfer request.
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
@@ -112,13 +112,9 @@ impl VerifyConfidentialBurnRequest {
 
         // Verify the issuer's proof.
         let mut rng = Rng::from_seed(self.seed);
-        let enc_amount = self.proof
-            .verify(
-                &issuer_account,
-                &self.issuer_balance,
-                self.amount,
-                &mut rng,
-            )
+        let enc_amount = self
+            .proof
+            .verify(&issuer_account, &self.issuer_balance, self.amount, &mut rng)
             .map_err(|_| ())?;
 
         Ok(enc_amount)
@@ -140,9 +136,7 @@ pub trait NativeConfidentialAssets {
     ) -> Result<ConfidentialTransferInfo, ()> {
         req.verify()
     }
-    fn verify_burn_proof(
-        req: &VerifyConfidentialBurnRequest,
-    ) -> Result<CipherText, ()> {
+    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<CipherText, ()> {
         req.verify()
     }
 }
