@@ -1338,19 +1338,12 @@ impl<T: Config> Pallet<T> {
         // Ensure the caller is the owner of the confidential account.
         ensure!(account_did == caller_did, Error::<T>::Unauthorized);
 
-        let assets: Vec<_> = IncomingBalance::<T>::iter_prefix(&account)
-            .take(max_updates as _)
-            .map(|(id, _)| id)
-            .collect();
-        for asset_id in assets {
-            // Take the incoming balance.
-            match IncomingBalance::<T>::take(&account, asset_id) {
-                Some(incoming_balance) => {
-                    // If there is an incoming balance, deposit it into the confidential account balance.
-                    Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
-                }
-                None => (),
-            }
+        // Take at most `max_updates` incoming balances.
+        let assets = IncomingBalance::<T>::drain_prefix(&account)
+            .take(max_updates as _);
+        for (asset_id, incoming_balance) in assets {
+            // If there is an incoming balance, deposit it into the confidential account balance.
+            Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
         }
 
         Ok(())

@@ -56,14 +56,17 @@ benchmarks! {
 
     apply_incoming_balance {
         let mut rng = StdRng::from_seed([10u8; 32]);
+        let user = ConfidentialUser::<T>::new("user", &mut rng);
+        user.create_account();
 
-        // Setup for transaction.
-        let mut tx = TransactionState::<T>::new(&mut rng);
-        tx.add_transaction();
-        tx.affirm_legs(&mut rng);
-        tx.execute();
-        let leg = tx.leg(0);
-    }: _(leg.investor.raw_origin(), leg.investor.account(), leg.asset_id)
+        // Generate a lot of incoming balances.
+        let key = user.pub_key();
+        let (_, balance) = key.encrypt_value(1000u64.into(), &mut rng);
+        let (_, incoming) = key.encrypt_value(100u64.into(), &mut rng);
+        let asset_id = gen_asset_id(42);
+        user.set_balance(asset_id, balance);
+        user.set_incoming_balance(asset_id, incoming);
+    }: _(user.raw_origin(), user.account(), asset_id)
 
     apply_incoming_balances {
         // Number of balances to update.

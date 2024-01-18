@@ -142,11 +142,11 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset AccountBalance (r:200 w:200)
     // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `b` is `[0, 200]`.
-    fn apply_incoming_balances(b: u32) -> Weight {
-        // Minimum execution time: 91_931 nanoseconds.
-        Weight::from_ref_time(91_931_000)
-            // Standard Error: 4_457_133
-            .saturating_add(Weight::from_ref_time(524_174_218).saturating_mul(b.into()))
+    fn apply_incoming_balances(b: u32, ) -> Weight {
+        // Minimum execution time: 91_290 nanoseconds.
+        Weight::from_ref_time(287_828_944)
+            // Standard Error: 1_557_055
+            .saturating_add(Weight::from_ref_time(442_401_399).saturating_mul(b.into()))
             .saturating_add(DbWeight::get().reads(3))
             .saturating_add(DbWeight::get().reads((2_u64).saturating_mul(b.into())))
             .saturating_add(DbWeight::get().writes((2_u64).saturating_mul(b.into())))
