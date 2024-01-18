@@ -75,7 +75,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset MediatorAccountDid (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AssetAuditors (r:0 w:1)
     // Proof Skipped: ConfidentialAsset AssetAuditors (max_values: None, max_size: None, mode: Measured)
-    fn create_confidential_asset() -> Weight {
+    fn create_asset() -> Weight {
         // Minimum execution time: 91_011 nanoseconds.
         Weight::from_ref_time(91_171_000)
             .saturating_add(DbWeight::get().reads(3))
@@ -89,11 +89,31 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset Details (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountBalance (r:1 w:1)
     // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
-    fn mint_confidential_asset() -> Weight {
+    fn mint() -> Weight {
         // Minimum execution time: 346_169 nanoseconds.
         Weight::from_ref_time(347_050_000)
             .saturating_add(DbWeight::get().reads(4))
             .saturating_add(DbWeight::get().writes(2))
+    }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountDid (r:1 w:0)
+    // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset Details (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset Details (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountBalance (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset RngNonce (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: Babe NextRandomness (r:1 w:0)
+    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+    // Storage: Babe EpochStart (r:1 w:0)
+    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    fn burn() -> Weight {
+        // Minimum execution time: 1_137_130 nanoseconds.
+        Weight::from_ref_time(1_370_585_000)
+            .saturating_add(DbWeight::get().reads(7))
+            .saturating_add(DbWeight::get().writes(3))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
@@ -142,7 +162,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset AccountBalance (r:200 w:200)
     // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
     /// The range of component `b` is `[0, 200]`.
-    fn apply_incoming_balances(b: u32, ) -> Weight {
+    fn apply_incoming_balances(b: u32) -> Weight {
         // Minimum execution time: 91_290 nanoseconds.
         Weight::from_ref_time(287_828_944)
             // Standard Error: 1_557_055

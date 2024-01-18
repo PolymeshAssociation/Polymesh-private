@@ -28,20 +28,36 @@ benchmarks! {
         let user = ConfidentialUser::<T>::new("user", &mut rng);
     }: _(user.raw_origin(), user.account())
 
-    create_confidential_asset {
+    create_asset {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let ticker = Ticker::from_slice_truncated(b"A".as_ref());
         let issuer = user::<T>("issuer", SEED);
         let auditors = AuditorState::<T>::new(0, &mut rng).get_asset_auditors();
-    }: _(issuer.origin(), Some(ticker), Default::default(), auditors)
+    }: create_confidential_asset(issuer.origin(), Some(ticker), Default::default(), auditors)
 
-    mint_confidential_asset {
+    mint {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
         issuer.create_account();
 
         let total_supply = 4_000_000_000 as ConfidentialBalance;
-    }: _(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
+    }: mint_confidential_asset(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
+
+    burn {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let (asset_id, issuer, _) = create_confidential_token::<T>("A", &mut rng);
+        issuer.create_account();
+
+        // Mint asset supply.
+        let total_supply = 4_000_000_000 as ConfidentialBalance;
+        assert_ok!(Pallet::<T>::mint_confidential_asset(
+            issuer.origin(), asset_id, total_supply.into(), issuer.account()
+        ));
+
+        // Generate the burn proof
+        let amount = 1_000 as ConfidentialBalance;
+        let proof = issuer.burn_proof(asset_id, total_supply, amount, &mut rng);
+    }: _(issuer.raw_origin(), asset_id, amount.into(), issuer.account(), proof)
 
     set_asset_frozen {
         let mut rng = StdRng::from_seed([10u8; 32]);

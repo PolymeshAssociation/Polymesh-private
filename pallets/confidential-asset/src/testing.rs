@@ -231,6 +231,20 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
             .verify(&enc_balance, &balance.into())
             .expect("verify confidential balance")
     }
+
+    pub fn burn_proof(
+        &self,
+        asset_id: AssetId,
+        balance: ConfidentialBalance,
+        amount: ConfidentialBalance,
+        rng: &mut StdRng,
+    ) -> ConfidentialBurnProof {
+        let issuer_enc_balance = self.enc_balance(asset_id);
+        let proof =
+            ConfidentialBurnProof::new(&self.sec, &issuer_enc_balance, balance, amount, rng)
+                .unwrap();
+        proof
+    }
 }
 
 /// Create issuer's confidential account, create asset and mint.

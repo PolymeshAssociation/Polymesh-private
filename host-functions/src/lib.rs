@@ -16,7 +16,10 @@ use sp_std::collections::btree_set::BTreeSet;
 
 #[cfg(feature = "std")]
 use confidential_assets::{transaction::ConfidentialTransferProof, ElgamalPublicKey};
-use confidential_assets::{CipherText, CompressedElgamalPublicKey, Result};
+use confidential_assets::{
+  CipherText, CompressedElgamalPublicKey, burn::ConfidentialBurnProof, Result,
+  Balance as ConfidentialBalance,
+};
 
 /// Verify confidential asset transfer request.
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
@@ -92,12 +95,54 @@ pub struct ConfidentialTransferInfo {
     pub receiver_amount: CipherText,
 }
 
+/// Verify confidential asset burn request.
+#[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub struct VerifyConfidentialBurnRequest {
+    pub issuer: CompressedElgamalPublicKey,
+    pub issuer_balance: CipherText,
+    pub amount: ConfidentialBalance,
+    pub proof: ConfidentialBurnProof,
+    pub seed: [u8; 32],
+}
+
+#[cfg(feature = "std")]
+impl VerifyConfidentialBurnRequest {
+    pub fn verify(&self) -> Result<CipherText, ()> {
+        let issuer_account = self.issuer.into_public_key().ok_or(())?;
+
+        // Verify the issuer's proof.
+        let mut rng = Rng::from_seed(self.seed);
+        let enc_amount = self.proof
+            .verify(
+                &issuer_account,
+                &self.issuer_balance,
+                self.amount,
+                &mut rng,
+            )
+            .map_err(|_| ())?;
+
+        Ok(enc_amount)
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl VerifyConfidentialBurnRequest {
+    pub fn verify(&self) -> Result<CipherText, ()> {
+        native_confidential_assets::verify_burn_proof(self)
+    }
+}
+
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
     fn verify_sender_proof(
         req: &VerifyConfidentialTransferRequest,
     ) -> Result<ConfidentialTransferInfo, ()> {
+        req.verify()
+    }
+    fn verify_burn_proof(
+        req: &VerifyConfidentialBurnRequest,
+    ) -> Result<CipherText, ()> {
         req.verify()
     }
 }

@@ -16,8 +16,8 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use confidential_assets::{
-    transaction::ConfidentialTransferProof, AssetId, Balance as ConfidentialBalance, CipherText,
-    CompressedElgamalPublicKey, ElgamalPublicKey,
+    burn::ConfidentialBurnProof, transaction::ConfidentialTransferProof, AssetId,
+    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalPublicKey,
 };
 use frame_support::{
     dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -30,7 +30,7 @@ use pallet_base::try_next_post;
 use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
-use polymesh_host_functions::VerifyConfidentialTransferRequest;
+use polymesh_host_functions::{VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest};
 use polymesh_primitives::{
     impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo, Ticker,
 };
@@ -54,8 +54,9 @@ pub mod weights;
 
 pub trait WeightInfo {
     fn create_account() -> Weight;
-    fn create_confidential_asset() -> Weight;
-    fn mint_confidential_asset() -> Weight;
+    fn create_asset() -> Weight;
+    fn mint() -> Weight;
+    fn burn() -> Weight;
     fn set_asset_frozen() -> Weight;
     fn set_account_asset_frozen() -> Weight;
     fn apply_incoming_balance() -> Weight;
@@ -562,6 +563,10 @@ pub mod pallet {
         ///
         /// (identity, confidential account, asset id)
         AccountAssetUnfrozen(IdentityId, ConfidentialAccount, AssetId),
+        /// Burned confidential assets.
+        ///
+        /// (caller DID, asset id, amount burned, total_supply)
+        Burned(IdentityId, AssetId, Balance, Balance),
     }
 
     #[pallet::error]
@@ -900,7 +905,7 @@ pub mod pallet {
         /// - `TotalSupplyAboveLimit` if `total_supply` exceeds the limit.
         /// - `BadOrigin` if not signed.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::create_confidential_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::create_asset())]
         pub fn create_confidential_asset(
             origin: OriginFor<T>,
             ticker: Option<Ticker>,
@@ -908,7 +913,7 @@ pub mod pallet {
             auditors: ConfidentialAuditors<T>,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_confidential_asset(owner_did, ticker, data, auditors)
+            Self::base_create_asset(owner_did, ticker, data, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
@@ -926,7 +931,7 @@ pub mod pallet {
         /// - `TotalSupplyAboveConfidentialBalanceLimit` if `total_supply` exceeds the confidential balance limit.
         /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint_confidential_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint_confidential_asset(
             origin: OriginFor<T>,
             asset_id: AssetId,
@@ -934,7 +939,7 @@ pub mod pallet {
             account: ConfidentialAccount,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_mint_confidential_asset(owner_did, asset_id, amount, account)
+            Self::base_mint(owner_did, asset_id, amount, account)
         }
 
         /// Applies any incoming balance to the confidential account balance.
@@ -1131,6 +1136,33 @@ pub mod pallet {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
             Self::base_apply_incoming_balances(caller_did, account, max_updates)
         }
+
+        /// Burn assets from the issuer's `account`.
+        ///
+        /// # Arguments
+        /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
+        /// * `asset_id` - the asset_id symbol of the token.
+        /// * `amount` - amount of tokens to mint.
+        /// * `account` - the asset isser's confidential account to receive the minted assets.
+        /// * `burn_proof` - The burn proof.
+        ///
+        /// # Errors
+        /// - `BadOrigin` if not signed.
+        /// - `Unauthorized` if origin is not the owner of the asset.
+        /// - `TotalSupplyMustBePositive` if `amount` is zero.
+        /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
+        #[pallet::call_index(16)]
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn burn(
+            origin: OriginFor<T>,
+            asset_id: AssetId,
+            amount: Balance,
+            account: ConfidentialAccount,
+            proof: ConfidentialBurnProof,
+        ) -> DispatchResult {
+            let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_burn(owner_did, asset_id, amount, account, proof)
+        }
     }
 }
 
@@ -1153,7 +1185,7 @@ impl<T: Config> Pallet<T> {
         blake2_128(&(b"modlpy/confidential_asset", owner_did, seed).encode())
     }
 
-    fn base_create_confidential_asset(
+    fn base_create_asset(
         owner_did: IdentityId,
         ticker: Option<Ticker>,
         data: BoundedVec<u8, T::MaxAssetDataLength>,
@@ -1203,7 +1235,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn base_mint_confidential_asset(
+    fn base_mint(
         owner_did: IdentityId,
         asset_id: AssetId,
         amount: Balance,
@@ -1251,6 +1283,65 @@ impl<T: Config> Pallet<T> {
             owner_did,
             asset_id,
             amount,
+            details.total_supply,
+        ));
+
+        // Update `total_supply`.
+        Details::<T>::insert(asset_id, details);
+        Ok(())
+    }
+
+    fn base_burn(
+        owner_did: IdentityId,
+        asset_id: AssetId,
+        amount: Balance,
+        account: ConfidentialAccount,
+        proof: ConfidentialBurnProof,
+    ) -> DispatchResult {
+        // Ensure `owner_did` owns `account`.
+        let account_did = Self::account_did(&account);
+        ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
+
+        // Ensure the caller is the asset owner and get the asset details.
+        let mut details = Self::ensure_asset_owner(asset_id, owner_did)?;
+
+        // The burn amount must be positive.
+        ensure!(
+            amount != Zero::zero(),
+            Error::<T>::TotalSupplyMustBePositive
+        );
+
+        // Ensure the burn amount is not larger then the total supply.
+        details.total_supply = details
+            .total_supply
+            .checked_sub(amount)
+            .ok_or(Error::<T>::TotalSupplyMustBePositive)?;
+
+        // Ensure the issuer has a confidential balance.
+        let issuer_balance = Self::account_balance(&account, asset_id)
+            .ok_or(Error::<T>::ConfidentialAccountMissing)?;
+
+        let amount: u64 = amount
+            .try_into()
+            .map_err(|_| Error::<T>::TotalSupplyOverLimit)?;
+        let req = VerifyConfidentialBurnRequest {
+            issuer: account.0,
+            issuer_balance,
+            amount,
+            proof: proof,
+            seed: Self::get_seed(true),
+        };
+
+        // Verify the issuer's proof.
+        let enc_amount = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+        // Withdraw the minted assets from the issuer's confidential account.
+        Self::account_withdraw_amount(&account, asset_id, enc_amount)?;
+
+        // Emit Burned event with new `total_supply`.
+        Self::deposit_event(Event::<T>::Burned(
+            owner_did,
+            asset_id,
+            amount as _,
             details.total_supply,
         ));
 
@@ -1339,8 +1430,7 @@ impl<T: Config> Pallet<T> {
         ensure!(account_did == caller_did, Error::<T>::Unauthorized);
 
         // Take at most `max_updates` incoming balances.
-        let assets = IncomingBalance::<T>::drain_prefix(&account)
-            .take(max_updates as _);
+        let assets = IncomingBalance::<T>::drain_prefix(&account).take(max_updates as _);
         for (asset_id, incoming_balance) in assets {
             // If there is an incoming balance, deposit it into the confidential account balance.
             Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
