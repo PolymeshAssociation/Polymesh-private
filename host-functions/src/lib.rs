@@ -167,6 +167,34 @@ impl VerifyConfidentialProofRequest {
     }
 }
 
+/// Batch Verify confidential asset proofs.
+#[derive(Debug)]
+pub struct BatchVerify {
+    pub id: BatchId,
+}
+
+impl BatchVerify {
+    pub fn create() -> Self {
+        let id = native_confidential_assets::create_batch();
+        Self { id }
+    }
+
+    pub fn submit(&self, req: VerifyConfidentialProofRequest) -> Result<(), ()> {
+        native_confidential_assets::batch_submit(self.id, req)
+    }
+
+    pub fn submit_transfer_request(
+        &self,
+        req: VerifyConfidentialTransferRequest,
+    ) -> Result<(), ()> {
+        self.submit(VerifyConfidentialProofRequest::TransferProof(req))
+    }
+
+    pub fn finalize(&self) -> Result<bool, ()> {
+        native_confidential_assets::batch_finish(self.id)
+    }
+}
+
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
@@ -192,7 +220,7 @@ pub trait NativeConfidentialAssets {
         batch::BatchVerifiers::batch_submit(id, req)
     }
 
-    fn batch_finish(id: BatchId) -> Result<Vec<VerifyConfidentialProofResponse>, ()> {
+    fn batch_finish(id: BatchId) -> Result<bool, ()> {
         let batch = batch::BatchVerifiers::batch_finish(id).ok_or(())?;
         batch.finalize()
     }
