@@ -148,11 +148,11 @@ parameter_types! {
 }
 
 #[cfg(feature = "runtime-benchmarks")]
-type ConfidentialAssetMaxNumberOfAffirms = ConstSize<100>;
+type ConfidentialAssetMaxNumberOfAffirms = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type ConfidentialAssetMaxNumberOfAffirms = ConstSize<10>;
 #[cfg(feature = "runtime-benchmarks")]
-type ConfidentialAssetMaxNumberOfLegs = ConstSize<100>;
+type ConfidentialAssetMaxNumberOfLegs = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type ConfidentialAssetMaxNumberOfLegs = ConstSize<10>;
 type ConfidentialAssetMaxAssetsPerLeg = ConstSize<4>;

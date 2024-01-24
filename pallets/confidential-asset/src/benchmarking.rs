@@ -183,6 +183,52 @@ benchmarks! {
         let leg = tx.leg(0);
     }: affirm_transactions(leg.issuer.raw_origin(), affirms)
 
+    sender_affirm_transaction_batch {
+        // Number of sender proofs.
+        let s in 1 .. 100;//T::MaxNumberOfAffirms::get();
+
+        let mut rng = StdRng::from_seed([10u8; 32]);
+
+        // Setup for transaction.
+        let mut tx = TransactionState::<T>::new_legs(1, &mut rng);
+        let amount = 4_000;
+        // Set the per-leg amount.
+        tx.legs[0].amount = amount;
+        // Duplicate the first leg and generate proofs.
+        let mut leg = tx.legs[0].clone();
+        let issuer = leg.issuer.clone();
+        let asset_id = leg.asset_id;
+        let investor_pub_account = leg.investor.pub_key();
+        let mut issuer_enc_balance = issuer.enc_balance(asset_id);
+        let mut issuer_balance = leg.issuer_balance;
+        let auditor_keys = leg.auditors.build_auditor_set();
+
+        let mut proofs = Vec::new();
+        for id in 1..s {
+          let leg_id = TransactionLegId(id);
+          leg.leg_id = leg_id;
+          tx.legs.push(leg.clone());
+          let proof = ConfidentialTransferProof::new(
+              &issuer.sec,
+              &issuer_enc_balance,
+              issuer_balance,
+              &investor_pub_account,
+              &auditor_keys,
+              amount,
+              &mut rng,
+          )
+          .unwrap();
+          issuer_balance -= amount;
+          issuer_enc_balance -= proof.sender_amount();
+          let mut transfers = ConfidentialTransfers::new();
+          transfers.insert(asset_id, proof);
+          proofs.push(AffirmLeg::sender(leg_id, transfers));
+        }
+        tx.add_transaction();
+
+        let affirms = tx.affirms(proofs.as_slice());
+    }: affirm_transactions(issuer.raw_origin(), affirms)
+
     receiver_affirm_transaction {
         let mut rng = StdRng::from_seed([10u8; 32]);
 

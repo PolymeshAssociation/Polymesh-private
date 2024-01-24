@@ -7,7 +7,7 @@ use crate::*;
 
 lazy_static::lazy_static! {
     static ref BATCH_VERIFIERS: BatchVerifiers = {
-        BatchVerifiers::new(Some(4))
+        BatchVerifiers::new(None)
     };
 }
 
@@ -110,7 +110,7 @@ impl BatchVerifier {
         (id, self.tx.clone())
     }
 
-    pub fn finalize(self) -> Result<Vec<VerifyConfidentialProofResponse>, ()> {
+    pub fn finalize(self) -> Result<bool, ()> {
         let Self { count, rx, tx } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
@@ -119,9 +119,18 @@ impl BatchVerifier {
                 log::warn!("Failed to recv Proof response: {err:?}");
                 ()
             })?;
-            let resp = res.result?;
-            resps.insert(res.id, resp);
+            let valid = res.result?.is_valid();
+            if !valid {
+                // Invalid proof.
+                return Err(());
+            }
+            resps.insert(res.id, valid);
         }
-        Ok(resps.into_iter().map(|(_, resp)| resp).collect())
+        if resps.len() == count as usize {
+            Ok(true)
+        } else {
+            // Wrong number of responses.
+            Err(())
+        }
     }
 }

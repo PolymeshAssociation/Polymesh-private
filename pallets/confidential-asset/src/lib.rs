@@ -30,10 +30,7 @@ use pallet_base::try_next_post;
 use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
-use polymesh_host_functions::{
-    native_confidential_assets, BatchId, VerifyConfidentialBurnRequest,
-    VerifyConfidentialTransferRequest,
-};
+use polymesh_host_functions::{VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest};
 use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
