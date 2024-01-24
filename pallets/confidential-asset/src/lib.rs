@@ -30,7 +30,10 @@ use pallet_base::try_next_post;
 use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
-use polymesh_host_functions::{VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest};
+use polymesh_host_functions::{
+    native_confidential_assets, BatchId, VerifyConfidentialBurnRequest,
+    VerifyConfidentialTransferRequest,
+};
 use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
@@ -1399,7 +1402,9 @@ impl<T: Config> Pallet<T> {
         };
 
         // Verify the issuer's proof.
-        let enc_amount = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+        let enc_amount = CipherText::value(amount.into());
+        let res = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+        ensure!(res, Error::<T>::InvalidSenderProof);
         // Withdraw the minted assets from the issuer's confidential account.
         Self::account_withdraw_amount(account, asset_id, enc_amount)?;
 
@@ -1823,6 +1828,8 @@ impl<T: Config> Pallet<T> {
                     let sender_init_balance = Self::account_balance(&sender, asset_id)
                         .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
+                    let sender_amount = proof.sender_amount();
+                    let receiver_amount = proof.receiver_amount();
                     let req = VerifyConfidentialTransferRequest {
                         sender: sender.0,
                         sender_balance: sender_init_balance,
@@ -1833,14 +1840,12 @@ impl<T: Config> Pallet<T> {
                     };
 
                     // Verify the sender's proof.
-                    let resp = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+                    req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
 
                     // Withdraw the transaction amount when the sender affirms.
-                    let sender_amount = resp.sender_amount;
                     Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
 
                     // Store the pending state for this transaction leg.
-                    let receiver_amount = resp.receiver_amount;
                     leg_state.asset_state.insert(
                         asset_id,
                         TransactionLegAssetState {
