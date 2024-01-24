@@ -61,7 +61,7 @@ impl VerifyConfidentialTransferRequest {
         ConfidentialTransferProof::decode(&mut self.proof.as_slice()).ok()
     }
 
-    pub fn verify(&self) -> Result<ConfidentialTransferInfo, ()> {
+    pub fn verify(&self) -> Result<bool, ()> {
         let init_tx = self.into_tx().ok_or(())?;
         let sender_account = self.sender_account().ok_or(())?;
         let receiver_account = self.receiver_account().ok_or(())?;
@@ -79,27 +79,15 @@ impl VerifyConfidentialTransferRequest {
             )
             .map_err(|_| ())?;
 
-        Ok(ConfidentialTransferInfo {
-            sender_amount: init_tx.sender_amount(),
-            receiver_amount: init_tx.receiver_amount(),
-        })
+        Ok(true)
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialTransferRequest {
-    pub fn verify(&self) -> Result<ConfidentialTransferInfo, ()> {
+    pub fn verify(&self) -> Result<bool, ()> {
         native_confidential_assets::verify_sender_proof(self)
     }
-}
-
-/// Confidential asset transfer info.
-///
-/// Transaction amount encrypted with sender & receiver public keys.
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct ConfidentialTransferInfo {
-    pub sender_amount: CipherText,
-    pub receiver_amount: CipherText,
 }
 
 /// Verify confidential asset burn request.
@@ -114,23 +102,22 @@ pub struct VerifyConfidentialBurnRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<CipherText, ()> {
+    pub fn verify(&self) -> Result<bool, ()> {
         let issuer_account = self.issuer.into_public_key().ok_or(())?;
 
         // Verify the issuer's proof.
         let mut rng = Rng::from_seed(self.seed);
-        let enc_amount = self
-            .proof
+        self.proof
             .verify(&issuer_account, &self.issuer_balance, self.amount, &mut rng)
             .map_err(|_| ())?;
 
-        Ok(enc_amount)
+        Ok(true)
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<CipherText, ()> {
+    pub fn verify(&self) -> Result<bool, ()> {
         native_confidential_assets::verify_burn_proof(self)
     }
 }
@@ -138,8 +125,16 @@ impl VerifyConfidentialBurnRequest {
 /// Confidential asset proof response.
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub enum VerifyConfidentialProofResponse {
-    TransferProof(ConfidentialTransferInfo),
-    BurnProof(CipherText),
+    TransferProof(bool),
+    BurnProof(bool),
+}
+
+impl VerifyConfidentialProofResponse {
+    pub fn is_valid(&self) -> bool {
+        match self {
+            Self::TransferProof(valid) | Self::BurnProof(valid) => *valid,
+        }
+    }
 }
 
 /// Verify confidential asset proof request.
@@ -175,13 +170,11 @@ impl VerifyConfidentialProofRequest {
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
-    fn verify_sender_proof(
-        req: &VerifyConfidentialTransferRequest,
-    ) -> Result<ConfidentialTransferInfo, ()> {
+    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<bool, ()> {
         req.verify()
     }
 
-    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<CipherText, ()> {
+    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<bool, ()> {
         req.verify()
     }
 
