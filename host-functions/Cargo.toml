@@ -13,6 +13,11 @@ rand_core = { workspace = true, default-features = false }
 rand_chacha = { workspace = true, default-features = false }
 confidential_assets = { workspace = true, default-features = false }
 
+lazy_static = "1.4.0"
+crossbeam = "0.8"
+rayon = "1.8"
+log = "0.4"
+
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
