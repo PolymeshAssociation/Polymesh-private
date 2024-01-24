@@ -21,6 +21,13 @@ use confidential_assets::{
 #[cfg(feature = "std")]
 use confidential_assets::{transaction::ConfidentialTransferProof, ElgamalPublicKey};
 
+#[cfg(feature = "std")]
+mod batch;
+
+pub type BatchId = u32;
+
+pub type BatchReqId = u32;
+
 /// Verify confidential asset transfer request.
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct VerifyConfidentialTransferRequest {
@@ -128,6 +135,43 @@ impl VerifyConfidentialBurnRequest {
     }
 }
 
+/// Confidential asset proof response.
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub enum VerifyConfidentialProofResponse {
+    TransferProof(ConfidentialTransferInfo),
+    BurnProof(CipherText),
+}
+
+/// Verify confidential asset proof request.
+#[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub enum VerifyConfidentialProofRequest {
+    TransferProof(VerifyConfidentialTransferRequest),
+    BurnProof(VerifyConfidentialBurnRequest),
+}
+
+#[cfg(feature = "std")]
+impl VerifyConfidentialProofRequest {
+    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, ()> {
+        match self {
+            Self::TransferProof(req) => {
+                let resp = req.verify()?;
+                Ok(VerifyConfidentialProofResponse::TransferProof(resp))
+            }
+            Self::BurnProof(req) => {
+                let resp = req.verify()?;
+                Ok(VerifyConfidentialProofResponse::BurnProof(resp))
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl VerifyConfidentialProofRequest {
+    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, ()> {
+        native_confidential_assets::verify_proof(self)
+    }
+}
+
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
@@ -136,7 +180,27 @@ pub trait NativeConfidentialAssets {
     ) -> Result<ConfidentialTransferInfo, ()> {
         req.verify()
     }
+
     fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<CipherText, ()> {
         req.verify()
+    }
+
+    fn verify_proof(
+        req: &VerifyConfidentialProofRequest,
+    ) -> Result<VerifyConfidentialProofResponse, ()> {
+        req.verify()
+    }
+
+    fn create_batch() -> BatchId {
+        batch::BatchVerifiers::create_batch()
+    }
+
+    fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), ()> {
+        batch::BatchVerifiers::batch_submit(id, req)
+    }
+
+    fn batch_finish(id: BatchId) -> Result<Vec<VerifyConfidentialProofResponse>, ()> {
+        let batch = batch::BatchVerifiers::batch_finish(id).ok_or(())?;
+        batch.finalize()
     }
 }
