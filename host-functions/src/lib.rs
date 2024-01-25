@@ -11,15 +11,13 @@ use sp_std::prelude::Vec;
 use rand_chacha::ChaCha20Rng as Rng;
 #[cfg(feature = "std")]
 use rand_core::SeedableRng;
-#[cfg(feature = "std")]
 use sp_std::collections::btree_set::BTreeSet;
 
 use confidential_assets::{
-    burn::ConfidentialBurnProof, Balance as ConfidentialBalance, CipherText,
-    CompressedElgamalPublicKey, Result,
+    burn::ConfidentialBurnProof, transaction::ConfidentialTransferProof,
+    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalKeys,
+    ElgamalPublicKey, Result,
 };
-#[cfg(feature = "std")]
-use confidential_assets::{transaction::ConfidentialTransferProof, ElgamalPublicKey};
 
 #[cfg(feature = "std")]
 mod batch;
@@ -167,6 +165,86 @@ impl VerifyConfidentialProofRequest {
     }
 }
 
+/// Generate confidential asset transfer request.
+#[derive(PassByCodec, Encode, Decode, Clone, Debug)]
+pub struct GenerateTransferProofRequest {
+    pub sender_account: ElgamalKeys,
+    pub sender_init_balance: CipherText,
+    pub sender_balance: ConfidentialBalance,
+    pub receiver_key: ElgamalPublicKey,
+    pub auditors_keys: BTreeSet<ElgamalPublicKey>,
+    pub amount: ConfidentialBalance,
+    pub seed: [u8; 32],
+}
+
+impl GenerateTransferProofRequest {
+    /// Create a confidential asset transfer proof.
+    pub fn new(
+        sender_account: ElgamalKeys,
+        sender_init_balance: CipherText,
+        sender_balance: ConfidentialBalance,
+        receiver_key: ElgamalPublicKey,
+        auditors_keys: BTreeSet<ElgamalPublicKey>,
+        amount: ConfidentialBalance,
+        seed: [u8; 32],
+    ) -> Self {
+        Self {
+            sender_account,
+            sender_init_balance,
+            sender_balance,
+            receiver_key,
+            auditors_keys,
+            amount,
+            seed,
+        }
+    }
+
+    #[cfg(feature = "std")]
+    pub fn generate(&self) -> Result<GenerateProofResponse, ()> {
+        let mut rng = Rng::from_seed(self.seed);
+        let proof = ConfidentialTransferProof::new(
+            &self.sender_account,
+            &self.sender_init_balance,
+            self.sender_balance,
+            &self.receiver_key,
+            &self.auditors_keys,
+            self.amount,
+            &mut rng,
+        )
+        .map_err(|_| ())?;
+        Ok(GenerateProofResponse {
+            proof: proof.encode(),
+        })
+    }
+}
+
+/// Generate confidential asset proof request.
+#[derive(PassByCodec, Encode, Decode, Clone, Debug)]
+pub enum GenerateProofRequest {
+    TransferProof(GenerateTransferProofRequest),
+}
+
+#[cfg(feature = "std")]
+impl GenerateProofRequest {
+    pub fn generate(&self) -> Result<GenerateProofResponse, ()> {
+        match self {
+            Self::TransferProof(req) => req.generate(),
+        }
+    }
+}
+
+/// Generate confidential asset proof response.
+#[derive(PassByCodec, Encode, Decode, Clone, Debug)]
+pub struct GenerateProofResponse {
+    pub proof: Vec<u8>,
+}
+
+impl GenerateProofResponse {
+    pub fn transfer_proof(&self) -> Result<ConfidentialTransferProof, ()> {
+        ConfidentialTransferProof::decode(&mut self.proof.as_slice()).map_err(|_| ())
+    }
+}
+
 /// Batch Verify confidential asset proofs.
 #[derive(Debug)]
 pub struct BatchVerify {
@@ -192,6 +270,21 @@ impl BatchVerify {
 
     pub fn finalize(&self) -> Result<bool, ()> {
         native_confidential_assets::batch_finish(self.id)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn generate_proof(&self, req: GenerateProofRequest) -> Result<(), ()> {
+        native_confidential_assets::batch_generate_proof(self.id, req)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn generate_transfer_proof(&self, req: GenerateTransferProofRequest) -> Result<(), ()> {
+        self.generate_proof(GenerateProofRequest::TransferProof(req))
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn get_proofs(&self) -> Result<Vec<GenerateProofResponse>, ()> {
+        native_confidential_assets::batch_get_proofs(self.id)
     }
 }
 
@@ -223,5 +316,24 @@ pub trait NativeConfidentialAssets {
     fn batch_finish(id: BatchId) -> Result<bool, ()> {
         let batch = batch::BatchVerifiers::batch_finish(id).ok_or(())?;
         batch.finalize()
+    }
+
+    fn batch_generate_proof(_id: BatchId, _req: GenerateProofRequest) -> Result<(), ()> {
+        #[cfg(feature = "runtime-benchmarks")]
+        {
+            batch::BatchVerifiers::batch_generate_proof(_id, _req)
+        }
+        #[cfg(not(feature = "runtime-benchmarks"))]
+        Err(())
+    }
+
+    fn batch_get_proofs(_id: BatchId) -> Result<Vec<GenerateProofResponse>, ()> {
+        #[cfg(feature = "runtime-benchmarks")]
+        {
+            let batch = batch::BatchVerifiers::batch_finish(_id).ok_or(())?;
+            batch.get_proofs()
+        }
+        #[cfg(not(feature = "runtime-benchmarks"))]
+        Err(())
     }
 }

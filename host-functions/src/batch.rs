@@ -48,7 +48,11 @@ impl InnerBatchVerifiers {
             let (req_id, tx) = batch.next_req();
             self.pool.spawn(move || {
                 let result = req.verify();
-                let _ = tx.send(BatchResult { id: req_id, result });
+                let _ = tx.send(BatchResult {
+                    id: req_id,
+                    result,
+                    proof: Err(()),
+                });
             });
             Ok(())
         } else {
@@ -58,6 +62,28 @@ impl InnerBatchVerifiers {
 
     pub fn batch_finish(&mut self, id: BatchId) -> Option<BatchVerifier> {
         self.batches.remove(&id)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn batch_generate_proof(
+        &mut self,
+        id: BatchId,
+        req: GenerateProofRequest,
+    ) -> Result<(), ()> {
+        if let Some(batch) = self.batches.get_mut(&id) {
+            let (req_id, tx) = batch.next_req();
+            self.pool.spawn(move || {
+                let proof = req.generate();
+                let _ = tx.send(BatchResult {
+                    id: req_id,
+                    result: Err(()),
+                    proof,
+                });
+            });
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -83,12 +109,19 @@ impl BatchVerifiers {
         let mut inner = BATCH_VERIFIERS.0.write().unwrap();
         inner.batch_finish(id)
     }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn batch_generate_proof(id: BatchId, req: GenerateProofRequest) -> Result<(), ()> {
+        let mut inner = BATCH_VERIFIERS.0.write().unwrap();
+        inner.batch_generate_proof(id, req)
+    }
 }
 
 #[derive(Debug)]
 pub struct BatchResult {
     pub id: BatchReqId,
     pub result: Result<VerifyConfidentialProofResponse, ()>,
+    pub proof: Result<GenerateProofResponse, ()>,
 }
 
 #[derive(Debug)]
@@ -128,6 +161,27 @@ impl BatchVerifier {
         }
         if resps.len() == count as usize {
             Ok(true)
+        } else {
+            // Wrong number of responses.
+            Err(())
+        }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn get_proofs(self) -> Result<Vec<GenerateProofResponse>, ()> {
+        let Self { count, rx, tx } = self;
+        drop(tx);
+        let mut resps = BTreeMap::new();
+        for _x in 0..count {
+            let res = rx.recv().map_err(|err| {
+                log::warn!("Failed to recv Proof response: {err:?}");
+                ()
+            })?;
+            let proof = res.proof?;
+            resps.insert(res.id, proof);
+        }
+        if resps.len() == count as usize {
+            Ok(resps.into_iter().map(|(_, proof)| proof).collect())
         } else {
             // Wrong number of responses.
             Err(())

@@ -369,6 +369,7 @@ default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "polymesh-private-runtime-develop/runtime-benchmarks",
+  "polymesh-host-functions/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.
