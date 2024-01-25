@@ -6,11 +6,14 @@ use frame_support::traits::TryCollect;
 use sp_runtime::traits::Zero;
 
 use rand_chacha::ChaCha20Rng as StdRng;
+use rand_core::RngCore;
 
 use confidential_assets::{
     transaction::ConfidentialTransferProof, AssetId, Balance as ConfidentialBalance, CipherText,
     ElgamalKeys, ElgamalPublicKey, ElgamalSecretKey, Scalar,
 };
+
+use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest};
 
 use polymesh_common_utilities::{
     benchs::{user, AccountIdOf, User},
@@ -374,6 +377,26 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         }
     }
 
+    pub fn batch_sender_proof(&self, batch: &BatchVerify, rng: &mut StdRng) {
+        let investor_pub_account = self.investor.pub_key();
+        let issuer_enc_balance = self.issuer.enc_balance(self.asset_id);
+        let auditor_keys = self.auditors.build_auditor_set();
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
+        let req = GenerateTransferProofRequest::new(
+            self.issuer.sec.clone(),
+            issuer_enc_balance,
+            self.issuer_balance,
+            investor_pub_account,
+            auditor_keys,
+            self.amount,
+            seed,
+        );
+        batch
+            .generate_transfer_proof(req)
+            .expect("Batched generate transfer proof");
+    }
+
     pub fn sender_proof(&self, rng: &mut StdRng) -> AffirmLeg<T> {
         let investor_pub_account = self.investor.pub_key();
         let issuer_enc_balance = self.issuer.enc_balance(self.asset_id);
@@ -397,6 +420,13 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         let mut affirms = AffirmTransactions::new();
         affirms.push(AffirmTransaction { id, leg });
         assert_ok!(Pallet::<T>::affirm_transactions(user.origin(), affirms));
+    }
+
+    pub fn batch_sender_affirm(&self, id: TransactionId, proof: ConfidentialTransferProof) {
+        let mut transfers = ConfidentialTransfers::new();
+        transfers.insert(self.asset_id, proof);
+        let affirm = AffirmLeg::sender(self.leg_id, transfers);
+        self.affirm(&self.issuer, id, affirm);
     }
 
     pub fn sender_affirm(&self, id: TransactionId, rng: &mut StdRng) {
@@ -533,8 +563,21 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
     }
 
     pub fn affirm_legs(&self, rng: &mut StdRng) {
+        // Use batch to generate sender proofs.
+        let batch = BatchVerify::create();
         for idx in 0..self.legs.len() {
-            self.affirm_leg(idx as _, rng);
+            self.leg(idx as _).batch_sender_proof(&batch, rng);
+        }
+        let proofs = batch.get_proofs().expect("batch get proofs");
+        for idx in 0..self.legs.len() {
+            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
+            self.leg(idx as _).batch_sender_affirm(self.id, proof);
+        }
+
+        for idx in 0..self.legs.len() {
+            let leg_id = idx as u32;
+            self.receiver_affirm(leg_id);
+            self.mediator_affirm(leg_id);
         }
     }
 

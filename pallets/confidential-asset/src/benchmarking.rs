@@ -5,9 +5,11 @@ use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 
 use rand_chacha::ChaCha20Rng as StdRng;
-use rand_core::SeedableRng;
+use rand_core::{RngCore, SeedableRng};
 
-use confidential_assets::Balance as ConfidentialBalance;
+use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest};
+
+use confidential_assets::{elgamal::CommitmentWitness, Balance as ConfidentialBalance, Scalar};
 
 use polymesh_common_utilities::{
     benchs::{user, AccountIdOf},
@@ -203,30 +205,41 @@ benchmarks! {
         let mut issuer_balance = leg.issuer_balance;
         let auditor_keys = leg.auditors.build_auditor_set();
 
-        let mut proofs = Vec::new();
-        for id in 1..s {
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
+        let mut witness_rng = StdRng::from_seed(seed);
+        let witness = CommitmentWitness::new(amount.into(), Scalar::random(&mut witness_rng));
+        let sender_amount = issuer.sec.public.encrypt(&witness);
+        let batch = BatchVerify::create();
+        for id in 0..=s {
           let leg_id = TransactionLegId(id);
           leg.leg_id = leg_id;
           tx.legs.push(leg.clone());
-          let proof = ConfidentialTransferProof::new(
-              &issuer.sec,
-              &issuer_enc_balance,
+          let req = GenerateTransferProofRequest::new(
+              issuer.sec.clone(),
+              issuer_enc_balance,
               issuer_balance,
-              &investor_pub_account,
-              &auditor_keys,
+              investor_pub_account,
+              auditor_keys.clone(),
               amount,
-              &mut rng,
-          )
-          .unwrap();
+              seed,
+          );
+          batch.generate_transfer_proof(req).expect("Batched generate transfer proof");
           issuer_balance -= amount;
-          issuer_enc_balance -= proof.sender_amount();
+          issuer_enc_balance -= sender_amount;
+        }
+        let proofs = batch.get_proofs().expect("batch get proofs");
+        let mut affirms = Vec::new();
+        for id in 0..=s {
+          let leg_id = TransactionLegId(id);
+          let proof = proofs[id as usize].transfer_proof().expect("Transfer proof");
           let mut transfers = ConfidentialTransfers::new();
           transfers.insert(asset_id, proof);
-          proofs.push(AffirmLeg::sender(leg_id, transfers));
+          affirms.push(AffirmLeg::sender(leg_id, transfers));
         }
         tx.add_transaction();
 
-        let affirms = tx.affirms(proofs.as_slice());
+        let affirms = tx.affirms(affirms.as_slice());
     }: affirm_transactions(issuer.raw_origin(), affirms)
 
     receiver_affirm_transaction {
