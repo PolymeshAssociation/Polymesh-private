@@ -187,17 +187,17 @@ benchmarks! {
 
     sender_affirm_transaction_batch {
         // Number of sender proofs.
-        let s in 1 .. 100;//T::MaxNumberOfAffirms::get();
+        let l in 1 .. T::MaxNumberOfAffirms::get();
 
         let mut rng = StdRng::from_seed([10u8; 32]);
 
         // Setup for transaction.
         let mut tx = TransactionState::<T>::new_legs(1, &mut rng);
         let amount = 4_000;
+        // Take the first leg and generate proofs.
+        let mut leg = tx.legs.pop().unwrap();
         // Set the per-leg amount.
-        tx.legs[0].amount = amount;
-        // Duplicate the first leg and generate proofs.
-        let mut leg = tx.legs[0].clone();
+        leg.amount = amount;
         let issuer = leg.issuer.clone();
         let asset_id = leg.asset_id;
         let investor_pub_account = leg.investor.pub_key();
@@ -211,7 +211,9 @@ benchmarks! {
         let witness = CommitmentWitness::new(amount.into(), Scalar::random(&mut witness_rng));
         let sender_amount = issuer.sec.public.encrypt(&witness);
         let batch = BatchVerify::create();
-        for id in 0..=s {
+        // Make sure to start with an empty list of legs.
+        tx.legs = Vec::with_capacity(l as usize);
+        for id in 0..l {
           let leg_id = TransactionLegId(id);
           leg.leg_id = leg_id;
           tx.legs.push(leg.clone());
@@ -230,7 +232,7 @@ benchmarks! {
         }
         let proofs = batch.get_proofs().expect("batch get proofs");
         let mut affirms = Vec::new();
-        for id in 0..=s {
+        for id in 0..l {
           let leg_id = TransactionLegId(id);
           let proof = proofs[id as usize].transfer_proof().expect("Transfer proof");
           let mut transfers = ConfidentialTransfers::new();
