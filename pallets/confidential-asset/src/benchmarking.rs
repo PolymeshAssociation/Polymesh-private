@@ -159,6 +159,8 @@ benchmarks! {
             extrinsic,
             portfolio
         };
+        let res = Identity::<T>::ensure_perms_length_limited(&permissions);
+        log::info!("---- limited permissions: {res:?}, complexity={}", permissions.complexity());
         Identity::<T>::unsafe_join_identity(did, permissions, issuer_sk.account.clone());
     }: create_venue(issuer_sk.origin())
 

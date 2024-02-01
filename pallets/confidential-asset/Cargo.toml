@@ -34,6 +34,7 @@ sp-runtime = { workspace = true, default-features = false }
 
 # Only Benchmarking
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true }
+log = "0.4"
 
 [features]
 equalize = []
