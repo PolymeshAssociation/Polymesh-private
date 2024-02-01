@@ -10,12 +10,23 @@ use rand_core::SeedableRng;
 use confidential_assets::Balance as ConfidentialBalance;
 
 use polymesh_common_utilities::{
-    benchs::{user, AccountIdOf},
+    benchs::{user, AccountIdOf, UserBuilder},
     traits::TestUtilsFn,
+};
+use polymesh_primitives::identity::limits::{
+    MAX_ASSETS, MAX_EXTRINSICS, MAX_PALLETS, MAX_PORTFOLIOS,
+};
+use polymesh_primitives::{
+    AssetPermissions, DispatchableName,
+    ExtrinsicPermissions, PalletName, PalletPermissions, Permissions, PortfolioId, PortfolioNumber,
+    PortfolioPermissions,
+    secondary_key::DispatchableNames,
 };
 
 use crate::testing::*;
 use crate::*;
+
+type Identity<T> = pallet_identity::Module<T>;
 
 pub const MAX_LEGS: u32 = 100;
 pub const MAX_MEDIATORS: u32 = MAX_LEGS * 8;
@@ -105,6 +116,51 @@ benchmarks! {
     create_venue {
         let issuer = user::<T>("issuer", SEED);
     }: _(issuer.origin())
+
+    create_venue_sk {
+        let issuer = user::<T>("issuer", SEED);
+        let did = issuer.did();
+        let issuer_sk = UserBuilder::<T>::default()
+            .did(did)
+            .seed(SEED)
+            .build("issuer_sk");
+        let asset = AssetPermissions::elems(
+            (0..MAX_ASSETS as u64).map(Ticker::generate_into)
+        );
+        let portfolio = PortfolioPermissions::elems(
+            (0..MAX_PORTFOLIOS as u128).map(|did| {
+                PortfolioId::user_portfolio(did.into(), PortfolioNumber(0))
+            })
+        );
+        let dispatchable_names = DispatchableNames::elems(
+            (0..MAX_EXTRINSICS as u64).map(|e| {
+                if e == 0 {
+                    DispatchableName(vec![])
+                } else {
+                    DispatchableName(Ticker::generate(e))
+                }
+            })
+        );
+        let extrinsic = ExtrinsicPermissions::elems(
+            (0..MAX_PALLETS as u64).map(|p| {
+                PalletPermissions {
+                    pallet_name: if p == 0 {
+                            PalletName(vec![])
+                        } else {
+                            PalletName(Ticker::generate(p))
+                        },
+                    dispatchable_names: dispatchable_names.clone(),
+                }
+            })
+        );
+
+        let permissions = Permissions {
+            asset,
+            extrinsic,
+            portfolio
+        };
+        Identity::<T>::unsafe_join_identity(did, permissions, issuer_sk.account.clone());
+    }: create_venue(issuer_sk.origin())
 
     set_venue_filtering {
         let mut rng = StdRng::from_seed([10u8; 32]);
