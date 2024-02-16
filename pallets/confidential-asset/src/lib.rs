@@ -31,9 +31,7 @@ use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
 use polymesh_host_functions::{VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest};
-use polymesh_primitives::{
-    impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo, Ticker,
-};
+use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{traits::Zero, SaturatedConversion};
@@ -289,8 +287,6 @@ pub struct ConfidentialAssetDetails<T: Config> {
     pub owner_did: IdentityId,
     /// Asset data.
     pub data: BoundedVec<u8, T::MaxAssetDataLength>,
-    /// Asset ticker (optional)
-    pub ticker: Option<Ticker>,
 }
 
 /// Confidential transaction leg asset pending state.
@@ -684,13 +680,6 @@ pub mod pallet {
     #[pallet::getter(fn venue_counter)]
     pub type VenueCounter<T: Config> = StorageValue<_, VenueId, ValueQuery>;
 
-    /// Map a ticker to a confidential asset id.
-    ///
-    /// ticker -> asset id
-    #[pallet::storage]
-    #[pallet::getter(fn ticker_to_asset_id)]
-    pub type TickerToAsset<T: Config> = StorageMap<_, Blake2_128Concat, Ticker, AssetId>;
-
     /// Details of the confidential asset.
     ///
     /// asset id -> Option<ConfidentialAssetDetails>
@@ -908,12 +897,11 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_asset())]
         pub fn create_confidential_asset(
             origin: OriginFor<T>,
-            ticker: Option<Ticker>,
             data: BoundedVec<u8, T::MaxAssetDataLength>,
             auditors: ConfidentialAuditors<T>,
         ) -> DispatchResult {
             let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_asset(owner_did, ticker, data, auditors)
+            Self::base_create_asset(owner_did, data, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
@@ -1187,7 +1175,6 @@ impl<T: Config> Pallet<T> {
 
     fn base_create_asset(
         owner_did: IdentityId,
-        ticker: Option<Ticker>,
         data: BoundedVec<u8, T::MaxAssetDataLength>,
         auditors: ConfidentialAuditors<T>,
     ) -> DispatchResult {
@@ -1202,16 +1189,6 @@ impl<T: Config> Pallet<T> {
             auditors.auditors.len() >= 1,
             Error::<T>::NotEnoughAssetAuditors
         );
-
-        if let Some(ticker) = ticker {
-            // Ensure unique tickers.
-            // TODO: new error variant.
-            ensure!(
-                !TickerToAsset::<T>::contains_key(ticker),
-                Error::<T>::ConfidentialAssetAlreadyCreated
-            );
-            TickerToAsset::<T>::insert(ticker, asset_id);
-        }
 
         // Ensure the mediators exist.
         for _mediator_did in &auditors.mediators {

@@ -139,7 +139,6 @@ pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let asset_id = next_asset_id::<T>(issuer.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         issuer.origin(),
-        None,
         Default::default(),
         auditors.get_asset_auditors(),
     ));
@@ -267,7 +266,6 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let asset_id = next_asset_id::<T>(owner.did());
     assert_ok!(Pallet::<T>::create_confidential_asset(
         owner.origin(),
-        None,
         Default::default(),
         auditors.get_asset_auditors(),
     ));

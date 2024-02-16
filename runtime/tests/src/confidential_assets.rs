@@ -53,7 +53,6 @@ fn issuers_can_create_confidential_tokens() {
         let asset = next_asset_id::<TestRuntime>(owner.did);
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
-            None,
             Default::default(),
             auditors.get_asset_auditors(),
         ));
@@ -76,7 +75,6 @@ fn issuers_can_create_confidential_tokens() {
         let asset2 = next_asset_id::<TestRuntime>(owner.did);
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
-            None,
             Default::default(),
             auditors.get_asset_auditors(),
         ));
@@ -124,7 +122,6 @@ fn issuers_can_create_and_mint_tokens() {
         let asset = next_asset_id::<TestRuntime>(owner.did());
         assert_ok!(ConfidentialAsset::create_confidential_asset(
             owner.origin(),
-            None,
             Default::default(),
             auditors.get_asset_auditors(),
         ));

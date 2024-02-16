@@ -32,7 +32,7 @@ benchmarks! {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let issuer = user::<T>("issuer", SEED);
         let auditors = AuditorState::<T>::new(0, &mut rng).get_asset_auditors();
-    }: create_confidential_asset(issuer.origin(), None, Default::default(), auditors)
+    }: create_confidential_asset(issuer.origin(), Default::default(), auditors)
 
     mint {
         let mut rng = StdRng::from_seed([10u8; 32]);
