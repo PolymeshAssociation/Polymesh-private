@@ -51,7 +51,7 @@ fn issuers_can_create_confidential_tokens() {
 
         // Issuance is successful.
         let asset = next_asset_id::<TestRuntime>(owner.did);
-        assert_ok!(ConfidentialAsset::create_confidential_asset(
+        assert_ok!(ConfidentialAsset::create_asset(
             owner.origin(),
             Default::default(),
             auditors.get_asset_auditors(),
@@ -73,7 +73,7 @@ fn issuers_can_create_confidential_tokens() {
 
         // Second Issuance is successful.
         let asset2 = next_asset_id::<TestRuntime>(owner.did);
-        assert_ok!(ConfidentialAsset::create_confidential_asset(
+        assert_ok!(ConfidentialAsset::create_asset(
             owner.origin(),
             Default::default(),
             auditors.get_asset_auditors(),
@@ -120,7 +120,7 @@ fn issuers_can_create_and_mint_tokens() {
         };
 
         let asset = next_asset_id::<TestRuntime>(owner.did());
-        assert_ok!(ConfidentialAsset::create_confidential_asset(
+        assert_ok!(ConfidentialAsset::create_asset(
             owner.origin(),
             Default::default(),
             auditors.get_asset_auditors(),
@@ -139,13 +139,7 @@ fn issuers_can_create_and_mint_tokens() {
         // The issuer's account must be initialized before minting.
         owner.create_account();
 
-        ConfidentialAsset::mint_confidential_asset(
-            owner.origin(),
-            asset,
-            total_supply,
-            owner.account(),
-        )
-        .unwrap();
+        ConfidentialAsset::mint(owner.origin(), asset, total_supply, owner.account()).unwrap();
 
         // ------------------------- Ensuring that the asset details are set correctly
 

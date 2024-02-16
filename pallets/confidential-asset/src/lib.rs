@@ -479,7 +479,12 @@ pub mod pallet {
         /// Event for creation of a confidential asset.
         ///
         /// (caller DID, asset id, auditors and mediators)
-        ConfidentialAssetCreated(IdentityId, AssetId, ConfidentialAuditors<T>),
+        AssetCreated(
+            IdentityId,
+            AssetId,
+            BoundedVec<u8, T::MaxAssetDataLength>,
+            ConfidentialAuditors<T>,
+        ),
         /// Issued confidential assets.
         ///
         /// (caller DID, asset id, amount issued, total_supply)
@@ -884,18 +889,17 @@ pub mod pallet {
 
         /// Initializes a new confidential security token.
         /// Makes the initiating account the owner of the security token
-        /// & the balance of the owner is set to total zero. To set to total supply, `mint_confidential_asset` should
+        /// & the balance of the owner is set to total zero. To set to total supply, `mint` should
         /// be called after a successful call of this function.
         ///
         /// # Arguments
         /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         ///
         /// # Errors
-        /// - `TotalSupplyAboveLimit` if `total_supply` exceeds the limit.
         /// - `BadOrigin` if not signed.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::create_asset())]
-        pub fn create_confidential_asset(
+        pub fn create_asset(
             origin: OriginFor<T>,
             data: BoundedVec<u8, T::MaxAssetDataLength>,
             auditors: ConfidentialAuditors<T>,
@@ -920,7 +924,7 @@ pub mod pallet {
         /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-        pub fn mint_confidential_asset(
+        pub fn mint(
             origin: OriginFor<T>,
             asset_id: AssetId,
             amount: Balance,
@@ -1201,13 +1205,12 @@ impl<T: Config> Pallet<T> {
         let details = ConfidentialAssetDetails {
             total_supply: Zero::zero(),
             owner_did,
-            ticker,
-            data,
+            data: data.clone(),
         };
         Details::<T>::insert(asset_id, details);
 
-        Self::deposit_event(Event::<T>::ConfidentialAssetCreated(
-            owner_did, asset_id, auditors,
+        Self::deposit_event(Event::<T>::AssetCreated(
+            owner_did, asset_id, data, auditors,
         ));
         Ok(())
     }

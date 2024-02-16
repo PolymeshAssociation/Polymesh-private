@@ -32,7 +32,7 @@ benchmarks! {
         let mut rng = StdRng::from_seed([10u8; 32]);
         let issuer = user::<T>("issuer", SEED);
         let auditors = AuditorState::<T>::new(0, &mut rng).get_asset_auditors();
-    }: create_confidential_asset(issuer.origin(), Default::default(), auditors)
+    }: _(issuer.origin(), Default::default(), auditors)
 
     mint {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -40,7 +40,7 @@ benchmarks! {
         issuer.create_account();
 
         let total_supply = 4_000_000_000 as ConfidentialBalance;
-    }: mint_confidential_asset(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
+    }: _(issuer.raw_origin(), asset_id, total_supply.into(), issuer.account())
 
     burn {
         let mut rng = StdRng::from_seed([10u8; 32]);
@@ -49,7 +49,7 @@ benchmarks! {
 
         // Mint asset supply.
         let total_supply = 4_000_000_000 as ConfidentialBalance;
-        assert_ok!(Pallet::<T>::mint_confidential_asset(
+        assert_ok!(Pallet::<T>::mint(
             issuer.origin(), asset_id, total_supply.into(), issuer.account()
         ));
 

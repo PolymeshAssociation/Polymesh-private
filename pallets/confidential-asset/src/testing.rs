@@ -137,7 +137,7 @@ pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let issuer = ConfidentialUser::<T>::new(prefix, rng);
     let auditors = AuditorState::new(0, rng);
     let asset_id = next_asset_id::<T>(issuer.did());
-    assert_ok!(Pallet::<T>::create_confidential_asset(
+    assert_ok!(Pallet::<T>::create_asset(
         issuer.origin(),
         Default::default(),
         auditors.get_asset_auditors(),
@@ -264,7 +264,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
     let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
     let asset_id = next_asset_id::<T>(owner.did());
-    assert_ok!(Pallet::<T>::create_confidential_asset(
+    assert_ok!(Pallet::<T>::create_asset(
         owner.origin(),
         Default::default(),
         auditors.get_asset_auditors(),
@@ -286,7 +286,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let amount: ConfidentialBalance = total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
 
     // Wallet submits the transaction to the chain for verification.
-    assert_ok!(Pallet::<T>::mint_confidential_asset(
+    assert_ok!(Pallet::<T>::mint(
         owner.origin(),
         asset_id,
         amount.into(), // convert to u128

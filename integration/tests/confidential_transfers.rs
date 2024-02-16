@@ -278,7 +278,7 @@ async fn confidential_transfer() -> Result<()> {
     let mut res_asset = api
         .call()
         .confidential_asset()
-        .create_confidential_asset(None, vec![], auditors.clone())?
+        .create_asset(vec![], auditors.clone())?
         .submit_and_watch(&mut issuer.user)
         .await?;
 
@@ -295,7 +295,7 @@ async fn confidential_transfer() -> Result<()> {
     let total_supply = 1_000_000_000u64;
     api.call()
         .confidential_asset()
-        .mint_confidential_asset(asset_id, total_supply.into(), issuer.account())?
+        .mint(asset_id, total_supply.into(), issuer.account())?
         .submit_and_watch(&mut issuer.user)
         .await?;
 
