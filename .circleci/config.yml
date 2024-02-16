@@ -42,6 +42,9 @@ jobs:
       VERBOSE: "1"
     steps:
       - checkout
+      - run: 
+          name: Install cargo-fmt
+          command: rustup component add rustfmt
       - run:
           name: Check formatting
           command: ./scripts/rustfmt.sh
@@ -64,9 +67,9 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
-      - VERBOSE: "1"
-      - RUSTFLAGS: -D warnings
-      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
     steps:
       - checkout
       - run:
@@ -88,6 +91,15 @@ jobs:
       - run:
           name: Copy wasm to assets
           command: cp ./target/release/wbuild/polymesh*/*wasm ./assets/
+      - run:
+          name: Copy docker files to assets
+          command: cp -r ./.docker ./assets/
+      - run:
+          name: Copy script files to assets
+          command: cp -r ./scripts ./assets/
+      - run:
+          name: Copy Cargo.toml files to assets
+          command: cp ./Cargo.toml ./assets/
       - persist_to_workspace:
           root: ./assets
           paths:
@@ -102,9 +114,9 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
-      - VERBOSE: "1"
-      - RUSTFLAGS: -D warnings
-      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
     steps:
       - checkout
       - run:
@@ -134,7 +146,7 @@ jobs:
       - image: debian:stable
     resource_class: small
     environment:
-      - VERBOSE: "1"
+      VERBOSE: "1"
     steps:
       - attach_workspace:
           at: .
@@ -147,11 +159,11 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: large
     environment:
-      - VERBOSE: "1"
-      - RUSTFLAGS: -D warnings
-      - RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
-      - SKIP_WASM_BUILD: "1"
-      - RUST_BACKTRACE: "1"
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+      SKIP_WASM_BUILD: "1"
+      RUST_BACKTRACE: "1"
     steps:
       - checkout
       - run:
@@ -176,7 +188,7 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
-      - VERBOSE: "1"
+      VERBOSE: "1"
     steps:
       - checkout
       - run:
@@ -198,10 +210,10 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: medium+
     environment:
-      - VERBOSE: "1"
-      - POLYMESH_URL: "ws://localhost:9944"
-      - DATABASE_URL: "accounts.db"
-      - RUSTFLAGS: -D warnings
+      VERBOSE: "1"
+      POLYMESH_URL: "ws://localhost:9944"
+      DATABASE_URL: "accounts.db"
+      RUSTFLAGS: -D warnings
     steps:
       - checkout
       - restore-sccache-cache
@@ -229,10 +241,13 @@ jobs:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
     resource_class: xlarge
     environment:
-      - VERBOSE: "1"
-      - SKIP_WASM_BUILD: "1"
+      VERBOSE: "1"
+      SKIP_WASM_BUILD: "1"
     steps:
       - checkout
+      - run:
+          name: Install clippy
+          command: rustup component add clippy
       - run:
           name: Store rust version in a file for cache key
           command: rustc --version > rust.version
@@ -247,9 +262,23 @@ jobs:
           key: v6-clippy-cache-{{ checksum "./rust.version" }}-{{ checksum "./Cargo.lock" }}
           paths:
             - "/usr/local/cargo"
+  build-docker-debian:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-private
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - run: |
+          export VERSION=`./scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker build -f ./.docker/Dockerfile.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker push --all-tags $IMAGE_NAME
 
 workflows:
-  version: 2
   commit:
     jobs:
       - lint
@@ -265,3 +294,8 @@ workflows:
       - benchmark:
           requires:
             - benchmark-build
+      - build-docker-debian:
+          context:
+            - DockerHub
+          requires:
+            - build
