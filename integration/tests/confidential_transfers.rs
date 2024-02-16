@@ -125,8 +125,11 @@ pub async fn get_venue_id(res: &mut TransactionResults) -> Result<Option<VenueId
     Ok(res.events().await?.and_then(|events| {
         for rec in &events.0 {
             match &rec.event {
-                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated(_, id)) => {
-                    return Some(*id);
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::VenueCreated {
+                    venue_id,
+                    ..
+                }) => {
+                    return Some(*venue_id);
                 }
                 _ => (),
             }
@@ -140,10 +143,11 @@ pub async fn get_asset_id(res: &mut TransactionResults) -> Result<Option<AssetId
     Ok(res.events().await?.and_then(|events| {
         for rec in &events.0 {
             match &rec.event {
-                RuntimeEvent::ConfidentialAsset(
-                    ConfidentialAssetEvent::AssetCreated(_, asset, _),
-                ) => {
-                    return Some(*asset);
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::AssetCreated {
+                    asset_id,
+                    ..
+                }) => {
+                    return Some(*asset_id);
                 }
                 _ => (),
             }
@@ -157,13 +161,11 @@ pub async fn get_transaction_id(res: &mut TransactionResults) -> Result<Option<T
     Ok(res.events().await?.and_then(|events| {
         for rec in &events.0 {
             match &rec.event {
-                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated(
-                    _,
-                    _,
-                    id,
-                    ..,
-                )) => {
-                    return Some(*id);
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionCreated {
+                    transaction_id,
+                    ..
+                }) => {
+                    return Some(*transaction_id);
                 }
                 _ => (),
             }
@@ -185,23 +187,20 @@ pub async fn get_transaction_affirmed(
     Ok(res.events().await?.and_then(|events| {
         for rec in &events.0 {
             match &rec.event {
-                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
-                    _,
-                    tx_id,
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed {
+                    transaction_id,
                     leg_id,
-                    AffirmParty::Sender(transfers),
-                    _,
-                )) => {
-                    return Some((*tx_id, *leg_id, Some(transfers.clone())));
+                    parity: AffirmParty::Sender(transfers),
+                    ..
+                }) => {
+                    return Some((*transaction_id, *leg_id, Some(transfers.clone())));
                 }
-                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed(
-                    _,
-                    tx_id,
+                RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed {
+                    transaction_id,
                     leg_id,
-                    _,
-                    _,
-                )) => {
-                    return Some((*tx_id, *leg_id, None));
+                    ..
+                }) => {
+                    return Some((*transaction_id, *leg_id, None));
                 }
                 _ => (),
             }

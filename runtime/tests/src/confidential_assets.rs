@@ -268,14 +268,11 @@ fn basic_confidential_settlement() {
             println!("-------------> Bob is going to authorize.");
             let transfers = {
                 match System::events().pop().unwrap().event {
-                    EventTest::ConfidentialAsset(Event::TransactionAffirmed(
-                        _,
-                        _,
-                        _,
-                        AffirmParty::Sender(proof),
-                        _,
-                    )) => proof,
-                    _ => panic!("Exepected TransactionAffirmed event"),
+                    EventTest::ConfidentialAsset(Event::TransactionAffirmed {
+                        party: AffirmParty::Sender(transfers),
+                        ..
+                    }) => transfers,
+                    _ => panic!("Expected TransactionAffirmed event"),
                 }
             };
 

@@ -473,101 +473,191 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Event for creation of a Confidential account.
-        ///
-        /// caller DID, confidential account (public key)
-        AccountCreated(IdentityId, ConfidentialAccount),
+        AccountCreated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential account (public key)
+            account: ConfidentialAccount,
+        },
         /// Event for creation of a confidential asset.
-        ///
-        /// (caller DID, asset id, auditors and mediators)
-        AssetCreated(
-            IdentityId,
-            AssetId,
-            BoundedVec<u8, T::MaxAssetDataLength>,
-            ConfidentialAuditors<T>,
-        ),
+        AssetCreated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Confidential asset data.
+            data: BoundedVec<u8, T::MaxAssetDataLength>,
+            /// Confidential asset auditors and mediators.
+            auditors: ConfidentialAuditors<T>,
+        },
         /// Issued confidential assets.
-        ///
-        /// (caller DID, asset id, amount issued, total_supply)
-        Issued(IdentityId, AssetId, Balance, Balance),
+        Issued {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Amount issued.
+            amount: Balance,
+            /// Updated total supply.
+            total_supply: Balance,
+        },
+        /// Burned confidential assets.
+        Burned {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Amount burned.
+            amount: Balance,
+            /// Updated total supply.
+            total_supply: Balance,
+        },
         /// A new venue has been created.
-        ///
-        /// (caller DID, venue_id)
-        VenueCreated(IdentityId, VenueId),
+        VenueCreated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Venue id.
+            venue_id: VenueId,
+        },
         /// Venue filtering changed for an asset.
-        ///
-        /// (caller DID, asset id, enabled)
-        VenueFiltering(IdentityId, AssetId, bool),
+        VenueFiltering {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Venue filtering is enabled/disabled.
+            enabled: bool,
+        },
         /// Venues added to allow list.
-        ///
-        /// (caller DID, asset id, Vec<VenueId>)
-        VenuesAllowed(IdentityId, AssetId, Vec<VenueId>),
+        VenuesAllowed {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// List of venue ids allowed.
+            venues: Vec<VenueId>,
+        },
         /// Venues removed from the allow list.
-        ///
-        /// (caller DID, asset id, Vec<VenueId>)
-        VenuesBlocked(IdentityId, AssetId, Vec<VenueId>),
+        VenuesBlocked {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// List of venue ids removed from allow list.
+            venues: Vec<VenueId>,
+        },
         /// A new transaction has been created
-        ///
-        /// (caller DID, venue_id, transaction_id, legs, memo)
-        TransactionCreated(
-            IdentityId,
-            VenueId,
-            TransactionId,
-            BoundedVec<TransactionLegDetails<T>, T::MaxNumberOfLegs>,
-            Option<Memo>,
-        ),
+        TransactionCreated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Venue id.
+            venue_id: VenueId,
+            /// Confidential transaction id.
+            transaction_id: TransactionId,
+            /// Details of transaction legs.
+            legs: BoundedVec<TransactionLegDetails<T>, T::MaxNumberOfLegs>,
+            /// Transaction memo.
+            memo: Option<Memo>,
+        },
         /// Confidential transaction executed.
-        ///
-        /// (caller DID, transaction_id, memo)
-        TransactionExecuted(IdentityId, TransactionId, Option<Memo>),
+        TransactionExecuted {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential transaction id.
+            transaction_id: TransactionId,
+            /// Transaction memo.
+            memo: Option<Memo>,
+        },
         /// Confidential transaction rejected.
-        ///
-        /// (caller DID, transaction_id, memo)
-        TransactionRejected(IdentityId, TransactionId, Option<Memo>),
+        TransactionRejected {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential transaction id.
+            transaction_id: TransactionId,
+            /// Transaction memo.
+            memo: Option<Memo>,
+        },
         /// Confidential transaction leg affirmed.
-        ///
-        /// (caller DID, TransactionId, TransactionLegId, AffirmParty, PendingAffirms)
-        TransactionAffirmed(
-            IdentityId,
-            TransactionId,
-            TransactionLegId,
-            AffirmParty<T>,
-            u32,
-        ),
+        TransactionAffirmed {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential transaction id.
+            transaction_id: TransactionId,
+            /// Transaction leg id affirmed.
+            leg_id: TransactionLegId,
+            /// Party affirming the leg.
+            party: AffirmParty<T>,
+            /// Pending affirmations.
+            pending_affirms: u32,
+        },
         /// Confidential account balance decreased.
         /// This happens when the sender affirms the transaction.
-        ///
-        /// (confidential account, asset id, encrypted amount, new encrypted balance)
-        AccountWithdraw(ConfidentialAccount, AssetId, CipherText, CipherText),
+        AccountWithdraw {
+            /// Confidential account.
+            account: ConfidentialAccount,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Encrypted amount withdrawn from `account`.
+            amount: CipherText,
+            /// Updated encrypted balance of `account`.
+            balance: CipherText,
+        },
         /// Confidential account balance increased.
         /// This happens when the receiver calls `apply_incoming_balance`.
-        ///
-        /// (confidential account, asset id, encrypted amount, new encrypted balance)
-        AccountDeposit(ConfidentialAccount, AssetId, CipherText, CipherText),
+        AccountDeposit {
+            /// Confidential account.
+            account: ConfidentialAccount,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Encrypted amount deposited into `account`.
+            amount: CipherText,
+            /// Updated encrypted balance of `account`.
+            balance: CipherText,
+        },
         /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
-        ///
-        /// (confidential account, asset id, encrypted amount, new encrypted incoming balance)
-        AccountDepositIncoming(ConfidentialAccount, AssetId, CipherText, CipherText),
+        AccountDepositIncoming {
+            /// Confidential account.
+            account: ConfidentialAccount,
+            /// Confidential asset id.
+            asset_id: AssetId,
+            /// Encrypted amount incoming for `account`.
+            amount: CipherText,
+            /// Updated encrypted incoming balance of `account`.
+            incoming_balance: CipherText,
+        },
         /// Confidential asset frozen.
-        ///
-        /// (identity, asset id)
-        AssetFrozen(IdentityId, AssetId),
+        AssetFrozen {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+        },
         /// Confidential asset unfrozen.
-        ///
-        /// (identity, asset id)
-        AssetUnfrozen(IdentityId, AssetId),
+        AssetUnfrozen {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential asset id.
+            asset_id: AssetId,
+        },
         /// Confidential account asset frozen.
-        ///
-        /// (identity, confidential account, asset id)
-        AccountAssetFrozen(IdentityId, ConfidentialAccount, AssetId),
+        AccountAssetFrozen {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential account frozen for `asset_id`.
+            account: ConfidentialAccount,
+            /// Confidential asset id.
+            asset_id: AssetId,
+        },
         /// Confidential account asset unfrozen.
-        ///
-        /// (identity, confidential account, asset id)
-        AccountAssetUnfrozen(IdentityId, ConfidentialAccount, AssetId),
-        /// Burned confidential assets.
-        ///
-        /// (caller DID, asset id, amount burned, total_supply)
-        Burned(IdentityId, AssetId, Balance, Balance),
+        AccountAssetUnfrozen {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential account unfrozen for `asset_id`.
+            account: ConfidentialAccount,
+            /// Confidential asset id.
+            asset_id: AssetId,
+        },
     }
 
     #[pallet::error]
@@ -904,8 +994,8 @@ pub mod pallet {
             data: BoundedVec<u8, T::MaxAssetDataLength>,
             auditors: ConfidentialAuditors<T>,
         ) -> DispatchResult {
-            let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_create_asset(owner_did, data, auditors)
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_create_asset(caller_did, data, auditors)
         }
 
         /// Mint more assets into the asset issuer's `account`.
@@ -930,8 +1020,8 @@ pub mod pallet {
             amount: Balance,
             account: ConfidentialAccount,
         ) -> DispatchResult {
-            let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_mint(owner_did, asset_id, amount, account)
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_mint(caller_did, asset_id, amount, account)
         }
 
         /// Applies any incoming balance to the confidential account balance.
@@ -1152,8 +1242,8 @@ pub mod pallet {
             account: ConfidentialAccount,
             proof: ConfidentialBurnProof,
         ) -> DispatchResult {
-            let owner_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            Self::base_burn(owner_did, asset_id, amount, account, proof)
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_burn(caller_did, asset_id, amount, account, proof)
         }
     }
 }
@@ -1168,21 +1258,24 @@ impl<T: Config> Pallet<T> {
         // Link the confidential account to the caller's identity.
         AccountDid::<T>::insert(&account, caller_did);
 
-        Self::deposit_event(Event::<T>::AccountCreated(caller_did, account));
+        Self::deposit_event(Event::<T>::AccountCreated {
+            caller_did,
+            account,
+        });
         Ok(())
     }
 
-    pub fn next_asset_id(owner_did: IdentityId, update: bool) -> AssetId {
+    pub fn next_asset_id(caller_did: IdentityId, update: bool) -> AssetId {
         let seed = Self::get_seed(update);
-        blake2_128(&(b"modlpy/confidential_asset", owner_did, seed).encode())
+        blake2_128(&(b"modlpy/confidential_asset", caller_did, seed).encode())
     }
 
     fn base_create_asset(
-        owner_did: IdentityId,
+        caller_did: IdentityId,
         data: BoundedVec<u8, T::MaxAssetDataLength>,
         auditors: ConfidentialAuditors<T>,
     ) -> DispatchResult {
-        let asset_id = Self::next_asset_id(owner_did, true);
+        let asset_id = Self::next_asset_id(caller_did, true);
         // Ensure the asset hasn't been created yet.
         ensure!(
             !Details::<T>::contains_key(asset_id),
@@ -1204,29 +1297,32 @@ impl<T: Config> Pallet<T> {
 
         let details = ConfidentialAssetDetails {
             total_supply: Zero::zero(),
-            owner_did,
+            owner_did: caller_did,
             data: data.clone(),
         };
         Details::<T>::insert(asset_id, details);
 
-        Self::deposit_event(Event::<T>::AssetCreated(
-            owner_did, asset_id, data, auditors,
-        ));
+        Self::deposit_event(Event::<T>::AssetCreated {
+            caller_did,
+            asset_id,
+            data,
+            auditors,
+        });
         Ok(())
     }
 
     fn base_mint(
-        owner_did: IdentityId,
+        caller_did: IdentityId,
         asset_id: AssetId,
         amount: Balance,
         account: ConfidentialAccount,
     ) -> DispatchResult {
-        // Ensure `owner_did` owns `account`.
+        // Ensure `caller_did` owns `account`.
         let account_did = Self::account_did(&account);
-        ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
+        ensure!(Some(caller_did) == account_did, Error::<T>::Unauthorized);
 
         // Ensure the caller is the asset owner and get the asset details.
-        let mut details = Self::ensure_asset_owner(asset_id, owner_did)?;
+        let mut details = Self::ensure_asset_owner(asset_id, caller_did)?;
 
         // The mint amount must be positive.
         ensure!(
@@ -1256,15 +1352,15 @@ impl<T: Config> Pallet<T> {
 
         let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's confidential account.
-        Self::account_deposit_amount(&account, asset_id, enc_issued_amount)?;
+        Self::account_deposit_amount(account, asset_id, enc_issued_amount)?;
 
         // Emit Issue event with new `total_supply`.
-        Self::deposit_event(Event::<T>::Issued(
-            owner_did,
+        Self::deposit_event(Event::<T>::Issued {
+            caller_did,
             asset_id,
             amount,
-            details.total_supply,
-        ));
+            total_supply: details.total_supply,
+        });
 
         // Update `total_supply`.
         Details::<T>::insert(asset_id, details);
@@ -1272,18 +1368,18 @@ impl<T: Config> Pallet<T> {
     }
 
     fn base_burn(
-        owner_did: IdentityId,
+        caller_did: IdentityId,
         asset_id: AssetId,
         amount: Balance,
         account: ConfidentialAccount,
         proof: ConfidentialBurnProof,
     ) -> DispatchResult {
-        // Ensure `owner_did` owns `account`.
+        // Ensure `caller_did` owns `account`.
         let account_did = Self::account_did(&account);
-        ensure!(Some(owner_did) == account_did, Error::<T>::Unauthorized);
+        ensure!(Some(caller_did) == account_did, Error::<T>::Unauthorized);
 
         // Ensure the caller is the asset owner and get the asset details.
-        let mut details = Self::ensure_asset_owner(asset_id, owner_did)?;
+        let mut details = Self::ensure_asset_owner(asset_id, caller_did)?;
 
         // The burn amount must be positive.
         ensure!(
@@ -1315,24 +1411,28 @@ impl<T: Config> Pallet<T> {
         // Verify the issuer's proof.
         let enc_amount = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
         // Withdraw the minted assets from the issuer's confidential account.
-        Self::account_withdraw_amount(&account, asset_id, enc_amount)?;
+        Self::account_withdraw_amount(account, asset_id, enc_amount)?;
 
         // Emit Burned event with new `total_supply`.
-        Self::deposit_event(Event::<T>::Burned(
-            owner_did,
+        Self::deposit_event(Event::<T>::Burned {
+            caller_did,
             asset_id,
-            amount as _,
-            details.total_supply,
-        ));
+            amount: amount as _,
+            total_supply: details.total_supply,
+        });
 
         // Update `total_supply`.
         Details::<T>::insert(asset_id, details);
         Ok(())
     }
 
-    fn base_set_asset_frozen(did: IdentityId, asset_id: AssetId, freeze: bool) -> DispatchResult {
+    fn base_set_asset_frozen(
+        caller_did: IdentityId,
+        asset_id: AssetId,
+        freeze: bool,
+    ) -> DispatchResult {
         // Ensure the caller is the asset owner.
-        Self::ensure_asset_owner(asset_id, did)?;
+        Self::ensure_asset_owner(asset_id, caller_did)?;
 
         match (Self::asset_frozen(&asset_id), freeze) {
             (true, true) => {
@@ -1341,11 +1441,17 @@ impl<T: Config> Pallet<T> {
             (false, false) => Err(Error::<T>::NotFrozen)?,
             (false, true) => {
                 AssetFrozen::<T>::insert(&asset_id, true);
-                Self::deposit_event(Event::<T>::AssetFrozen(did, asset_id))
+                Self::deposit_event(Event::<T>::AssetFrozen {
+                    caller_did,
+                    asset_id,
+                })
             }
             (true, false) => {
                 AssetFrozen::<T>::insert(&asset_id, false);
-                Self::deposit_event(Event::<T>::AssetUnfrozen(did, asset_id))
+                Self::deposit_event(Event::<T>::AssetUnfrozen {
+                    caller_did,
+                    asset_id,
+                })
             }
         }
 
@@ -1353,13 +1459,13 @@ impl<T: Config> Pallet<T> {
     }
 
     fn base_set_account_asset_frozen(
-        did: IdentityId,
+        caller_did: IdentityId,
         account: ConfidentialAccount,
         asset_id: AssetId,
         freeze: bool,
     ) -> DispatchResult {
         // Ensure the caller is the asset owner.
-        Self::ensure_asset_owner(asset_id, did)?;
+        Self::ensure_asset_owner(asset_id, caller_did)?;
 
         match (Self::account_asset_frozen(&account, &asset_id), freeze) {
             (true, true) => {
@@ -1368,11 +1474,19 @@ impl<T: Config> Pallet<T> {
             (false, false) => Err(Error::<T>::AccountAssetNotFrozen)?,
             (false, true) => {
                 AccountAssetFrozen::<T>::insert(&account, &asset_id, true);
-                Self::deposit_event(Event::<T>::AccountAssetFrozen(did, account, asset_id))
+                Self::deposit_event(Event::<T>::AccountAssetFrozen {
+                    caller_did,
+                    account,
+                    asset_id,
+                })
             }
             (true, false) => {
                 AccountAssetFrozen::<T>::insert(&account, &asset_id, false);
-                Self::deposit_event(Event::<T>::AccountAssetUnfrozen(did, account, asset_id))
+                Self::deposit_event(Event::<T>::AccountAssetUnfrozen {
+                    caller_did,
+                    account,
+                    asset_id,
+                })
             }
         }
 
@@ -1392,7 +1506,7 @@ impl<T: Config> Pallet<T> {
         match IncomingBalance::<T>::take(&account, asset_id) {
             Some(incoming_balance) => {
                 // If there is an incoming balance, deposit it into the confidential account balance.
-                Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
+                Self::account_deposit_amount(account, asset_id, incoming_balance)?;
             }
             None => (),
         }
@@ -1413,7 +1527,7 @@ impl<T: Config> Pallet<T> {
         let assets = IncomingBalance::<T>::drain_prefix(&account).take(max_updates as _);
         for (asset_id, incoming_balance) in assets {
             // If there is an incoming balance, deposit it into the confidential account balance.
-            Self::account_deposit_amount(&account, asset_id, incoming_balance)?;
+            Self::account_deposit_amount(account, asset_id, incoming_balance)?;
         }
 
         Ok(())
@@ -1422,21 +1536,21 @@ impl<T: Config> Pallet<T> {
     // Ensure the caller is the asset owner.
     fn ensure_asset_owner(
         asset_id: AssetId,
-        did: IdentityId,
+        caller_did: IdentityId,
     ) -> Result<ConfidentialAssetDetails<T>, DispatchError> {
         let details = Self::confidential_asset_details(asset_id)
             .ok_or(Error::<T>::UnknownConfidentialAsset)?;
 
         // Ensure that the caller is the asset owner.
-        ensure!(details.owner_did == did, Error::<T>::Unauthorized);
+        ensure!(details.owner_did == caller_did, Error::<T>::Unauthorized);
         Ok(details)
     }
 
     // Ensure the caller is the venue creator.
-    fn ensure_venue_creator(id: VenueId, did: IdentityId) -> Result<(), DispatchError> {
+    fn ensure_venue_creator(id: VenueId, caller_did: IdentityId) -> Result<(), DispatchError> {
         // Get the venue creator.
         let creator_did = Self::venue_creator(id).ok_or(Error::<T>::InvalidVenue)?;
-        ensure!(creator_did == did, Error::<T>::Unauthorized);
+        ensure!(creator_did == caller_did, Error::<T>::Unauthorized);
         Ok(())
     }
 
@@ -1511,56 +1625,73 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    fn base_create_venue(did: IdentityId) -> DispatchResult {
+    fn base_create_venue(caller_did: IdentityId) -> DispatchResult {
         // Advance venue counter.
         // NB: Venue counter starts with 1.
         let venue_id = VenueCounter::<T>::try_mutate(try_next_post::<T, _>)?;
 
         // Other commits to storage + emit event.
-        VenueCreator::<T>::insert(venue_id, did);
-        IdentityVenues::<T>::insert(did, venue_id, ());
-        Self::deposit_event(Event::<T>::VenueCreated(did, venue_id));
+        VenueCreator::<T>::insert(venue_id, caller_did);
+        IdentityVenues::<T>::insert(caller_did, venue_id, ());
+        Self::deposit_event(Event::<T>::VenueCreated {
+            caller_did,
+            venue_id,
+        });
         Ok(())
     }
 
     fn base_set_venue_filtering(
-        did: IdentityId,
+        caller_did: IdentityId,
         asset_id: AssetId,
         enabled: bool,
     ) -> DispatchResult {
+        // Ensure the caller is the asset owner.
+        Self::ensure_asset_owner(asset_id, caller_did)?;
         if enabled {
             VenueFiltering::<T>::insert(asset_id, enabled);
         } else {
             VenueFiltering::<T>::remove(asset_id);
         }
-        Self::deposit_event(Event::<T>::VenueFiltering(did, asset_id, enabled));
+        Self::deposit_event(Event::<T>::VenueFiltering {
+            caller_did,
+            asset_id,
+            enabled,
+        });
         Ok(())
     }
 
     fn base_update_venue_allow_list(
-        did: IdentityId,
+        caller_did: IdentityId,
         asset_id: AssetId,
         venues: Vec<VenueId>,
         allow: bool,
     ) -> DispatchResult {
         // Ensure the caller is the asset owner.
-        Self::ensure_asset_owner(asset_id, did)?;
+        Self::ensure_asset_owner(asset_id, caller_did)?;
         if allow {
             for venue in &venues {
                 VenueAllowList::<T>::insert(&asset_id, venue, true);
             }
-            Self::deposit_event(Event::<T>::VenuesAllowed(did, asset_id, venues));
+            Self::deposit_event(Event::<T>::VenuesAllowed {
+                caller_did,
+                asset_id,
+                venues,
+            });
         } else {
             for venue in &venues {
                 VenueAllowList::<T>::remove(&asset_id, venue);
             }
-            Self::deposit_event(Event::<T>::VenuesBlocked(did, asset_id, venues));
+            Self::deposit_event(Event::<T>::VenuesBlocked {
+                caller_did,
+                asset_id,
+                venues,
+            });
         }
         Ok(())
     }
 
     pub fn base_add_transaction(
-        did: IdentityId,
+        caller_did: IdentityId,
         venue_id: VenueId,
         legs: BoundedVec<TransactionLeg<T>, T::MaxNumberOfLegs>,
         memo: Option<Memo>,
@@ -1569,7 +1700,7 @@ impl<T: Config> Pallet<T> {
         ensure!(legs.len() > 0, Error::<T>::TransactionNoLegs);
 
         // Ensure venue exists and the caller is its creator.
-        Self::ensure_venue_creator(venue_id, did)?;
+        Self::ensure_venue_creator(venue_id, caller_did)?;
 
         // Advance and get next `transaction_id`.
         let transaction_id = TransactionCounter::<T>::try_mutate(try_next_post::<T, _>)?;
@@ -1578,7 +1709,7 @@ impl<T: Config> Pallet<T> {
         let mut parties = BTreeSet::new();
         // Add the caller to the parties.
         // Used to allow the caller to execute/reject the transaction.
-        parties.insert(did);
+        parties.insert(caller_did);
 
         let mut pending_affirms = 0u32;
         let mut asset_auditors = BTreeMap::new();
@@ -1637,14 +1768,14 @@ impl<T: Config> Pallet<T> {
         );
         <TransactionStatuses<T>>::insert(transaction_id, TransactionStatus::Pending);
 
-        Self::deposit_event(Event::<T>::TransactionCreated(
-            did,
+        Self::deposit_event(Event::<T>::TransactionCreated {
+            caller_did,
             venue_id,
             transaction_id,
             // Should never be truncated.
-            BoundedVec::truncate_from(leg_details),
+            legs: BoundedVec::truncate_from(leg_details),
             memo,
-        ));
+        });
 
         Ok(transaction_id)
     }
@@ -1715,7 +1846,7 @@ impl<T: Config> Pallet<T> {
 
                     // Withdraw the transaction amount when the sender affirms.
                     let sender_amount = resp.sender_amount;
-                    Self::account_withdraw_amount(&sender, asset_id, sender_amount)?;
+                    Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
 
                     // Store the pending state for this transaction leg.
                     let receiver_amount = resp.receiver_amount;
@@ -1766,13 +1897,13 @@ impl<T: Config> Pallet<T> {
         )?;
 
         // Emit affirmation event.
-        Self::deposit_event(Event::<T>::TransactionAffirmed(
+        Self::deposit_event(Event::<T>::TransactionAffirmed {
             caller_did,
             transaction_id,
             leg_id,
-            affirm.party,
-            pending,
-        ));
+            party: affirm.party,
+            pending_affirms: pending,
+        });
 
         Ok(())
     }
@@ -1856,7 +1987,7 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::AccountAssetFrozen
             );
             // Deposit the transaction amount into the receiver's account.
-            Self::account_deposit_amount_incoming(&leg.receiver, asset_id, state.receiver_amount);
+            Self::account_deposit_amount_incoming(leg.receiver, asset_id, state.receiver_amount);
         }
         Ok(())
     }
@@ -1918,7 +2049,7 @@ impl<T: Config> Pallet<T> {
         if let Some(leg_state) = TxLegStates::<T>::take(transaction_id, leg_id) {
             for (asset_id, state) in leg_state.asset_state {
                 // Deposit the transaction amount back into the sender's incoming account.
-                Self::account_deposit_amount_incoming(&leg.sender, asset_id, state.sender_amount);
+                Self::account_deposit_amount_incoming(leg.sender, asset_id, state.sender_amount);
             }
         }
 
@@ -1943,12 +2074,20 @@ impl<T: Config> Pallet<T> {
         let (status, event) = if is_execute {
             (
                 TransactionStatus::Executed(block),
-                Event::<T>::TransactionExecuted(caller_did, transaction_id, memo),
+                Event::<T>::TransactionExecuted {
+                    caller_did,
+                    transaction_id,
+                    memo,
+                },
             )
         } else {
             (
                 TransactionStatus::Rejected(block),
-                Event::<T>::TransactionRejected(caller_did, transaction_id, memo),
+                Event::<T>::TransactionRejected {
+                    caller_did,
+                    transaction_id,
+                    memo,
+                },
             )
         };
 
@@ -1966,7 +2105,7 @@ impl<T: Config> Pallet<T> {
 
     /// Subtract the `amount` from the confidential account balance.
     fn account_withdraw_amount(
-        account: &ConfidentialAccount,
+        account: ConfidentialAccount,
         asset_id: AssetId,
         amount: CipherText,
     ) -> DispatchResult {
@@ -1982,15 +2121,18 @@ impl<T: Config> Pallet<T> {
                 }
             },
         )?;
-        Self::deposit_event(Event::<T>::AccountWithdraw(
-            *account, asset_id, amount, balance,
-        ));
+        Self::deposit_event(Event::<T>::AccountWithdraw {
+            account,
+            asset_id,
+            amount,
+            balance,
+        });
         Ok(())
     }
 
     /// Add the `amount` to the confidential account's balance.
     fn account_deposit_amount(
-        account: &ConfidentialAccount,
+        account: ConfidentialAccount,
         asset_id: AssetId,
         amount: CipherText,
     ) -> DispatchResult {
@@ -2004,15 +2146,18 @@ impl<T: Config> Pallet<T> {
                 amount
             }
         });
-        Self::deposit_event(Event::<T>::AccountDeposit(
-            *account, asset_id, amount, balance,
-        ));
+        Self::deposit_event(Event::<T>::AccountDeposit {
+            account,
+            asset_id,
+            amount,
+            balance,
+        });
         Ok(())
     }
 
     /// Add the `amount` to the confidential account's `IncomingBalance` accumulator.
     fn account_deposit_amount_incoming(
-        account: &ConfidentialAccount,
+        account: ConfidentialAccount,
         asset_id: AssetId,
         amount: CipherText,
     ) {
@@ -2029,12 +2174,12 @@ impl<T: Config> Pallet<T> {
                     }
                 }
             });
-        Self::deposit_event(Event::<T>::AccountDepositIncoming(
-            *account,
+        Self::deposit_event(Event::<T>::AccountDepositIncoming {
+            account,
             asset_id,
             amount,
             incoming_balance,
-        ));
+        });
     }
 
     fn get_seed(update: bool) -> [u8; 32] {
