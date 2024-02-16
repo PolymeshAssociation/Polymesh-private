@@ -141,7 +141,7 @@ pub async fn get_asset_id(res: &mut TransactionResults) -> Result<Option<AssetId
         for rec in &events.0 {
             match &rec.event {
                 RuntimeEvent::ConfidentialAsset(
-                    ConfidentialAssetEvent::ConfidentialAssetCreated(_, asset, _),
+                    ConfidentialAssetEvent::AssetCreated(_, asset, _),
                 ) => {
                     return Some(*asset);
                 }

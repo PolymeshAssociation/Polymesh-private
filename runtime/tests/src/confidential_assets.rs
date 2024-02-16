@@ -61,7 +61,6 @@ fn issuers_can_create_confidential_tokens() {
         let token_with_zero_supply = ConfidentialAssetDetails {
             owner_did: owner.did,
             total_supply: Zero::zero(),
-            ticker: None,
             data: Default::default(),
         };
         assert_eq!(
@@ -82,7 +81,6 @@ fn issuers_can_create_confidential_tokens() {
         let token_with_zero_supply = ConfidentialAssetDetails {
             owner_did: owner.did,
             total_supply: Zero::zero(),
-            ticker: None,
             data: Default::default(),
         };
 
@@ -115,7 +113,6 @@ fn issuers_can_create_and_mint_tokens() {
         let token = ConfidentialAssetDetails {
             owner_did: owner.did(),
             total_supply,
-            ticker: None,
             data: Default::default(),
         };
 
