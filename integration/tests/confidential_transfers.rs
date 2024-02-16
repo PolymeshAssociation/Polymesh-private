@@ -190,7 +190,7 @@ pub async fn get_transaction_affirmed(
                 RuntimeEvent::ConfidentialAsset(ConfidentialAssetEvent::TransactionAffirmed {
                     transaction_id,
                     leg_id,
-                    parity: AffirmParty::Sender(transfers),
+                    party: AffirmParty::Sender(transfers),
                     ..
                 }) => {
                     return Some((*transaction_id, *leg_id, Some(transfers.clone())));
