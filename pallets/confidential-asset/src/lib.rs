@@ -1343,12 +1343,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::TotalSupplyAboveConfidentialBalanceLimit
         );
 
-        // Ensure the confidential account's balance has been initialized.
-        ensure!(
-            AccountDid::<T>::contains_key(&account),
-            Error::<T>::ConfidentialAccountMissing
-        );
-
         let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's confidential account.
         Self::account_deposit_amount(account, asset_id, enc_issued_amount)?;
