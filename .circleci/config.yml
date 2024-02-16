@@ -14,7 +14,7 @@ commands:
     steps:
       - restore_cache:
           name: Restore sccache cache
-          key: sccache-cache-stable-v1-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
       - run:
           name: Show cache size
           command: /usr/local/cargo/bin/sccache -s
