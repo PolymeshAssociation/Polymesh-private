@@ -1683,7 +1683,7 @@ impl<T: Config> Pallet<T> {
         legs: BoundedVec<TransactionLeg<T>, T::MaxNumberOfLegs>,
         memo: Option<Memo>,
     ) -> Result<TransactionId, DispatchError> {
-        // Ensure transaction does not have too many legs.
+        // Ensure transaction has at least one leg.
         ensure!(legs.len() > 0, Error::<T>::TransactionNoLegs);
 
         // Ensure venue exists and the caller is its creator.
