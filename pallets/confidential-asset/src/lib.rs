@@ -662,8 +662,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        /// Mediator account hasn't been created yet.
-        AuditorAccountMissing,
+        /// Mediator identity doesn't exist.
+        MediatorIdentityInvalid,
         /// Confidential account hasn't been created yet.
         ConfidentialAccountMissing,
         /// Confidential account is frozen for the asset.
@@ -678,48 +678,46 @@ pub mod pallet {
         AlreadyFrozen,
         /// Confidential asset wasn't frozen.
         NotFrozen,
-        /// A required auditor/mediator is missing.
-        RequiredAssetAuditorMissing,
         /// The number of confidential asset auditors doesn't meet the minimum requirement.
         NotEnoughAssetAuditors,
         /// Asset or leg has too many auditors.
         TooManyAuditors,
         /// Asset or leg has too many mediators.
         TooManyMediators,
-        /// Confidential mediator account already created.
-        AuditorAccountAlreadyCreated,
         /// Confidential account already created.
         ConfidentialAccountAlreadyCreated,
-        /// Confidential account's balance already initialized.
-        ConfidentialAccountAlreadyInitialized,
-        /// Confidential account isn't a valid CompressedEncryptionPubKey.
-        InvalidConfidentialAccount,
-        /// Mediator account isn't a valid CompressedEncryptionPubKey.
-        InvalidAuditorAccount,
         /// The balance values does not fit a confidential balance.
         TotalSupplyAboveConfidentialBalanceLimit,
-        /// The user is not authorized.
-        Unauthorized,
+        /// The caller isn't the asset owner.
+        NotAssetOwner,
+        /// The caller isn't the venue owner.
+        NotVenueOwner,
+        /// The caller isn't the account owner.
+        NotAccountOwner,
+        /// The caller is not a party of the transaction.
+        CallerNotPartyOfTransaction,
         /// The asset id is not a registered confidential asset.
         UnknownConfidentialAsset,
         /// The confidential asset has already been created.
         ConfidentialAssetAlreadyCreated,
         /// A confidential asset's total supply can't go above `T::MaxTotalSupply`.
         TotalSupplyOverLimit,
-        /// A confidential asset's total supply must be positive.
-        TotalSupplyMustBePositive,
+        /// The amount can't be zero.
+        AmountMustBeNonZero,
+        /// Can't burn more then the total supply.
+        BurnAmountLargerThenTotalSupply,
         /// The confidential transfer sender proof is invalid.
         InvalidSenderProof,
         /// Venue does not exist.
         InvalidVenue,
         /// Transaction has not been affirmed.
         TransactionNotAffirmed,
+        /// The sender must affirm the leg before the receiver/mediator.
+        SenderMustAffirmFirst,
         /// Transaction has already been affirmed.
         TransactionAlreadyAffirmed,
         /// Venue does not have required permissions.
         UnauthorizedVenue,
-        /// Transaction failed to execute.
-        TransactionFailed,
         /// Legs count should matches with the total number of legs in the transaction.
         LegCountTooSmall,
         /// Transaction is unknown.
@@ -1008,8 +1006,9 @@ pub mod pallet {
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
-        /// - `Unauthorized` if origin is not the owner of the asset.
-        /// - `TotalSupplyMustBePositive` if `amount` is zero.
+        /// - `NotAccountOwner` if origin is not the owner of the `account`.
+        /// - `NotAssetOwner` if origin is not the owner of the asset.
+        /// - `AmountMustBeNonZero` if `amount` is zero.
         /// - `TotalSupplyAboveConfidentialBalanceLimit` if `total_supply` exceeds the confidential balance limit.
         /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
         #[pallet::call_index(3)]
@@ -1230,8 +1229,9 @@ pub mod pallet {
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
-        /// - `Unauthorized` if origin is not the owner of the asset.
-        /// - `TotalSupplyMustBePositive` if `amount` is zero.
+        /// - `NotAccountOwner` if origin is not the owner of the `account`.
+        /// - `NotAssetOwner` if origin is not the owner of the asset.
+        /// - `AmountMustBeNonZero` if `amount` is zero.
         /// - `UnknownConfidentialAsset` The asset_id is not a confidential asset.
         #[pallet::call_index(16)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
@@ -1288,8 +1288,11 @@ impl<T: Config> Pallet<T> {
         );
 
         // Ensure the mediators exist.
-        for _mediator_did in &auditors.mediators {
-            // TODO: validate mediator identity.
+        for mediator_did in &auditors.mediators {
+            ensure!(
+                <PalletIdentity<T>>::is_identity_exists(mediator_did),
+                Error::<T>::MediatorIdentityInvalid
+            );
         }
 
         // Store asset auditors.
@@ -1318,17 +1321,13 @@ impl<T: Config> Pallet<T> {
         account: ConfidentialAccount,
     ) -> DispatchResult {
         // Ensure `caller_did` owns `account`.
-        let account_did = Self::account_did(&account);
-        ensure!(Some(caller_did) == account_did, Error::<T>::Unauthorized);
+        Self::ensure_account_owner(caller_did, &account)?;
 
         // Ensure the caller is the asset owner and get the asset details.
         let mut details = Self::ensure_asset_owner(asset_id, caller_did)?;
 
         // The mint amount must be positive.
-        ensure!(
-            amount != Zero::zero(),
-            Error::<T>::TotalSupplyMustBePositive
-        );
+        ensure!(amount != Zero::zero(), Error::<T>::AmountMustBeNonZero);
 
         // Ensure the total supply doesn't go above `T::MaxTotalSupply`.
         details.total_supply = details.total_supply.saturating_add(amount);
@@ -1375,23 +1374,19 @@ impl<T: Config> Pallet<T> {
         proof: ConfidentialBurnProof,
     ) -> DispatchResult {
         // Ensure `caller_did` owns `account`.
-        let account_did = Self::account_did(&account);
-        ensure!(Some(caller_did) == account_did, Error::<T>::Unauthorized);
+        Self::ensure_account_owner(caller_did, &account)?;
 
         // Ensure the caller is the asset owner and get the asset details.
         let mut details = Self::ensure_asset_owner(asset_id, caller_did)?;
 
         // The burn amount must be positive.
-        ensure!(
-            amount != Zero::zero(),
-            Error::<T>::TotalSupplyMustBePositive
-        );
+        ensure!(amount != Zero::zero(), Error::<T>::AmountMustBeNonZero);
 
         // Ensure the burn amount is not larger then the total supply.
         details.total_supply = details
             .total_supply
             .checked_sub(amount)
-            .ok_or(Error::<T>::TotalSupplyMustBePositive)?;
+            .ok_or(Error::<T>::BurnAmountLargerThenTotalSupply)?;
 
         // Ensure the issuer has a confidential balance.
         let issuer_balance = Self::account_balance(&account, asset_id)
@@ -1498,9 +1493,8 @@ impl<T: Config> Pallet<T> {
         account: ConfidentialAccount,
         asset_id: AssetId,
     ) -> DispatchResult {
-        let account_did = Self::get_account_did(&account)?;
-        // Ensure the caller is the owner of the confidential account.
-        ensure!(account_did == caller_did, Error::<T>::Unauthorized);
+        // Ensure `caller_did` owns `account`.
+        Self::ensure_account_owner(caller_did, &account)?;
 
         // Take the incoming balance.
         match IncomingBalance::<T>::take(&account, asset_id) {
@@ -1519,9 +1513,8 @@ impl<T: Config> Pallet<T> {
         account: ConfidentialAccount,
         max_updates: u16,
     ) -> DispatchResult {
-        let account_did = Self::get_account_did(&account)?;
-        // Ensure the caller is the owner of the confidential account.
-        ensure!(account_did == caller_did, Error::<T>::Unauthorized);
+        // Ensure `caller_did` owns `account`.
+        Self::ensure_account_owner(caller_did, &account)?;
 
         // Take at most `max_updates` incoming balances.
         let assets = IncomingBalance::<T>::drain_prefix(&account).take(max_updates as _);
@@ -1542,7 +1535,7 @@ impl<T: Config> Pallet<T> {
             .ok_or(Error::<T>::UnknownConfidentialAsset)?;
 
         // Ensure that the caller is the asset owner.
-        ensure!(details.owner_did == caller_did, Error::<T>::Unauthorized);
+        ensure!(details.owner_did == caller_did, Error::<T>::NotAssetOwner);
         Ok(details)
     }
 
@@ -1550,7 +1543,7 @@ impl<T: Config> Pallet<T> {
     fn ensure_venue_creator(id: VenueId, caller_did: IdentityId) -> Result<(), DispatchError> {
         // Get the venue creator.
         let creator_did = Self::venue_creator(id).ok_or(Error::<T>::InvalidVenue)?;
-        ensure!(creator_did == caller_did, Error::<T>::Unauthorized);
+        ensure!(creator_did == caller_did, Error::<T>::NotVenueOwner);
         Ok(())
     }
 
@@ -1814,8 +1807,8 @@ impl<T: Config> Pallet<T> {
                 let sender = leg.sender;
                 let receiver = leg.receiver;
 
-                let sender_did = Self::account_did(&sender);
-                ensure!(Some(caller_did) == sender_did, Error::<T>::Unauthorized);
+                // Ensure `caller_did` owns sender account.
+                Self::ensure_account_owner(caller_did, &sender)?;
 
                 // Ensure the same number of assets.
                 ensure!(
@@ -1862,22 +1855,17 @@ impl<T: Config> Pallet<T> {
                 TxLegStates::<T>::insert(transaction_id, leg_id, leg_state);
             }
             AffirmParty::Receiver => {
-                let receiver_did = Self::account_did(&leg.receiver);
-                ensure!(Some(caller_did) == receiver_did, Error::<T>::Unauthorized);
-                // TODO: Create new error, "Sender hasn't affirmed leg".
+                // Ensure `caller_did` owns receiver account.
+                Self::ensure_account_owner(caller_did, &leg.receiver)?;
                 ensure!(
                     TxLegStates::<T>::contains_key(transaction_id, leg_id),
-                    Error::<T>::TransactionNotAffirmed
+                    Error::<T>::SenderMustAffirmFirst
                 );
             }
             AffirmParty::Mediator => {
-                // TODO: check mediator's did.
-                //let mediator_did = Self::mediator_account_did(mediator);
-                //ensure!(Some(caller_did) == mediator_did, Error::<T>::Unauthorized);
-                // TODO: Create new error, "Sender hasn't affirmed leg".
                 ensure!(
                     TxLegStates::<T>::contains_key(transaction_id, leg_id),
-                    Error::<T>::TransactionNotAffirmed
+                    Error::<T>::SenderMustAffirmFirst
                 );
             }
         }
@@ -1977,7 +1965,7 @@ impl<T: Config> Pallet<T> {
 
         // Take the transaction leg's pending state.
         let leg_state = TxLegStates::<T>::take(transaction_id, leg_id)
-            .ok_or(Error::<T>::TransactionNotAffirmed)?;
+            .ok_or(Error::<T>::SenderMustAffirmFirst)?;
         for (asset_id, state) in leg_state.asset_state {
             // Ensure that the asset isn't frozen.
             ensure!(!Self::asset_frozen(asset_id), Error::<T>::AssetFrozen);
@@ -2000,7 +1988,7 @@ impl<T: Config> Pallet<T> {
         // Check if the caller is a party of the transaction.
         ensure!(
             TransactionParties::<T>::get(transaction_id, caller_did),
-            Error::<T>::Unauthorized
+            Error::<T>::CallerNotPartyOfTransaction
         );
 
         // Take transaction legs.
@@ -2101,6 +2089,16 @@ impl<T: Config> Pallet<T> {
 
     pub fn get_account_did(account: &ConfidentialAccount) -> Result<IdentityId, DispatchError> {
         Self::account_did(account).ok_or_else(|| Error::<T>::ConfidentialAccountMissing.into())
+    }
+
+    pub fn ensure_account_owner(
+        caller_did: IdentityId,
+        account: &ConfidentialAccount,
+    ) -> DispatchResult {
+        let account_did = Self::get_account_did(account)?;
+        // Ensure the caller is the owner of the confidential account.
+        ensure!(account_did == caller_did, Error::<T>::NotAccountOwner);
+        Ok(())
     }
 
     /// Subtract the `amount` from the confidential account balance.
