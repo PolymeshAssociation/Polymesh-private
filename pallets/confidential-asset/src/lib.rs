@@ -30,7 +30,9 @@ use pallet_base::try_next_post;
 use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
-use polymesh_host_functions::{VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest};
+use polymesh_host_functions::{
+    BatchVerify, VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest,
+};
 use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
@@ -1777,9 +1779,16 @@ impl<T: Config> Pallet<T> {
         caller_did: IdentityId,
         transactions: AffirmTransactions<T>,
     ) -> DispatchResultWithPostInfo {
+        let mut batch = None;
         // TODO: Return actual weight.
         for tx in transactions.0 {
-            Self::base_affirm_transaction(caller_did, tx.id, tx.leg)?;
+            Self::base_affirm_transaction(caller_did, tx.id, tx.leg, &mut batch)?;
+        }
+        if let Some(batch) = batch {
+            let valid = batch
+                .finalize()
+                .map_err(|_| Error::<T>::InvalidSenderProof)?;
+            ensure!(valid, Error::<T>::InvalidSenderProof);
         }
         Ok(().into())
     }
@@ -1788,6 +1797,7 @@ impl<T: Config> Pallet<T> {
         caller_did: IdentityId,
         transaction_id: TransactionId,
         affirm: AffirmLeg<T>,
+        batch: &mut Option<BatchVerify>,
     ) -> DispatchResult {
         let leg_id = affirm.leg_id;
         let leg = TransactionLegs::<T>::get(transaction_id, leg_id)
@@ -1836,8 +1846,12 @@ impl<T: Config> Pallet<T> {
                         seed: Self::get_seed(true),
                     };
 
-                    // Verify the sender's proof.
-                    req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+                    // Create a batch if this is the first proof.
+                    let batch = batch.get_or_insert_with(|| BatchVerify::create());
+                    // Submit proof to the batch for verification.
+                    batch
+                        .submit_transfer_request(req)
+                        .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
                     // Withdraw the transaction amount when the sender affirms.
                     Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
