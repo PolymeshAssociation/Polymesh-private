@@ -293,7 +293,3 @@ workflows:
             - DockerHub
           requires:
             - build
-          filters:
-            branches:
-              only:
-                - develop
