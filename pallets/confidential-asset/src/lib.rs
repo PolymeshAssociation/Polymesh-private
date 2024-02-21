@@ -1898,8 +1898,11 @@ impl<T: Config> Pallet<T> {
         let details =
             <Transactions<T>>::take(transaction_id).ok_or(Error::<T>::UnknownTransaction)?;
 
-        // Ensure the caller is the venue creator.
-        Self::ensure_venue_creator(details.venue_id, caller_did)?;
+        // Check if the caller is a party of the transaction or the venue creator.
+        if !TransactionParties::<T>::get(transaction_id, caller_did) {
+            Self::ensure_venue_creator(details.venue_id, caller_did)
+                .map_err(|_| Error::<T>::CallerNotPartyOfTransaction)?;
+        }
 
         // Take transaction legs.
         let legs = TransactionLegs::<T>::drain_prefix(transaction_id).collect::<Vec<_>>();
