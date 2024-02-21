@@ -678,8 +678,6 @@ pub mod pallet {
         AlreadyFrozen,
         /// Confidential asset wasn't frozen.
         NotFrozen,
-        /// The number of confidential asset auditors doesn't meet the minimum requirement.
-        NotEnoughAssetAuditors,
         /// Asset or leg has too many auditors.
         TooManyAuditors,
         /// Asset or leg has too many mediators.
@@ -975,13 +973,15 @@ pub mod pallet {
             Self::base_create_account(caller_did, account)
         }
 
-        /// Initializes a new confidential security token.
-        /// Makes the initiating account the owner of the security token
-        /// & the balance of the owner is set to total zero. To set to total supply, `mint` should
-        /// be called after a successful call of this function.
+        /// Creates a new confidential asset.
+        /// The caller's identity is the issuer of the new confidential asset.
+        ///
+        /// It is recommended to set at least one asset auditor.
         ///
         /// # Arguments
-        /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
+        /// * `origin` - The asset issuer.
+        /// * `data` - On-chain definition of the asset.
+        /// * `auditors` - The asset auditors that will have access to transfer amounts of this asset.
         ///
         /// # Errors
         /// - `BadOrigin` if not signed.
@@ -999,7 +999,7 @@ pub mod pallet {
         /// Mint more assets into the asset issuer's `account`.
         ///
         /// # Arguments
-        /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
+        /// * `origin` - Must be the asset issuer.
         /// * `asset_id` - the asset_id symbol of the token.
         /// * `amount` - amount of tokens to mint.
         /// * `account` - the asset isser's confidential account to receive the minted assets.
@@ -1026,7 +1026,6 @@ pub mod pallet {
         /// Applies any incoming balance to the confidential account balance.
         ///
         /// # Arguments
-        /// * `origin` - contains the secondary key of the caller (i.e who signed the transaction to execute this function).
         /// * `account` - the confidential account (Elgamal public key) of the `origin`.
         /// * `asset_id` - AssetId of confidential account.
         ///
@@ -1055,6 +1054,7 @@ pub mod pallet {
         /// Enables or disabled venue filtering for a token.
         ///
         /// # Arguments
+        /// * `origin` - Must be the asset issuer.
         /// * `asset_id` - AssetId of the token in question.
         /// * `enabled` - Boolean that decides if the filtering should be enabled.
         #[pallet::call_index(6)]
@@ -1070,6 +1070,8 @@ pub mod pallet {
 
         /// Allows additional venues to create instructions involving an asset.
         ///
+        /// # Arguments
+        /// * `origin` - Must be the asset issuer.
         /// * `asset_id` - AssetId of the token in question.
         /// * `venues` - Array of venues that are allowed to create instructions for the token in question.
         #[pallet::call_index(7)]
@@ -1085,6 +1087,8 @@ pub mod pallet {
 
         /// Revokes permission given to venues for creating instructions involving a particular asset.
         ///
+        /// # Arguments
+        /// * `origin` - Must be the asset issuer.
         /// * `asset_id` - AssetId of the token in question.
         /// * `venues` - Array of venues that are no longer allowed to create instructions for the token in question.
         #[pallet::call_index(8)]
@@ -1280,11 +1284,6 @@ impl<T: Config> Pallet<T> {
         ensure!(
             !Details::<T>::contains_key(asset_id),
             Error::<T>::ConfidentialAssetAlreadyCreated
-        );
-        // Ensure that there is at least one auditor.
-        ensure!(
-            auditors.auditors.len() >= 1,
-            Error::<T>::NotEnoughAssetAuditors
         );
 
         // Ensure the mediators exist.
