@@ -103,6 +103,7 @@ substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkado
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
 confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
 #confidential_assets = { path = "../confidential_assets" }
+curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
 
 [workspace]
 members = [
@@ -335,6 +336,7 @@ sp-transaction-pool = { workspace = true }
 frame-benchmarking = "4.0.0-dev"
 frame-benchmarking-cli = "4.0.0-dev"
 
+curve25519-dalek = { package = "curve25519-dalek-ng", version = "4", default-features = false, features = ["alloc"] }
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0" }
 
