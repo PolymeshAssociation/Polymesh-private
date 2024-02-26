@@ -724,6 +724,8 @@ pub mod pallet {
         UnknownTransactionLeg,
         /// Transaction has no legs.
         TransactionNoLegs,
+        /// Transaction leg has no assets.
+        TransactionLegHashNoAssets,
     }
 
     /// Venue creator.
@@ -1559,6 +1561,9 @@ impl<T: Config> Pallet<T> {
         asset_auditors: &mut BTreeMap<AssetId, ConfidentialAuditors<T>>,
     ) -> Result<TransactionLegDetails<T>, DispatchError> {
         use sp_std::collections::btree_map::Entry;
+
+        // Ensure transaction leg has at least one asset.
+        ensure!(leg.assets.len() > 0, Error::<T>::TransactionLegHashNoAssets);
 
         // leg auditors/mediators.
         let mut leg_auditors = BTreeMap::new();
