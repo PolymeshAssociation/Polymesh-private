@@ -12,6 +12,7 @@ use frame_support::weights::RuntimeDbWeight;
 use frame_system::EnsureRoot;
 use sp_core::crypto::Pair as PairTrait;
 use sp_core::sr25519::Pair;
+use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{
@@ -24,7 +25,6 @@ use sp_runtime::{Perbill, Permill};
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
-use test_client::AccountKeyring;
 
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_balances as balances;
@@ -119,14 +119,23 @@ parameter_types! {
     pub const MaxNumberOfNFTsMoves: u32 = 100;
     pub const MaxNumberOfOffChainAssets: u32 = 10;
     pub const MaxNumberOfVenueSigners: u32 = 50;
+    pub const MaxInstructionMediators: u32 = 4;
+    pub const MaxAssetMediators: u32 = 4;
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
 }
 
-pub type MaxNumberOfConfidentialLegs = ConstSize<10>;
-pub type MaxNumberOfConfidentialAuditors = ConstSize<8>;
-pub type MaxNumberOfConfidentialAssetAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxNumberOfAffirms = ConstSize<10>;
+pub type ConfidentialAssetMaxNumberOfLegs = ConstSize<10>;
+pub type ConfidentialAssetMaxAssetsPerLeg = ConstSize<4>;
+pub type ConfidentialAssetMaxAuditorsPerLeg = ConstSize<{ 4 + 4 }>;
+pub type ConfidentialAssetMaxMediatorsPerLeg = ConstSize<{ 4 * 8 }>;
+pub type ConfidentialAssetMaxVenueAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
+pub type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
 impl TestUtilsFn<AccountId> for Runtime {
@@ -189,7 +198,7 @@ frame_support::construct_runtime!(
         ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event} = 43,
         Relayer: pallet_relayer::{Pallet, Call, Storage, Event<T>} = 44,
         Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 46,
-        PolymeshContracts: polymesh_contracts::{Pallet, Call, Storage, Event, Config} = 47,
+        PolymeshContracts: polymesh_contracts::{Pallet, Call, Storage, Event<T>, Config<T>} = 47,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 48,
         TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
         Nft: pallet_nft::{Pallet, Call, Storage, Event} = 51,
@@ -296,9 +305,16 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
-    type MaxNumberOfLegs = MaxNumberOfConfidentialLegs;
-    type MaxNumberOfAuditors = MaxNumberOfConfidentialAuditors;
-    type MaxNumberOfAssetAuditors = MaxNumberOfConfidentialAssetAuditors;
+    type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
+    type MaxNumberOfAffirms = ConfidentialAssetMaxNumberOfAffirms;
+    type MaxNumberOfLegs = ConfidentialAssetMaxNumberOfLegs;
+    type MaxAssetsPerLeg = ConfidentialAssetMaxAssetsPerLeg;
+    type MaxAuditorsPerLeg = ConfidentialAssetMaxAuditorsPerLeg;
+    type MaxMediatorsPerLeg = ConfidentialAssetMaxMediatorsPerLeg;
+    type MaxVenueAuditors = ConfidentialAssetMaxVenueAuditors;
+    type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
+    type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
+    type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {

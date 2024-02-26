@@ -94,11 +94,22 @@ sp-version = { workspace = true, default-features = false }
 polymesh-build-tool = { workspace = true, default-features = false }
 
 [features]
-default = ["std", "equalize"]
+default = ["std", "equalize", "u64_backend"]
 equalize = []
 
 # Backends
-u64_backend = ["polymesh-primitives/u64_backend"]
+u64_backend = [
+	"polymesh-primitives/u64_backend",
+	"pallet-confidential-asset/u64_backend",
+]
+simd_backend = [
+	#"polymesh-primitives/simd_backend",
+	"pallet-confidential-asset/simd_backend",
+]
+avx2_backend = [
+	#"polymesh-primitives/avx2_backend",
+	"pallet-confidential-asset/avx2_backend",
+]
 
 migration-dry-run = []
 no_std = [
@@ -107,7 +118,6 @@ no_std = [
 ]
 std = [
 		"polymesh-build-tool/std",
-    "u64_backend",
     "codec/std",
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",

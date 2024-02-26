@@ -1,0 +1,38 @@
+[package]
+name = "polymesh-host-functions"
+version = "0.1.0"
+authors = [ "Polymesh Association" ]
+license-file = "../LICENSE"
+repository = "https://github.com/PolymeshAssociation/Polymesh"
+description = "Polymesh Primitives"
+edition = "2021"
+
+[dependencies]
+# Crypto
+rand_core = { workspace = true, default-features = false }
+rand_chacha = { workspace = true, default-features = false }
+confidential_assets = { workspace = true, default-features = false }
+
+# Substrate
+codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+sp-std = { workspace = true, default-features = false }
+sp-runtime-interface = { workspace = true, default-features = false }
+
+[features]
+default = ["std", "u64_backend"]
+
+# Backends
+u64_backend = ["confidential_assets/u64_backend"]
+simd_backend = ["confidential_assets/simd_backend"]
+avx2_backend = ["confidential_assets/avx2_backend"]
+
+no_std = ["confidential_assets/no_std", "u64_backend"]
+std = [
+    "rand_core/std",
+    "rand_chacha/std",
+    "confidential_assets/std",
+    "codec/std",
+    "sp-std/std",
+    "sp-runtime-interface/std",
+]
+runtime-benchmarks = []

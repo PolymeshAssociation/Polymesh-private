@@ -5,13 +5,10 @@ pub mod time {
     use polymesh_primitives::{BlockNumber, Moment};
 
     #[cfg(feature = "ci-runtime")]
-    pub const MILLISECS_PER_BLOCK: Moment = 500;
+    pub const MILLISECS_PER_BLOCK: Moment = 2000;
     #[cfg(not(feature = "ci-runtime"))]
     pub const MILLISECS_PER_BLOCK: Moment = 6000;
     pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
-    #[cfg(feature = "ci-runtime")]
-    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = MINUTES;
-    #[cfg(not(feature = "ci-runtime"))]
     pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 30 * MINUTES;
     pub const EPOCH_DURATION_IN_SLOTS: u64 = {
         const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;

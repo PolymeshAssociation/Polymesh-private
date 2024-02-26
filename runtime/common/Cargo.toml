@@ -1,0 +1,54 @@
+[package]
+name = "polymesh-runtime-common"
+version = "1.0.0"
+authors = ["PolymeshAssociation"]
+edition = "2021"
+
+[dependencies]
+polymesh-common-utilities = { workspace = true, default-features = false }
+polymesh-primitives = { workspace = true, default-features = false }
+
+pallet-balances = { workspace = true, default-features = false  }
+pallet-bridge = { workspace = true, default-features = false }
+pallet-committee = { workspace = true, default-features = false }
+pallet-identity = { workspace = true, default-features = false  }
+pallet-multisig = { workspace = true, default-features = false }
+pallet-relayer = { workspace = true, default-features = false }
+pallet-test-utils = { workspace = true, default-features = false }
+
+# RPC
+pallet-group-rpc-runtime-api = { workspace = true, default-features = false}
+
+# General
+smallvec = "1.4.0"
+
+# Substrate
+codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+sp-std = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+
+pallet-authorship = { workspace = true, default-features = false }
+
+[features]
+equalize = []
+only-staking = []
+default = ["std", "equalize"]
+runtime-benchmarks = []
+testing = []
+no_std = []
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-authorship/std",
+    "pallet-balances/std",
+    "pallet-group-rpc-runtime-api/std",
+    "pallet-identity/std",
+    "pallet-multisig/std",
+    "polymesh-common-utilities/std",
+    "polymesh-primitives/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]
