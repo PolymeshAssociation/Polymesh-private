@@ -6155,7 +6155,7 @@ dependencies = [
  "polymesh-node-rpc",
  "polymesh-primitives",
  "polymesh-private-runtime-develop",
- "polymesh-private-runtime-mainnet",
+ "polymesh-private-runtime-production",
  "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "rustc-hex",
@@ -6285,7 +6285,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "polymesh-private-runtime-mainnet"
+name = "polymesh-private-runtime-production"
 version = "0.1.0"
 dependencies = [
  "frame-executive",

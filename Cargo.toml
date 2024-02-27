@@ -110,7 +110,7 @@ members = [
   "pallets/confidential-asset",
   "runtime/common",
   "runtime/develop",
-  "runtime/mainnet",
+  "runtime/production",
   "runtime/tests",
 	"host-functions",
 ]
@@ -275,7 +275,7 @@ polymesh-node-rpc = { workspace = true }
 
 # Runtimes
 polymesh-private-runtime-develop = { path = "runtime/develop" }
-polymesh-private-runtime-mainnet = { path = "runtime/mainnet" }
+polymesh-private-runtime-production = { path = "runtime/production" }
 
 ## General
 futures = "0.3.21"
@@ -347,17 +347,17 @@ default = ["std", "u64_backend"]
 u64_backend = [
 	"polymesh-host-functions/u64_backend",
 	"polymesh-private-runtime-develop/u64_backend",
-	"polymesh-private-runtime-mainnet/u64_backend",
+	"polymesh-private-runtime-production/u64_backend",
 ]
 simd_backend = [
 	"polymesh-host-functions/simd_backend",
 	"polymesh-private-runtime-develop/simd_backend",
-	"polymesh-private-runtime-mainnet/simd_backend",
+	"polymesh-private-runtime-production/simd_backend",
 ]
 avx2_backend = [
 	"polymesh-host-functions/avx2_backend",
 	"polymesh-private-runtime-develop/avx2_backend",
-	"polymesh-private-runtime-mainnet/avx2_backend",
+	"polymesh-private-runtime-production/avx2_backend",
 ]
 
 running-ci = [ "polymesh-private-runtime-develop/running-ci" ]

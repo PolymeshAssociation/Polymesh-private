@@ -18,8 +18,8 @@
 use crate::chain_spec;
 use crate::cli::{Cli, Subcommand};
 use crate::service::{
-    self, general_chain_ops, mainnet_chain_ops, new_partial, FullClient, FullServiceComponents,
-    GeneralExecutor, IsNetwork, MainnetExecutor, Network, NewChainOps,
+    self, general_chain_ops, new_partial, production_chain_ops, FullClient, FullServiceComponents,
+    GeneralExecutor, IsNetwork, Network, NewChainOps, ProductionExecutor,
 };
 use frame_benchmarking_cli::*;
 use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
@@ -63,13 +63,15 @@ impl SubstrateCli for Cli {
         Ok(match id {
             "dev" => Box::new(chain_spec::general::develop_config()),
             "local" => Box::new(chain_spec::general::local_config()),
-            "mainnet-dev" => Box::new(chain_spec::mainnet::develop_config()),
-            "mainnet-local" => Box::new(chain_spec::mainnet::local_config()),
-            "mainnet-bootstrap" => Box::new(chain_spec::mainnet::bootstrap_config()),
-            "MAINNET" | "mainnet" => Box::new(chain_spec::mainnet::ChainSpec::from_json_bytes(
-                &include_bytes!("./chain_specs/mainnet_raw.json")[..],
-            )?),
-            path => Box::new(chain_spec::mainnet::ChainSpec::from_json_file(
+            "production-dev" => Box::new(chain_spec::production::develop_config()),
+            "production-local" => Box::new(chain_spec::production::local_config()),
+            "production-bootstrap" => Box::new(chain_spec::production::bootstrap_config()),
+            "PRODUCTION" | "production" => {
+                Box::new(chain_spec::production::ChainSpec::from_json_bytes(
+                    &include_bytes!("./chain_specs/production_raw.json")[..],
+                )?)
+            }
+            path => Box::new(chain_spec::production::ChainSpec::from_json_file(
                 std::path::PathBuf::from(path),
             )?),
         })
@@ -77,7 +79,7 @@ impl SubstrateCli for Cli {
 
     fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
         match chain_spec.network() {
-            Network::Mainnet => &polymesh_private_runtime_mainnet::runtime::VERSION,
+            Network::Production => &polymesh_private_runtime_production::runtime::VERSION,
             Network::Other => &polymesh_private_runtime_develop::runtime::VERSION,
         }
     }
@@ -102,7 +104,7 @@ pub fn run() -> Result<()> {
 
             runner.run_node_until_exit(|config| async move {
                 match network {
-                    Network::Mainnet => service::mainnet_new_full(config),
+                    Network::Production => service::production_new_full(config),
                     Network::Other => service::general_new_full(config),
                 }
                 .map_err(sc_cli::Error::Service)
@@ -227,8 +229,8 @@ fn async_run<G, H>(
         NewChainOps<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>,
         Configuration,
     ) -> sc_cli::Result<(G, TaskManager)>,
-    mainnet: impl FnOnce(
-        NewChainOps<polymesh_private_runtime_mainnet::RuntimeApi, MainnetExecutor>,
+    production: impl FnOnce(
+        NewChainOps<polymesh_private_runtime_production::RuntimeApi, ProductionExecutor>,
         Configuration,
     ) -> sc_cli::Result<(H, TaskManager)>,
 ) -> sc_service::Result<(), sc_cli::Error>
@@ -241,8 +243,8 @@ where
         Network::Other => {
             runner.async_run(|mut config| general(general_chain_ops(&mut config)?, config))
         }
-        Network::Mainnet => {
-            runner.async_run(|mut config| mainnet(mainnet_chain_ops(&mut config)?, config))
+        Network::Production => {
+            runner.async_run(|mut config| production(production_chain_ops(&mut config)?, config))
         }
     }
 }
