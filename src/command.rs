@@ -67,9 +67,10 @@ impl SubstrateCli for Cli {
             "production-local" => Box::new(chain_spec::production::local_config()),
             "production-bootstrap" => Box::new(chain_spec::production::bootstrap_config()),
             "PRODUCTION" | "production" => {
-                Box::new(chain_spec::production::ChainSpec::from_json_bytes(
-                    &include_bytes!("./chain_specs/production_raw.json")[..],
-                )?)
+                return Err(
+                    "Chain spec file required to connect to a Polymesh Private Production network"
+                        .into(),
+                );
             }
             path => Box::new(chain_spec::production::ChainSpec::from_json_file(
                 std::path::PathBuf::from(path),
