@@ -77,8 +77,8 @@ impl SubstrateCli for Cli {
 
     fn native_runtime_version(chain_spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
         match chain_spec.network() {
-            Network::Mainnet => &polymesh_runtime_mainnet::runtime::VERSION,
-            Network::Other => &polymesh_runtime_develop::runtime::VERSION,
+            Network::Mainnet => &polymesh_private_runtime_mainnet::runtime::VERSION,
+            Network::Other => &polymesh_private_runtime_develop::runtime::VERSION,
         }
     }
 }
@@ -177,9 +177,10 @@ pub fn run() -> Result<()> {
                     }
                     (BenchmarkCmd::Block(cmd), Network::Other) => {
                         let FullServiceComponents { client, .. } =
-                            new_partial::<polymesh_runtime_develop::RuntimeApi, GeneralExecutor>(
-                                &mut config,
-                            )?;
+                            new_partial::<
+                                polymesh_private_runtime_develop::RuntimeApi,
+                                GeneralExecutor,
+                            >(&mut config)?;
                         cmd.run(client)
                     }
                     #[cfg(not(feature = "runtime-benchmarks"))]
@@ -191,9 +192,10 @@ pub fn run() -> Result<()> {
                     (BenchmarkCmd::Storage(cmd), Network::Other) => {
                         let FullServiceComponents {
                             client, backend, ..
-                        } = new_partial::<polymesh_runtime_develop::RuntimeApi, GeneralExecutor>(
-                            &mut config,
-                        )?;
+                        } = new_partial::<
+                            polymesh_private_runtime_develop::RuntimeApi,
+                            GeneralExecutor,
+                        >(&mut config)?;
                         let db = backend.expose_db();
                         let storage = backend.expose_storage();
 
@@ -202,7 +204,7 @@ pub fn run() -> Result<()> {
                     (BenchmarkCmd::Overhead(_cmd), Network::Other) => {
                         unimplemented!();
                         /*
-                                    let FullServiceComponents { client, .. } = new_partial::<polymesh_runtime_develop::RuntimeApi, GeneralExecutor>(&mut config)?;
+                                    let FullServiceComponents { client, .. } = new_partial::<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>(&mut config)?;
                                     let ext_builder = BenchmarkExtrinsicBuilder::new(client.clone());
 
                         cmd.run(config, client, inherent_benchmark_data()?, Arc::new(ext_builder))
@@ -222,11 +224,11 @@ fn async_run<G, H>(
     cli: &impl sc_cli::SubstrateCli,
     cmd: &impl sc_cli::CliConfiguration,
     general: impl FnOnce(
-        NewChainOps<polymesh_runtime_develop::RuntimeApi, GeneralExecutor>,
+        NewChainOps<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>,
         Configuration,
     ) -> sc_cli::Result<(G, TaskManager)>,
     mainnet: impl FnOnce(
-        NewChainOps<polymesh_runtime_mainnet::RuntimeApi, MainnetExecutor>,
+        NewChainOps<polymesh_private_runtime_mainnet::RuntimeApi, MainnetExecutor>,
         Configuration,
     ) -> sc_cli::Result<(H, TaskManager)>,
 ) -> sc_service::Result<(), sc_cli::Error>

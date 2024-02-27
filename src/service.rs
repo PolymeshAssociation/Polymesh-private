@@ -5,8 +5,8 @@ use polymesh_node_rpc as node_rpc;
 pub use polymesh_primitives::{
     crypto::native_schnorrkel, AccountId, Block, IdentityId, Index as Nonce, Moment, Ticker,
 };
-pub use polymesh_runtime_develop;
-pub use polymesh_runtime_mainnet;
+pub use polymesh_private_runtime_develop;
+pub use polymesh_private_runtime_mainnet;
 use prometheus_endpoint::Registry;
 use sc_client_api::BlockBackend;
 use sc_consensus_slots::SlotProportion;
@@ -69,10 +69,10 @@ type EHF = (
 
 native_executor_instance!(
     GeneralExecutor,
-    polymesh_runtime_develop,
+    polymesh_private_runtime_develop,
     (EHF, native_schnorrkel::HostFunctions)
 );
-native_executor_instance!(MainnetExecutor, polymesh_runtime_mainnet, EHF);
+native_executor_instance!(MainnetExecutor, polymesh_private_runtime_mainnet, EHF);
 
 /// A set of APIs that polkadot-like runtimes must implement.
 pub trait RuntimeApiCollection:
@@ -591,14 +591,20 @@ type TaskResult = Result<TaskManager, ServiceError>;
 
 /// Create a new General node service for a full node.
 pub fn general_new_full(config: Configuration) -> TaskResult {
-    new_full_base::<polymesh_runtime_develop::RuntimeApi, GeneralExecutor, _>(config, |_, _| ())
-        .map(|data| data.task_manager)
+    new_full_base::<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor, _>(
+        config,
+        |_, _| (),
+    )
+    .map(|data| data.task_manager)
 }
 
 /// Create a new Mainnet service for a full node.
 pub fn mainnet_new_full(config: Configuration) -> TaskResult {
-    new_full_base::<polymesh_runtime_mainnet::RuntimeApi, MainnetExecutor, _>(config, |_, _| ())
-        .map(|data| data.task_manager)
+    new_full_base::<polymesh_private_runtime_mainnet::RuntimeApi, MainnetExecutor, _>(
+        config,
+        |_, _| (),
+    )
+    .map(|data| data.task_manager)
 }
 
 pub type NewChainOps<R, D> = (
@@ -628,12 +634,14 @@ where
 
 pub fn general_chain_ops(
     config: &mut Configuration,
-) -> Result<NewChainOps<polymesh_runtime_develop::RuntimeApi, GeneralExecutor>, ServiceError> {
+) -> Result<NewChainOps<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>, ServiceError>
+{
     chain_ops::<_, _>(config)
 }
 
 pub fn mainnet_chain_ops(
     config: &mut Configuration,
-) -> Result<NewChainOps<polymesh_runtime_mainnet::RuntimeApi, MainnetExecutor>, ServiceError> {
+) -> Result<NewChainOps<polymesh_private_runtime_mainnet::RuntimeApi, MainnetExecutor>, ServiceError>
+{
     chain_ops::<_, _>(config)
 }

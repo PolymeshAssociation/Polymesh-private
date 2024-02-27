@@ -1,5 +1,5 @@
 [package]
-name = "polymesh-runtime-develop"
+name = "polymesh-private-runtime-develop"
 version = "0.1.0"
 authors = ["PolymeshAssociation"]
 edition = "2021"

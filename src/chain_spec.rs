@@ -574,7 +574,7 @@ fn contracts_call_whitelist() -> Vec<polymesh_contracts::ExtrinsicId> {
 #[cfg(not(feature = "ci-runtime"))]
 pub mod general {
     use super::*;
-    use polymesh_runtime_develop::{self as rt, constants::time};
+    use polymesh_private_runtime_develop::{self as rt, constants::time};
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
 
@@ -725,7 +725,7 @@ pub mod general {
 
 pub mod mainnet {
     use super::*;
-    use polymesh_runtime_mainnet::{self as rt, constants::time};
+    use polymesh_private_runtime_mainnet::{self as rt, constants::time};
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
 
@@ -910,7 +910,7 @@ pub mod mainnet {
 #[cfg(feature = "ci-runtime")]
 pub mod general {
     use super::*;
-    use polymesh_runtime_develop::{self as rt, constants::time};
+    use polymesh_private_runtime_develop::{self as rt, constants::time};
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
 

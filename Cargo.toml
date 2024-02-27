@@ -1,6 +1,6 @@
 [package]
 name = "polymesh-private"
-version = "6.2.0"
+version = "1.0.0"
 authors = ["PolymeshAssociation"]
 build = "build.rs"
 edition = "2021"
@@ -101,8 +101,8 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/p
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
-#confidential_assets = { path = "../confidential_assets" }
+#confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+confidential_assets = { path = "../confidential_assets" }
 curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
 
 [workspace]
@@ -274,8 +274,8 @@ pallet-staking-rpc-runtime-api = { workspace = true }
 polymesh-node-rpc = { workspace = true }
 
 # Runtimes
-polymesh-runtime-develop = { path = "runtime/develop" }
-polymesh-runtime-mainnet = { path = "runtime/mainnet" }
+polymesh-private-runtime-develop = { path = "runtime/develop" }
+polymesh-private-runtime-mainnet = { path = "runtime/mainnet" }
 
 ## General
 futures = "0.3.21"
@@ -346,29 +346,29 @@ default = ["std", "u64_backend"]
 # Backends
 u64_backend = [
 	"polymesh-host-functions/u64_backend",
-	"polymesh-runtime-develop/u64_backend",
-	"polymesh-runtime-mainnet/u64_backend",
+	"polymesh-private-runtime-develop/u64_backend",
+	"polymesh-private-runtime-mainnet/u64_backend",
 ]
 simd_backend = [
 	"polymesh-host-functions/simd_backend",
-	"polymesh-runtime-develop/simd_backend",
-	"polymesh-runtime-mainnet/simd_backend",
+	"polymesh-private-runtime-develop/simd_backend",
+	"polymesh-private-runtime-mainnet/simd_backend",
 ]
 avx2_backend = [
 	"polymesh-host-functions/avx2_backend",
-	"polymesh-runtime-develop/avx2_backend",
-	"polymesh-runtime-mainnet/avx2_backend",
+	"polymesh-private-runtime-develop/avx2_backend",
+	"polymesh-private-runtime-mainnet/avx2_backend",
 ]
 
-running-ci = [ "polymesh-runtime-develop/running-ci" ]
+running-ci = [ "polymesh-private-runtime-develop/running-ci" ]
 default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
-  "polymesh-runtime-develop/runtime-benchmarks",
+  "polymesh-private-runtime-develop/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.
-ci-runtime = [ "polymesh-runtime-develop/ci-runtime" ]
+ci-runtime = [ "polymesh-private-runtime-develop/ci-runtime" ]
 
 std = [
   "polymesh-common-utilities/std",
