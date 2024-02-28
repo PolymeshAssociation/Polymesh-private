@@ -68,7 +68,7 @@ type EHF = (
 );
 
 native_executor_instance!(
-    GeneralExecutor,
+    DevelopExecutor,
     polymesh_private_runtime_develop,
     (EHF, native_schnorrkel::HostFunctions)
 );
@@ -589,9 +589,9 @@ where
 
 type TaskResult = Result<TaskManager, ServiceError>;
 
-/// Create a new General node service for a full node.
-pub fn general_new_full(config: Configuration) -> TaskResult {
-    new_full_base::<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor, _>(
+/// Create a new Develop node service for a full node.
+pub fn develop_new_full(config: Configuration) -> TaskResult {
+    new_full_base::<polymesh_private_runtime_develop::RuntimeApi, DevelopExecutor, _>(
         config,
         |_, _| (),
     )
@@ -632,9 +632,9 @@ where
     Ok((client, backend, import_queue, task_manager))
 }
 
-pub fn general_chain_ops(
+pub fn develop_chain_ops(
     config: &mut Configuration,
-) -> Result<NewChainOps<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>, ServiceError>
+) -> Result<NewChainOps<polymesh_private_runtime_develop::RuntimeApi, DevelopExecutor>, ServiceError>
 {
     chain_ops::<_, _>(config)
 }

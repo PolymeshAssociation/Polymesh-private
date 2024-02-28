@@ -572,7 +572,7 @@ fn contracts_call_whitelist() -> Vec<polymesh_contracts::ExtrinsicId> {
 }
 
 #[cfg(not(feature = "ci-runtime"))]
-pub mod general {
+pub mod develop {
     use super::*;
     use polymesh_private_runtime_develop::{self as rt, constants::time};
 
@@ -908,7 +908,7 @@ pub mod production {
 }
 
 #[cfg(feature = "ci-runtime")]
-pub mod general {
+pub mod develop {
     use super::*;
     use polymesh_private_runtime_develop::{self as rt, constants::time};
 

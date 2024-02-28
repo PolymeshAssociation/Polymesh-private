@@ -18,8 +18,8 @@
 use crate::chain_spec;
 use crate::cli::{Cli, Subcommand};
 use crate::service::{
-    self, general_chain_ops, new_partial, production_chain_ops, FullClient, FullServiceComponents,
-    GeneralExecutor, IsNetwork, Network, NewChainOps, ProductionExecutor,
+    self, develop_chain_ops, new_partial, production_chain_ops, DevelopExecutor, FullClient,
+    FullServiceComponents, IsNetwork, Network, NewChainOps, ProductionExecutor,
 };
 use frame_benchmarking_cli::*;
 use sc_cli::{ChainSpec, Result, RuntimeVersion, SubstrateCli};
@@ -61,8 +61,8 @@ impl SubstrateCli for Cli {
 
     fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
         Ok(match id {
-            "dev" => Box::new(chain_spec::general::develop_config()),
-            "local" => Box::new(chain_spec::general::local_config()),
+            "dev" => Box::new(chain_spec::develop::develop_config()),
+            "local" => Box::new(chain_spec::develop::local_config()),
             "production-dev" => Box::new(chain_spec::production::develop_config()),
             "production-local" => Box::new(chain_spec::production::local_config()),
             "production-bootstrap" => Box::new(chain_spec::production::bootstrap_config()),
@@ -106,7 +106,7 @@ pub fn run() -> Result<()> {
             runner.run_node_until_exit(|config| async move {
                 match network {
                     Network::Production => service::production_new_full(config),
-                    Network::Other => service::general_new_full(config),
+                    Network::Other => service::develop_new_full(config),
                 }
                 .map_err(sc_cli::Error::Service)
             })
@@ -176,13 +176,13 @@ pub fn run() -> Result<()> {
                                 .into());
                         }
 
-                        cmd.run::<Block, service::GeneralExecutor>(config)
+                        cmd.run::<Block, service::DevelopExecutor>(config)
                     }
                     (BenchmarkCmd::Block(cmd), Network::Other) => {
                         let FullServiceComponents { client, .. } =
                             new_partial::<
                                 polymesh_private_runtime_develop::RuntimeApi,
-                                GeneralExecutor,
+                                DevelopExecutor,
                             >(&mut config)?;
                         cmd.run(client)
                     }
@@ -197,7 +197,7 @@ pub fn run() -> Result<()> {
                             client, backend, ..
                         } = new_partial::<
                             polymesh_private_runtime_develop::RuntimeApi,
-                            GeneralExecutor,
+                            DevelopExecutor,
                         >(&mut config)?;
                         let db = backend.expose_db();
                         let storage = backend.expose_storage();
@@ -207,7 +207,7 @@ pub fn run() -> Result<()> {
                     (BenchmarkCmd::Overhead(_cmd), Network::Other) => {
                         unimplemented!();
                         /*
-                                    let FullServiceComponents { client, .. } = new_partial::<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>(&mut config)?;
+                                    let FullServiceComponents { client, .. } = new_partial::<polymesh_private_runtime_develop::RuntimeApi, DevelopExecutor>(&mut config)?;
                                     let ext_builder = BenchmarkExtrinsicBuilder::new(client.clone());
 
                         cmd.run(config, client, inherent_benchmark_data()?, Arc::new(ext_builder))
@@ -226,8 +226,8 @@ pub fn run() -> Result<()> {
 fn async_run<G, H>(
     cli: &impl sc_cli::SubstrateCli,
     cmd: &impl sc_cli::CliConfiguration,
-    general: impl FnOnce(
-        NewChainOps<polymesh_private_runtime_develop::RuntimeApi, GeneralExecutor>,
+    develop: impl FnOnce(
+        NewChainOps<polymesh_private_runtime_develop::RuntimeApi, DevelopExecutor>,
         Configuration,
     ) -> sc_cli::Result<(G, TaskManager)>,
     production: impl FnOnce(
@@ -242,7 +242,7 @@ where
     let runner = cli.create_runner(cmd)?;
     match runner.config().chain_spec.network() {
         Network::Other => {
-            runner.async_run(|mut config| general(general_chain_ops(&mut config)?, config))
+            runner.async_run(|mut config| develop(develop_chain_ops(&mut config)?, config))
         }
         Network::Production => {
             runner.async_run(|mut config| production(production_chain_ops(&mut config)?, config))
