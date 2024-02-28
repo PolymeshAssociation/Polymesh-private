@@ -49,15 +49,15 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 /// Runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("polymesh_dev"),
-    impl_name: create_runtime_str!("polymesh_dev"),
+    spec_name: create_runtime_str!("polymesh_private_dev"),
+    impl_name: create_runtime_str!("polymesh_private_dev"),
     authoring_version: 1,
     // `spec_version: aaa_bbb_ccd` should match node version v`aaa.bbb.cc`
     // N.B. `d` is unpinned from the binary version
-    spec_version: 6_002_000,
+    spec_version: 1_000_000,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 4,
+    transaction_version: 1,
     state_version: 1,
 };
 

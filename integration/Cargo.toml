@@ -8,7 +8,7 @@ members = []
 
 [patch.crates-io]
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "MESH-2112-improve_proofs" }
+confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
 
 [features]
 default = []
