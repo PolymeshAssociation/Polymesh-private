@@ -470,7 +470,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=MESH-2112-improve_proofs#25a298f599b5967d04f1e8116682bc3a919ec54b"
+source = "git+ssh://git@github.com/PolymeshAssociation/confidential_assets.git?branch=main#a05c3822dbfa21634f19ea6901852d4f5acb7efc"
 dependencies = [
  "bincode",
  "bulletproofs",
