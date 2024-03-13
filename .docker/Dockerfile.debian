@@ -16,14 +16,24 @@ RUN ls -a && \
 
 FROM debian:stable-slim
 
+# explicitly set user/group IDs
+RUN set -eux; \
+	groupadd -r polymesh-private --gid=4001; \
+	useradd -r -g polymesh-private --uid=4001 -m -d /opt/polymesh-private polymesh-private; \
+	mkdir -p /opt/polymesh-private; \
+	chown -R polymesh-private:polymesh-private /opt/polymesh-private
+
 COPY --chown=4002:4002 --from=gobuild      /opt/health-check/polymesh-health-check /usr/local/bin/check
 COPY --chown=4002:4002 --from=gobuild      /opt/rotate-keys/polymesh-rotate-keys   /usr/local/bin/rotate
 COPY --chown=4001:4001 ./polymesh-private /usr/local/bin/polymesh-private
+COPY --chown=4001:4001 ./LICENSE.pdf /opt/polymesh-private/LICENSE.pdf
 
 RUN mkdir /var/lib/polymesh-private && \
     chown 4001:4001 /var/lib/polymesh-private
 
 USER 4001:4001
+
+WORKDIR /opt/polymesh-private
 
 ENTRYPOINT ["/usr/local/bin/polymesh-private"]
 CMD [ "-d", "/var/lib/polymesh-private" ]
