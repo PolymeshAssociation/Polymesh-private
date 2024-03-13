@@ -39,7 +39,7 @@ jobs:
       run: BUILD_DUMMY_WASM_BINARY=1 cargo doc --no-deps --workspace --release --exclude node-bench --exclude node-executor --exclude node-testing --exclude crypto-cli
 
     - name: Add index file
-      run: echo "<html lang='en'><head><meta http-equiv='refresh' content='0; URL=./polymesh-private/index.html'></head></html>" > ./target/doc/index.html
+      run: echo "<html lang='en'><head><meta http-equiv='refresh' content='0; URL=./polymesh_private/index.html'></head></html>" > ./target/doc/index.html
 
     - name: Publish to Cloudflare workers
       uses: cloudflare/wrangler-action@2.0.0
