@@ -97,6 +97,9 @@ jobs:
       - run:
           name: Copy Cargo.toml files to assets
           command: cp ./Cargo.toml ./assets/
+      - run:
+          name: Copy LICENSE.pdf file to assets
+          command: cp ./LICENSE.pdf ./assets/
       - persist_to_workspace:
           root: ./assets
           paths:
