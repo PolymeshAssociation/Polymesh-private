@@ -21,13 +21,13 @@ frame-system-benchmarking = { git = "https://github.com/PolymeshAssociation/polk
 frame-system-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-authority-discovery = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-authorship = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
+pallet-aura = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-babe = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-balances = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-contracts = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-contracts-primitives = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-grandpa = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-im-online = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
-pallet-indices = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-offences = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-preimage = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-insecure-randomness-collective-flip = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
@@ -126,7 +126,6 @@ exclude = [
 pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
@@ -178,30 +177,21 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 frame-support = { version = "4.0.0-dev", default-features = false }
 frame-system = { version = "4.0.0-dev", default-features = false }
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false }
-pallet-authority-discovery = { version = "4.0.0-dev", default-features = false }
-pallet-authorship = { version = "4.0.0-dev", default-features = false }
-pallet-babe = { version = "4.0.0-dev", default-features = false }
+pallet-aura = { version = "4.0.0-dev", default-features = false }
 pallet-contracts = { version = "4.0.0-dev", default-features = false }
 pallet-contracts-primitives = { version = "7.0.0", default-features = false}
 pallet-executive = { package = "frame-executive", version = "4.0.0-dev", default-features = false }
 pallet-grandpa = { version = "4.0.0-dev", default-features = false }
-pallet-im-online = { version = "4.0.0-dev", default-features = false }
-pallet-indices = { version = "4.0.0-dev", default-features = false }
-pallet-offences = { version = "4.0.0-dev", default-features = false }
 pallet-preimage = { version = "4.0.0-dev", default-features = false }
 pallet-insecure-randomness-collective-flip = { version = "4.0.0-dev", default-features = false }
 pallet-scheduler = { version = "4.0.0-dev", default-features = false }
-pallet-session = { version = "4.0.0-dev", default-features = false }
-pallet-staking-reward-curve = { version = "4.0.0-dev", default-features = false }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 sp-api = { version = "4.0.0-dev", default-features = false }
 sp-arithmetic = { version = "6.0.0", default-features = false }
-sp-authority-discovery = { version = "4.0.0-dev", default-features = false }
 sp-block-builder = { version = "4.0.0-dev", default-features = false }
 sp-blockchain = { version = "4.0.0-dev", default-features = false }
 sp-consensus = { version = "0.10.0-dev", default-features = false }
-sp-consensus-babe = { version = "0.10.0-dev", default-features = false }
 sp-consensus-aura = { version = "0.10.0-dev", default-features = false }
 sp-consensus-slots = { version = "0.10.0-dev", default-features = false }
 sp-consensus-grandpa = { version = "4.0.0-dev", default-features = false }
@@ -231,7 +221,6 @@ confidential_assets = { version = "1.0.0", default-features = false }
 pallet-asset = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-base = { workspace = true, default-features = false }
-pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
@@ -249,8 +238,6 @@ pallet-protocol-fee = { workspace = true, default-features = false }
 pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
-pallet-staking = { workspace = true, default-features = false }
-pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 pallet-test-utils = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false }
@@ -273,7 +260,6 @@ pallet-group-rpc = { workspace = true }
 pallet-group-rpc-runtime-api = { workspace = true }
 pallet-protocol-fee-rpc = { workspace = true }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true }
-pallet-staking-rpc-runtime-api = { workspace = true }
 polymesh-node-rpc = { workspace = true }
 
 # Runtimes
@@ -297,7 +283,6 @@ sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
 sc-consensus = "0.10.0-dev"
 sc-consensus-aura = "0.10.0-dev"
-sc-consensus-babe = "0.10.0-dev"
 sc-consensus-slots = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
 sc-network = "0.10.0-dev"
@@ -316,18 +301,13 @@ codec = { workspace = true, package = "parity-scale-codec" }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-system-rpc-runtime-api = { workspace = true }
-pallet-babe = { workspace = true }
-pallet-im-online = { workspace = true }
-pallet-indices = { workspace = true }
-pallet-session = { workspace = true }
+pallet-aura = { workspace = true }
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", version = "0.10.0-dev" }
 sp-api = { workspace = true }
-sp-authority-discovery = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-blockchain = { workspace = true }
 sp-consensus = { workspace = true }
 sp-consensus-aura = { workspace = true }
-sp-consensus-babe = { workspace = true }
 sp-consensus-slots = { workspace = true }
 sp-keyring = { workspace = true }
 sp-core = { workspace = true }

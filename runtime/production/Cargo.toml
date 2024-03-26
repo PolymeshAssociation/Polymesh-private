@@ -61,7 +61,6 @@ pallet-grandpa = { workspace = true, default-features = false }
 pallet-preimage = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
-pallet-session = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 scale-info = { workspace = true, default-features = false, features = ["derive"] }
 sp-api = { workspace = true, default-features = false }

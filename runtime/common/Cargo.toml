@@ -29,8 +29,6 @@ sp-runtime = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 
-pallet-authorship = { workspace = true, default-features = false }
-
 [features]
 equalize = []
 default = ["std", "equalize"]
@@ -40,7 +38,6 @@ no_std = []
 std = [
     "frame-support/std",
     "frame-system/std",
-    "pallet-authorship/std",
     "pallet-balances/std",
     "pallet-group-rpc-runtime-api/std",
     "pallet-identity/std",
