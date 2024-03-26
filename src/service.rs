@@ -272,7 +272,7 @@ where
 
         let rpc_backend = backend.clone();
         let rpc_extensions_builder = move |deny_unsafe, subscription_executor| {
-            let deps = node_rpc::FullDeps {
+            let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: pool.clone(),
                 select_chain: select_chain.clone(),
@@ -287,7 +287,7 @@ where
                 },
             };
 
-            node_rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
+            crate::rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
         };
 
         rpc_extensions_builder
