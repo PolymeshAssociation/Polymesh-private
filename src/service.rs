@@ -21,9 +21,9 @@ use sc_service::{
 pub use sc_service::{config::PrometheusConfig, ChainSpec, Error};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 pub use sp_api::ConstructRuntimeApi;
+use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 pub use sp_runtime::traits::BlakeTwo256;
 use sp_runtime::traits::Block as BlockT;
-use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
 
 /// Known networks based on name.
@@ -227,27 +227,29 @@ where
 
     let slot_duration = sc_consensus_aura::slot_duration(&*client)?;
 
-    let import_queue = sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(ImportQueueParams {
-        block_import: grandpa_block_import.clone(),
-        justification_import: Some(Box::new(grandpa_block_import.clone())),
-        client: client.clone(),
-        create_inherent_data_providers: move |_, ()| async move {
-            let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
+    let import_queue = sc_consensus_aura::import_queue::<AuraPair, _, _, _, _, _>(
+        ImportQueueParams {
+            block_import: grandpa_block_import.clone(),
+            justification_import: Some(Box::new(grandpa_block_import.clone())),
+            client: client.clone(),
+            create_inherent_data_providers: move |_, ()| async move {
+                let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 
-            let slot =
+                let slot =
                 sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
                     *timestamp,
                     slot_duration,
                 );
 
-            Ok((slot, timestamp))
+                Ok((slot, timestamp))
+            },
+            spawner: &task_manager.spawn_essential_handle(),
+            registry: config.prometheus_registry(),
+            check_for_equivocation: Default::default(),
+            telemetry: telemetry.as_ref().map(|x| x.handle()),
+            compatibility_mode: Default::default(),
         },
-        spawner: &task_manager.spawn_essential_handle(),
-        registry: config.prometheus_registry(),
-        check_for_equivocation: Default::default(),
-        telemetry: telemetry.as_ref().map(|x| x.handle()),
-        compatibility_mode: Default::default(),
-    })?;
+    )?;
 
     let import_setup = (block_import, grandpa_link);
 
@@ -459,11 +461,9 @@ where
         };
 
         let aura = sc_consensus_aura::start_aura(aura_config)?;
-        task_manager.spawn_essential_handle().spawn_blocking(
-            "aura",
-            Some("block-authoring"),
-            aura,
-        );
+        task_manager
+            .spawn_essential_handle()
+            .spawn_blocking("aura", Some("block-authoring"), aura);
     }
 
     if enable_grandpa {

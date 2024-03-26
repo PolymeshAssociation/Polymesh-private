@@ -13,9 +13,9 @@ pub mod runtime;
 pub use runtime::{native_version, WASM_BINARY};
 
 pub use runtime::{
-    api, Asset, Balances, BalancesCall, CheckedExtrinsic, MinimumPeriod,
-    ProtocolFee, Runtime, RuntimeApi, RuntimeCall, SessionKeys, System, SystemCall,
-    TransactionPayment, UncheckedExtrinsic,
+    api, Asset, Balances, BalancesCall, CheckedExtrinsic, MinimumPeriod, ProtocolFee, Runtime,
+    RuntimeApi, RuntimeCall, SessionKeys, System, SystemCall, TransactionPayment,
+    UncheckedExtrinsic,
 };
 
 pub use sp_runtime::{Perbill, Permill};

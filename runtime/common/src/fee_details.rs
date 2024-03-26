@@ -62,9 +62,7 @@ impl<C, A, H> CddAndFeeDetails<AccountId, C> for CddHandler<A, H>
 where
     H: GetValidPayerHook<C>,
     for<'a> Call<'a, A>: TryFrom<&'a C>,
-    A: Config<AccountId = AccountId>
-        + pallet_multisig::Config
-        + pallet_relayer::Config
+    A: Config<AccountId = AccountId> + pallet_multisig::Config + pallet_relayer::Config,
 {
     /// Check if there's an eligible payer with valid CDD.
     /// Return the payer if found or else an error.

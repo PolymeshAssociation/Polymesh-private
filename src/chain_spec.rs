@@ -87,18 +87,10 @@ pub fn get_authority_keys_from_seed(s: &str, uniq: bool) -> InitialAuth {
             get_from_seed::<GrandpaId>(&format!("{}//gran", s)),
         )
     } else {
-        (
-            get_from_seed::<AuraId>(s),
-            get_from_seed::<GrandpaId>(s),
-        )
+        (get_from_seed::<AuraId>(s), get_from_seed::<GrandpaId>(s))
     };
 
-    (
-        stash_acc_id,
-        acc_id,
-        aura_id,
-        grandpa_id,
-    )
+    (stash_acc_id, acc_id, aura_id, grandpa_id)
 }
 
 fn polymesh_props(ss58: u8) -> Properties {
@@ -110,14 +102,8 @@ fn polymesh_props(ss58: u8) -> Properties {
 
 macro_rules! session_keys {
     () => {
-        fn session_keys(
-            grandpa: GrandpaId,
-            aura: AuraId,
-        ) -> rt::SessionKeys {
-            rt::SessionKeys {
-                aura,
-                grandpa,
-            }
+        fn session_keys(grandpa: GrandpaId, aura: AuraId) -> rt::SessionKeys {
+            rt::SessionKeys { aura, grandpa }
         }
     };
 }
@@ -169,12 +155,7 @@ macro_rules! checkpoint {
     }};
 }
 
-type InitialAuth = (
-    AccountId,
-    AccountId,
-    AuraId,
-    GrandpaId,
-);
+type InitialAuth = (AccountId, AccountId, AuraId, GrandpaId);
 
 // alias type to make clippy happy.
 type GenesisProcessedData = Vec<GenesisIdentityRecord<AccountId>>;
@@ -186,7 +167,7 @@ fn adjust_last(bytes: &mut [u8], n: u8) -> &str {
 
 fn genesis_processed_data(
     initial_authorities: &Vec<InitialAuth>,
-    root_key: AccountId,   //polymesh_5
+    root_key: AccountId, //polymesh_5
 ) -> GenesisProcessedData {
     // Identities and their roles
     // 1 = [Polymath] GenesisCouncil (1 of 3) + UpgradeCommittee (1 of 1) + TechnicalCommittee (1 of 1) + GCReleaseCoordinator
@@ -381,10 +362,7 @@ pub mod develop {
         _enable_println: bool,
         other_funded_accounts: Vec<AccountId>,
     ) -> rt::runtime::GenesisConfig {
-        let identities = dev_genesis_processed_data(
-            &initial_authorities,
-            other_funded_accounts,
-        );
+        let identities = dev_genesis_processed_data(&initial_authorities, other_funded_accounts);
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
@@ -509,10 +487,7 @@ pub mod production {
         root_key: AccountId,
         _enable_println: bool,
     ) -> rt::runtime::GenesisConfig {
-        let identities = genesis_processed_data(
-            &initial_authorities,
-            root_key.clone(),
-        );
+        let identities = genesis_processed_data(&initial_authorities, root_key.clone());
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
@@ -670,10 +645,7 @@ pub mod develop {
         root_key: AccountId,
         _enable_println: bool,
     ) -> rt::runtime::GenesisConfig {
-        let identities = genesis_processed_data(
-            &initial_authorities,
-            root_key.clone(),
-        );
+        let identities = genesis_processed_data(&initial_authorities, root_key.clone());
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
