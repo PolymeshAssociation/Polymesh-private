@@ -148,7 +148,6 @@ pub fn run() -> Result<()> {
             cmd,
             |(c, b, _, tm), _| {
                 let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, backend, blocks| {
-                    sc_consensus_babe::revert(client.clone(), backend, blocks)?;
                     grandpa::revert(client, blocks)?;
                     Ok(())
                 });
@@ -156,7 +155,6 @@ pub fn run() -> Result<()> {
             },
             |(c, b, _, tm), _| {
                 let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, backend, blocks| {
-                    sc_consensus_babe::revert(client.clone(), backend, blocks)?;
                     grandpa::revert(client, blocks)?;
                     Ok(())
                 });

@@ -8,14 +8,12 @@ use frame_support::{
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_corporate_actions::ballot as pallet_corporate_ballot;
 use pallet_corporate_actions::distribution as pallet_capital_distribution;
-use pallet_session::historical as pallet_session_historical;
 pub use pallet_transaction_payment::{Multiplier, RuntimeDispatchInfo, TargetedFeeAdjustment};
 use polymesh_common_utilities::{
     constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize,
 };
 use polymesh_primitives::{Balance, BlockNumber, Moment};
 use polymesh_runtime_common::{
-    impls::Author,
     merge_active_and_inactive,
     runtime::{GovernanceCommittee, BENCHMARK_MAX_INCREASE, VMO},
     AvailableBlockRatio, MaximumBlockWeight,
@@ -35,7 +33,6 @@ use sp_version::RuntimeVersion;
 pub use frame_support::StorageValue;
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -72,9 +69,6 @@ parameter_types! {
     // Base:
     pub const MaxLen: u32 = ENSURED_MAX_LEN;
 
-    // Indices:
-    pub const IndexDeposit: Balance = DOLLARS;
-
     // Balances:
     pub const ExistentialDeposit: Balance = 0u128;
     pub const MaxLocks: u32 = 50;
@@ -90,10 +84,7 @@ parameter_types! {
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
 
-    // I'm online:
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-
-    pub const MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
+    pub const MaxSetIdSessionEntries: u32 = 0;
     pub const MaxAuthorities: u32 = 100_000;
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
@@ -154,42 +145,6 @@ type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
-/// 100% goes to the block author.
-pub type DealWithFees = Author<Runtime>;
-
-// Staking:
-pallet_staking_reward_curve::build! {
-    const REWARD_CURVE: PiecewiseLinear<'_> = curve!(
-        min_inflation: 0_025_000,
-        max_inflation: 0_140_000,
-        ideal_stake: 0_700_000,
-        falloff: 0_050_000,
-        max_piece_count: 40,
-        test_precision: 0_005_000,
-    );
-}
-parameter_types! {
-    pub const SessionsPerEra: sp_staking::SessionIndex = 6;
-    pub const BondingDuration: pallet_staking::EraIndex = 28;
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 14; // 1/2 the bonding duration.
-    pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-    pub const MaxNominatorRewardedPerValidator: u32 = 2048;
-    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-    pub const MaxIterations: u32 = 10;
-    pub const MaxValidatorPerIdentity: Permill = Permill::from_percent(33);
-    // 0.05%. The higher the value, the more strict solution acceptance becomes.
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
-    pub const MaxVariableInflationTotalIssuance: Balance = 1_000_000_000 * ONE_POLY;
-    pub const FixedYearlyReward: Balance = 140_000_000 * ONE_POLY;
-    pub const MinimumBond: Balance = ONE_POLY;
-    /// We prioritize im-online heartbeats over election solution submission.
-    pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-
-    pub const ReportLongevity: u64 =
-        BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-}
-
 polymesh_runtime_common::misc_pallet_impls!();
 
 type CddHandler = polymesh_runtime_common::fee_details::CddHandler<
@@ -241,7 +196,7 @@ impl pallet_group::Config<pallet_group::Instance1> for Runtime {
 
 impl pallet_confidential_asset::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+    type Randomness = RandomnessCollectiveFlip;
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
@@ -319,10 +274,8 @@ construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned},
+        Aura: pallet_aura,
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-        Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Authorship: pallet_authorship,
 
         // Balance: Genesis config dependencies: System.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -354,19 +307,9 @@ construct_runtime!(
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>},
 
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>},
-        // Bridge: Genesis config deps: Multisig, Identity, Committees
-        Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
-
-        // Staking: Genesis config deps: Bridge, Balances, Indices, Identity, Babe, Timestamp, Committees
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
-        Offences: pallet_offences::{Pallet, Storage, Event},
 
         // Session: Genesis config deps: System.
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-        AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config},
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event},
-        Historical: pallet_session_historical::{Pallet},
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
         RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip::{Pallet, Storage},
 
         // Sudo. Usable initially.

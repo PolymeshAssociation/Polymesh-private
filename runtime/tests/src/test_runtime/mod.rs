@@ -37,7 +37,6 @@ use pallet_multisig as multisig;
 use pallet_pips as pips;
 use pallet_portfolio as portfolio;
 use pallet_protocol_fee as protocol_fee;
-use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 use pallet_utility;
 use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
@@ -60,8 +59,6 @@ type CddServiceProvider = group::Module<TestRuntime, group::Instance2>;
 type Balance = u128;
 type RuntimeBaseCallFilter = TestBaseCallFilter;
 
-// 1 in 4 blocks (on average, not counting collisions) will be primary babe blocks.
-const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("test-runtime"),
     impl_name: create_runtime_str!("test-runtime"),
@@ -73,47 +70,21 @@ const VERSION: RuntimeVersion = RuntimeVersion {
     state_version: 1,
 };
 
-pallet_staking_reward_curve::build! {
-    const REWARD_CURVE: PiecewiseLinear<'_> = curve!(
-        min_inflation: 0_025_000,
-        max_inflation: 0_140_000,
-        ideal_stake: 0_700_000,
-        falloff: 0_050_000,
-        max_piece_count: 40,
-        test_precision: 0_005_000,
-    );
-}
-
 parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const Version: RuntimeVersion = VERSION;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3;
-    pub const BondingDuration: pallet_staking::EraIndex = 7;
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 4;
-    pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-    pub const MaxIterations: u32 = 10;
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
-    pub const MaxNominatorRewardedPerValidator: u32 = 2048;
-    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const IndexDeposit: Balance = DOLLARS;
-    pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-    pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-    pub const MaxValidatorPerIdentity: Permill = Permill::from_percent(33);
-    pub const MaxVariableInflationTotalIssuance: Balance = 1_000_000_000 * POLY;
-    pub const FixedYearlyReward: Balance = 140_000_000 * POLY;
-    pub const MinimumBond: Balance = 1 * POLY;
+
     pub const MaxNumberOfFungibleAssets: u32 = 100;
     pub const MaxNumberOfNFTsPerLeg: u32 = 10;
     pub const MaxNumberOfNFTs: u32 = 100;
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
+
+    pub const MaxSetIdSessionEntries: u32 = 0;
     pub const MaxAuthorities: u32 = 100_000;
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
     pub const MaxPeerDataEncodingSize: u32 = 1_000;
-    pub const ReportLongevity: u64 =
-        BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
+
     pub const MaxNumberOfCollectionKeys: u8 = u8::MAX;
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
@@ -154,9 +125,8 @@ frame_support::construct_runtime!(
     UncheckedExtrinsic = UncheckedExtrinsic,
 {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 1,
+        Aura: pallet_aura,
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 2,
-        Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 5,
         TransactionPayment: pallet_transaction_payment::{Pallet, Event<T>, Storage} = 6,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>, Config<T>} = 7,
@@ -168,14 +138,7 @@ frame_support::construct_runtime!(
         UpgradeCommittee: pallet_committee::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 13,
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 14,
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>} = 15,
-        Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 16,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 17,
-        Offences: pallet_offences::{Pallet, Storage, Event} = 18,
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 19,
-        AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 20,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 21,
-        Historical: pallet_session_historical::{Pallet} = 22,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 23,
         RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip::{Pallet, Storage} = 24,
         Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
         Asset: pallet_asset::{Pallet, Call, Storage, Config<T>, Event<T>} = 26,
@@ -302,7 +265,7 @@ impl CddAndFeeDetails<AccountId, RuntimeCall> for TestRuntime {
 
 impl pallet_confidential_asset::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+    type Randomness = RandomnessCollectiveFlip;
     type WeightInfo = pallet_confidential_asset::weights::SubstrateWeight;
     type MaxTotalSupply = MaxTotalSupply;
     type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
@@ -443,27 +406,6 @@ impl frame_support::traits::Contains<RuntimeCall> for TestBaseCallFilter {
             _ => true,
         }
     }
-}
-
-pub struct DealWithFees;
-
-impl OnUnbalanced<NegativeImbalance<TestRuntime>> for DealWithFees {
-    fn on_nonzero_unbalanced(amount: NegativeImbalance<TestRuntime>) {
-        let target = account_from(5000);
-        let positive_imbalance = Balances::deposit_creating(&target, amount.peek());
-        let _ = amount.offset(positive_imbalance).same().map_err(|_| 4); // random value mapped for error
-    }
-}
-
-pub fn account_from(id: u64) -> AccountId {
-    let mut enc_id_vec = id.encode();
-    enc_id_vec.resize_with(32, Default::default);
-
-    let mut enc_id = [0u8; 32];
-    enc_id.copy_from_slice(enc_id_vec.as_slice());
-
-    let pk = *Pair::from_seed(&enc_id).public().as_array_ref();
-    pk.into()
 }
 
 #[derive(Copy, Clone)]

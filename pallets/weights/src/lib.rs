@@ -19,7 +19,6 @@
 
 pub mod frame_system;
 pub mod pallet_asset;
-pub mod pallet_babe;
 pub mod pallet_balances;
 pub mod pallet_capital_distribution;
 pub mod pallet_checkpoint;
@@ -32,8 +31,6 @@ pub mod pallet_external_agents;
 pub mod pallet_grandpa;
 pub mod pallet_group;
 pub mod pallet_identity;
-pub mod pallet_im_online;
-pub mod pallet_indices;
 pub mod pallet_multisig;
 pub mod pallet_nft;
 pub mod pallet_pips;
@@ -42,9 +39,7 @@ pub mod pallet_preimage;
 pub mod pallet_protocol_fee;
 pub mod pallet_relayer;
 pub mod pallet_scheduler;
-pub mod pallet_session;
 pub mod pallet_settlement;
-pub mod pallet_staking;
 pub mod pallet_statistics;
 pub mod pallet_sto;
 pub mod pallet_test_utils;

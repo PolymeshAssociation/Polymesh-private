@@ -9,20 +9,15 @@ edition = "2021"
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
-pallet-babe = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
-pallet-im-online = { workspace = true, default-features = false }
-pallet-indices = { workspace = true, default-features = false }
 pallet-grandpa = { workspace = true, default-features = false }
 pallet-preimage = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
-pallet-session = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 
 # our pallets
 pallet-asset = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
-pallet-staking = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false  }
 pallet-corporate-actions = { workspace = true, default-features = false }
@@ -51,16 +46,12 @@ std = [
     "sp-std/std",
     "frame-system/std",
     "pallet-asset/std",
-    "pallet-babe/std",
-    "pallet-staking/std",
     "pallet-balances/std",
     "pallet-compliance-manager/std",
     "pallet-corporate-actions/std",
     "pallet-grandpa/std",
     "pallet-group/std",
     "pallet-identity/std",
-    "pallet-im-online/std",
-    "pallet-indices/std",
     "pallet-multisig/std",
     "pallet-nft/std",
     "pallet-pips/std",
@@ -68,7 +59,6 @@ std = [
     "pallet-protocol-fee/std",
     "pallet-relayer/std",
     "pallet-scheduler/std",
-    "pallet-session/std",
     "pallet-settlement/std",
     "pallet-sto/std",
     "pallet-timestamp/std",

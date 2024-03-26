@@ -95,39 +95,10 @@ macro_rules! misc_pallet_impls {
             type MaxLen = MaxLen;
         }
 
-        impl pallet_babe::Config for Runtime {
-            type WeightInfo = polymesh_weights::pallet_babe::SubstrateWeight;
-            type EpochDuration = EpochDuration;
-            type ExpectedBlockTime = ExpectedBlockTime;
-            type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-            type DisabledValidators = Session;
-
-            type KeyOwnerProofSystem = Historical;
-
-            type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-                sp_core::crypto::KeyTypeId,
-                pallet_babe::AuthorityId,
-            )>>::Proof;
-
-            type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-                sp_core::crypto::KeyTypeId,
-                pallet_babe::AuthorityId,
-            )>>::IdentificationTuple;
-
-            type HandleEquivocation = pallet_babe::EquivocationHandler<
-                Self::KeyOwnerIdentification,
-                Offences,
-                ReportLongevity,
-            >;
+        impl pallet_aura::Config for Runtime {
+            type AuthorityId = sp_consensus_aura::sr25519::AuthorityId;
+            type DisabledValidators = ();
             type MaxAuthorities = MaxAuthorities;
-        }
-
-        impl pallet_indices::Config for Runtime {
-            type AccountIndex = polymesh_primitives::AccountIndex;
-            type Currency = Balances;
-            type Deposit = IndexDeposit;
-            type RuntimeEvent = RuntimeEvent;
-            type WeightInfo = polymesh_weights::pallet_indices::SubstrateWeight;
         }
 
         impl<'a> core::convert::TryFrom<&'a RuntimeCall>
@@ -138,7 +109,6 @@ macro_rules! misc_pallet_impls {
                 use polymesh_runtime_common::fee_details::Call::*;
                 Ok(match call {
                     RuntimeCall::Identity(x) => Identity(x),
-                    RuntimeCall::Bridge(x) => Bridge(x),
                     RuntimeCall::MultiSig(x) => MultiSig(x),
                     RuntimeCall::Relayer(x) => Relayer(x),
                     _ => return Err(()),
@@ -159,7 +129,7 @@ macro_rules! misc_pallet_impls {
             type RuntimeEvent = RuntimeEvent;
             type Currency = Balances;
             type OnChargeTransaction =
-                pallet_transaction_payment::CurrencyAdapter<Balances, DealWithFees>;
+                pallet_transaction_payment::CurrencyAdapter<Balances, ()>;
             type TransactionByteFee = polymesh_runtime_common::TransactionByteFee;
             type WeightToFee = polymesh_runtime_common::WeightToFee;
             type FeeMultiplierUpdate = ();
@@ -187,93 +157,23 @@ macro_rules! misc_pallet_impls {
         impl pallet_protocol_fee::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type Currency = Balances;
-            type OnProtocolFeePayment = DealWithFees;
+            type OnProtocolFeePayment = ();
             type WeightInfo = polymesh_weights::pallet_protocol_fee::SubstrateWeight;
             type Subsidiser = Relayer;
         }
 
         impl pallet_timestamp::Config for Runtime {
             type Moment = polymesh_primitives::Moment;
-            type OnTimestampSet = Babe;
+            type OnTimestampSet = Aura;
             type MinimumPeriod = MinimumPeriod;
             type WeightInfo = polymesh_weights::pallet_timestamp::SubstrateWeight;
         }
 
-        impl pallet_authorship::Config for Runtime {
-            type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-            type EventHandler = (Staking, ImOnline);
-        }
-
         impl_opaque_keys! {
             pub struct SessionKeys {
+                pub aura: Aura,
                 pub grandpa: Grandpa,
-                pub babe: Babe,
-                pub im_online: ImOnline,
-                pub authority_discovery: AuthorityDiscovery,
             }
-        }
-
-        impl pallet_session::Config for Runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type ValidatorId = polymesh_primitives::AccountId;
-            type ValidatorIdOf = pallet_staking::StashOf<Self>;
-            type ShouldEndSession = Babe;
-            type NextSessionRotation = Babe;
-            type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
-            type SessionHandler =
-                <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
-            type Keys = SessionKeys;
-            type WeightInfo = polymesh_weights::pallet_session::SubstrateWeight;
-        }
-
-        impl pallet_session::historical::Config for Runtime {
-            type FullIdentification = pallet_staking::Exposure<
-                polymesh_primitives::AccountId,
-                polymesh_primitives::Balance,
-            >;
-            type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
-        }
-
-        impl pallet_staking::Config for Runtime {
-            const MAX_NOMINATIONS: u32 = pallet_staking::MAX_NOMINATIONS;
-            type Currency = Balances;
-            type UnixTime = Timestamp;
-            type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
-            type RewardRemainder = ();
-            type RuntimeEvent = RuntimeEvent;
-            type Slash = Treasury; // send the slashed funds to the treasury.
-            type Reward = (); // rewards are minted from the void
-            type SessionsPerEra = SessionsPerEra;
-            type BondingDuration = BondingDuration;
-            type SlashDeferDuration = SlashDeferDuration;
-            type SlashCancelOrigin = polymesh_primitives::EnsureRoot;
-            type SessionInterface = Self;
-            type RewardCurve = RewardCurve;
-            type NextNewSession = Session;
-            type ElectionLookahead = ElectionLookahead;
-            type Call = RuntimeCall;
-            type MaxIterations = MaxIterations;
-            type MinSolutionScoreBump = MinSolutionScoreBump;
-            type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-            type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
-            type UnsignedPriority = StakingUnsignedPriority;
-            type RequiredAddOrigin = Self::SlashCancelOrigin;
-            type RequiredRemoveOrigin = Self::SlashCancelOrigin;
-            type RequiredCommissionOrigin = Self::SlashCancelOrigin;
-            type RewardScheduler = Scheduler;
-            type MaxValidatorPerIdentity = MaxValidatorPerIdentity;
-            type MaxVariableInflationTotalIssuance = MaxVariableInflationTotalIssuance;
-            type FixedYearlyReward = FixedYearlyReward;
-            type PalletsOrigin = OriginCaller;
-            type MinimumBond = MinimumBond;
-            // The unsigned solution weight targeted by the OCW. We set it to the maximum possible value of
-            // a single extrinsic.
-            type OffchainSolutionWeightLimit = polymesh_runtime_common::OffchainSolutionWeightLimit;
-            type WeightInfo = polymesh_weights::pallet_staking::SubstrateWeight;
-        }
-
-        impl pallet_authority_discovery::Config for Runtime {
-            type MaxAuthorities = MaxAuthorities;
         }
 
         impl pallet_multisig::Config for Runtime {
@@ -281,12 +181,6 @@ macro_rules! misc_pallet_impls {
             type Scheduler = Scheduler;
             type SchedulerCall = RuntimeCall;
             type WeightInfo = polymesh_weights::pallet_multisig::SubstrateWeight;
-        }
-
-        impl pallet_bridge::Config for Runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type Proposal = RuntimeCall;
-            type Scheduler = Scheduler;
         }
 
         impl pallet_portfolio::Config for Runtime {
@@ -422,31 +316,12 @@ macro_rules! misc_pallet_impls {
             type ByteDeposit = PreimageByteDeposit;
         }
 
-        impl pallet_offences::Config for Runtime {
-            type RuntimeEvent = RuntimeEvent;
-            type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
-            type OnOffenceHandler = Staking;
-        }
-
         type GrandpaKey = (sp_core::crypto::KeyTypeId, pallet_grandpa::AuthorityId);
-
-        impl pallet_im_online::Config for Runtime {
-            type AuthorityId = pallet_im_online::sr25519::AuthorityId;
-            type RuntimeEvent = RuntimeEvent;
-            type NextSessionRotation = Babe;
-            type ValidatorSet = Historical;
-            type UnsignedPriority = ImOnlineUnsignedPriority;
-            type ReportUnresponsiveness = Offences;
-            type WeightInfo = polymesh_weights::pallet_im_online::SubstrateWeight;
-            type MaxKeys = MaxKeys;
-            type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
-            type MaxPeerDataEncodingSize = MaxPeerDataEncodingSize;
-        }
 
         impl pallet_grandpa::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
 
-            type KeyOwnerProofSystem = Historical;
+            type KeyOwnerProofSystem = ();
 
             type KeyOwnerProof =
                 <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<GrandpaKey>>::Proof;
@@ -454,11 +329,7 @@ macro_rules! misc_pallet_impls {
             type KeyOwnerIdentification =
                 <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<GrandpaKey>>::IdentificationTuple;
 
-            type HandleEquivocation = pallet_grandpa::EquivocationHandler<
-                Self::KeyOwnerIdentification,
-                Offences,
-                ReportLongevity,
-            >;
+            type HandleEquivocation = ();
 
             type WeightInfo = ();
             type MaxAuthorities = MaxAuthorities;
@@ -686,29 +557,22 @@ macro_rules! runtime_apis {
                 }
 
                 fn submit_report_equivocation_unsigned_extrinsic(
-                    equivocation_proof: sp_consensus_grandpa::EquivocationProof<
+                    _equivocation_proof: sp_consensus_grandpa::EquivocationProof<
                         <Block as BlockT>::Hash,
                         NumberFor<Block>,
                     >,
-                    key_owner_proof: sp_consensus_grandpa::OpaqueKeyOwnershipProof,
+                    _key_owner_proof: sp_consensus_grandpa::OpaqueKeyOwnershipProof,
                 ) -> Option<()> {
-                    let key_owner_proof = key_owner_proof.decode()?;
-
-                    Grandpa::submit_unsigned_equivocation_report(
-                        equivocation_proof,
-                        key_owner_proof,
-                    )
+                    // TODO: Do we need this for Aura?
+                    None
                 }
 
                 fn generate_key_ownership_proof(
                     _set_id: sp_consensus_grandpa::SetId,
-                    authority_id: pallet_grandpa::AuthorityId,
+                    _authority_id: pallet_grandpa::AuthorityId,
                 ) -> Option<sp_consensus_grandpa::OpaqueKeyOwnershipProof> {
-                    use codec::Encode;
-
-                    Historical::prove((sp_consensus_grandpa::KEY_TYPE, authority_id))
-                        .map(|p| p.encode())
-                        .map(sp_consensus_grandpa::OpaqueKeyOwnershipProof::new)
+                    // TODO: Do we need this for Aura?
+                    None
                 }
 
                 fn current_set_id() -> sp_consensus_grandpa::SetId {
@@ -716,62 +580,13 @@ macro_rules! runtime_apis {
                 }
             }
 
-            impl sp_consensus_babe::BabeApi<Block> for Runtime {
-                fn configuration() -> sp_consensus_babe::BabeConfiguration {
-                    // The choice of `c` parameter (where `1 - c` represents the
-                    // probability of a slot being empty), is done in accordance to the
-                    // slot duration and expected target block time, for safely
-                    // resisting network delays of maximum two seconds.
-                    // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-                    sp_consensus_babe::BabeConfiguration {
-                        slot_duration: Babe::slot_duration(),
-                        epoch_length: EpochDuration::get(),
-                        c: PRIMARY_PROBABILITY,
-                        authorities: Babe::authorities().to_vec(),
-                        randomness: Babe::randomness(),
-                        allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
-                    }
+            impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
+                fn slot_duration() -> sp_consensus_aura::SlotDuration {
+                    sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
                 }
 
-                fn current_epoch_start() -> sp_consensus_babe::Slot{
-                    Babe::current_epoch_start()
-                }
-
-                fn current_epoch() -> sp_consensus_babe::Epoch {
-                    Babe::current_epoch()
-                }
-
-                fn next_epoch() -> sp_consensus_babe::Epoch {
-                    Babe::next_epoch()
-                }
-
-                fn generate_key_ownership_proof(
-                    _slot: sp_consensus_babe::Slot,
-                    authority_id: sp_consensus_babe::AuthorityId,
-                ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
-                    use codec::Encode;
-
-                    Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
-                        .map(|p| p.encode())
-                        .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
-                }
-
-                fn submit_report_equivocation_unsigned_extrinsic(
-                    equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
-                    key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
-                ) -> Option<()> {
-                    let key_owner_proof = key_owner_proof.decode()?;
-
-                    Babe::submit_unsigned_equivocation_report(
-                        equivocation_proof,
-                        key_owner_proof,
-                    )
-                }
-            }
-
-            impl sp_authority_discovery::AuthorityDiscoveryApi<Block> for Runtime {
-                fn authorities() -> Vec<sp_authority_discovery::AuthorityId> {
-                    AuthorityDiscovery::authorities()
+                fn authorities() -> Vec<AuraId> {
+                    Aura::authorities().into_inner()
                 }
             }
 
@@ -866,12 +681,6 @@ macro_rules! runtime_apis {
                     encoded: Vec<u8>,
                 ) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
                     SessionKeys::decode_into_raw_public_keys(&encoded)
-                }
-            }
-
-            impl pallet_staking_rpc_runtime_api::StakingApi<Block> for Runtime {
-                fn get_curve() -> Vec<(Perbill, Perbill)> {
-                    RewardCurve::get().points.to_vec()
                 }
             }
 

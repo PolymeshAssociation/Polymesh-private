@@ -19,7 +19,6 @@
 
 pub mod cdd_check;
 pub mod fee_details;
-pub mod impls;
 pub mod runtime;
 
 pub use cdd_check::CddChecker;
@@ -42,8 +41,6 @@ use pallet_balances as balances;
 use polymesh_common_utilities::constants::currency::*;
 use polymesh_primitives::{Balance, BlockNumber, IdentityId, Moment};
 use smallvec::smallvec;
-
-pub use impls::{Author, CurrencyToVoteHandler};
 
 pub type NegativeImbalance<T> =
     <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;

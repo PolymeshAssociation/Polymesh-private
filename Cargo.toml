@@ -43,6 +43,7 @@ sc-cli = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch =
 sc-client-api = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-client-db = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-consensus = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
+sc-consensus-aura = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-consensus-babe = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-consensus-babe-rpc = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-consensus-epochs = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
@@ -68,6 +69,7 @@ sp-authority-discovery = { git = "https://github.com/PolymeshAssociation/polkado
 sp-block-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-blockchain = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-consensus = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
+sp-consensus-aura = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-consensus-babe = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-consensus-slots = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-core = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
@@ -200,6 +202,7 @@ sp-block-builder = { version = "4.0.0-dev", default-features = false }
 sp-blockchain = { version = "4.0.0-dev", default-features = false }
 sp-consensus = { version = "0.10.0-dev", default-features = false }
 sp-consensus-babe = { version = "0.10.0-dev", default-features = false }
+sp-consensus-aura = { version = "0.10.0-dev", default-features = false }
 sp-consensus-slots = { version = "0.10.0-dev", default-features = false }
 sp-consensus-grandpa = { version = "4.0.0-dev", default-features = false }
 sp-keyring = { version = "7.0.0", default-features = false }
@@ -293,6 +296,7 @@ sc-chain-spec = "4.0.0-dev"
 sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
 sc-consensus = "0.10.0-dev"
+sc-consensus-aura = "0.10.0-dev"
 sc-consensus-babe = "0.10.0-dev"
 sc-consensus-slots = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
@@ -301,7 +305,9 @@ sc-network-common = { version = "0.10.0-dev" }
 sc-rpc = "4.0.0-dev"
 sc-service = { version = "0.10.0-dev" }
 sc-telemetry = "4.0.0-dev"
+sc-keystore = "4.0.0-dev"
 sc-transaction-pool = "4.0.0-dev"
+sc-transaction-pool-api = "4.0.0-dev"
 sc-sync-state-rpc = { version = "0.10.0-dev" }
 grandpa = { package = "sc-consensus-grandpa", version = "0.10.0-dev" }
 
@@ -320,6 +326,7 @@ sp-authority-discovery = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-blockchain = { workspace = true }
 sp-consensus = { workspace = true }
+sp-consensus-aura = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-slots = { workspace = true }
 sp-keyring = { workspace = true }
