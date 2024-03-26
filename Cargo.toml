@@ -167,7 +167,6 @@ pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/P
 pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 
 # Build tool
 polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -260,7 +259,6 @@ pallet-group-rpc = { workspace = true }
 pallet-group-rpc-runtime-api = { workspace = true }
 pallet-protocol-fee-rpc = { workspace = true }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true }
-polymesh-node-rpc = { workspace = true }
 
 # Runtimes
 polymesh-private-runtime-develop = { path = "runtime/develop" }

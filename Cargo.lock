@@ -5242,36 +5242,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-staking-rpc"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#2b324ec2d316e82e94b7881ec05dab9c1c5ba39b"
-dependencies = [
- "frame-support",
- "frame-system",
- "jsonrpsee",
- "node-rpc",
- "pallet-staking-rpc-runtime-api",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-staking-rpc-runtime-api"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#2b324ec2d316e82e94b7881ec05dab9c1c5ba39b"
-dependencies = [
- "frame-support",
- "sp-api",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-statistics"
 version = "0.1.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#2b324ec2d316e82e94b7881ec05dab9c1c5ba39b"
@@ -5861,40 +5831,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "polymesh-node-rpc"
-version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#2b324ec2d316e82e94b7881ec05dab9c1c5ba39b"
-dependencies = [
- "jsonrpsee",
- "node-rpc",
- "pallet-group-rpc",
- "pallet-protocol-fee-rpc",
- "pallet-staking-rpc",
- "polymesh-primitives",
- "sc-chain-spec",
- "sc-client-api",
- "sc-consensus-babe",
- "sc-consensus-babe-rpc",
- "sc-consensus-epochs",
- "sc-consensus-grandpa",
- "sc-consensus-grandpa-rpc",
- "sc-rpc",
- "sc-rpc-api",
- "sc-rpc-spec-v2",
- "sc-sync-state-rpc",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-keystore",
- "sp-runtime",
- "substrate-frame-rpc-system",
- "substrate-state-trie-migration-rpc",
-]
-
-[[package]]
 name = "polymesh-primitives"
 version = "5.0.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?branch=develop#2b324ec2d316e82e94b7881ec05dab9c1c5ba39b"
@@ -5984,7 +5920,6 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-host-functions",
- "polymesh-node-rpc",
  "polymesh-primitives",
  "polymesh-private-runtime-develop",
  "polymesh-private-runtime-production",
@@ -7480,28 +7415,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-consensus-babe-rpc"
-version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "futures",
- "jsonrpsee",
- "sc-consensus-babe",
- "sc-consensus-epochs",
- "sc-rpc-api",
- "serde",
- "sp-api",
- "sp-application-crypto",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-babe",
- "sp-core",
- "sp-keystore",
- "sp-runtime",
- "thiserror",
-]
-
-[[package]]
 name = "sc-consensus-epochs"
 version = "0.10.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
@@ -7551,26 +7464,6 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
- "thiserror",
-]
-
-[[package]]
-name = "sc-consensus-grandpa-rpc"
-version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "finality-grandpa",
- "futures",
- "jsonrpsee",
- "log",
- "parity-scale-codec",
- "sc-client-api",
- "sc-consensus-grandpa",
- "sc-rpc",
- "serde",
- "sp-blockchain",
- "sp-core",
- "sp-runtime",
  "thiserror",
 ]
 
@@ -9560,25 +9453,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "substrate-frame-rpc-system"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "frame-system-rpc-runtime-api",
- "futures",
- "jsonrpsee",
- "log",
- "parity-scale-codec",
- "sc-rpc-api",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.10.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
@@ -9588,25 +9462,6 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "substrate-state-trie-migration-rpc"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "jsonrpsee",
- "log",
- "parity-scale-codec",
- "sc-client-api",
- "sc-rpc-api",
- "scale-info",
- "serde",
- "sp-core",
- "sp-runtime",
- "sp-state-machine",
- "sp-trie",
- "trie-db",
 ]
 
 [[package]]
@@ -11558,6 +11413,26 @@ version = "4.0.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
 
 [[patch.unused]]
+name = "sc-consensus-babe-rpc"
+version = "0.10.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+
+[[patch.unused]]
+name = "sc-consensus-grandpa-rpc"
+version = "0.10.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+
+[[patch.unused]]
 name = "sp-npos-elections"
+version = "4.0.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+
+[[patch.unused]]
+name = "substrate-frame-rpc-system"
+version = "4.0.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+
+[[patch.unused]]
+name = "substrate-state-trie-migration-rpc"
 version = "4.0.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"

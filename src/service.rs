@@ -1,7 +1,6 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use futures::stream::StreamExt;
-use polymesh_node_rpc as node_rpc;
 pub use polymesh_primitives::{
     crypto::native_schnorrkel, AccountId, Block, IdentityId, Index as Nonce, Moment, Ticker,
 };
