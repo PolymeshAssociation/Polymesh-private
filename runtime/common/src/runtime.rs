@@ -53,7 +53,7 @@ macro_rules! misc_pallet_impls {
             /// The aggregated dispatch type that is available for extrinsics.
             type RuntimeCall = RuntimeCall;
             /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-            type Lookup = Indices;
+            type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
             /// The index type for storing how many extrinsics an account has signed.
             type Index = polymesh_primitives::Index;
             /// The index type for blocks.
@@ -407,7 +407,7 @@ macro_rules! misc_pallet_impls {
                     })
                     .ok()?;
                 let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
-                let address = Indices::unlookup(account);
+                let address = account.into();
                 let (call, extra, _) = raw_payload.deconstruct();
                 Some((call, (address, signature, extra)))
             }
@@ -456,7 +456,7 @@ macro_rules! runtime_apis {
         };
 
         /// The address format for describing accounts.
-        pub type Address = <Indices as StaticLookup>::Source;
+        pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
         /// Block header type as expected by this runtime.
         pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
         /// Block type as expected by this runtime.
@@ -579,12 +579,12 @@ macro_rules! runtime_apis {
                 }
             }
 
-            impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
+            impl sp_consensus_aura::AuraApi<Block, sp_consensus_aura::sr25519::AuthorityId> for Runtime {
                 fn slot_duration() -> sp_consensus_aura::SlotDuration {
                     sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
                 }
 
-                fn authorities() -> Vec<AuraId> {
+                fn authorities() -> Vec<sp_consensus_aura::sr25519::AuthorityId> {
                     Aura::authorities().into_inner()
                 }
             }
