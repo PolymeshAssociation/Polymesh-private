@@ -14,14 +14,11 @@ use sp_core::crypto::Pair as PairTrait;
 use sp_core::sr25519::Pair;
 use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
-use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify,
 };
-use sp_runtime::transaction_validity::{
-    InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction,
-};
-use sp_runtime::{Perbill, Permill};
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, ValidTransaction};
+use sp_runtime::Perbill;
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
@@ -39,7 +36,6 @@ use pallet_portfolio as portfolio;
 use pallet_protocol_fee as protocol_fee;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 use pallet_utility;
-use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};

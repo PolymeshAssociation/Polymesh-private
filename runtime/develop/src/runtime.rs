@@ -12,8 +12,7 @@ use pallet_corporate_actions::ballot as pallet_corporate_ballot;
 use pallet_corporate_actions::distribution as pallet_capital_distribution;
 pub use pallet_transaction_payment::{Multiplier, RuntimeDispatchInfo, TargetedFeeAdjustment};
 use polymesh_common_utilities::{
-    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize,
-    TestUtilsFn,
+    constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize, TestUtilsFn,
 };
 use polymesh_primitives::{AccountId, Balance, BlockNumber, Moment};
 use polymesh_runtime_common::{
@@ -21,12 +20,10 @@ use polymesh_runtime_common::{
     runtime::{GovernanceCommittee, BENCHMARK_MAX_INCREASE, VMO},
     AvailableBlockRatio, MaximumBlockWeight,
 };
-use sp_runtime::transaction_validity::TransactionPriority;
 use sp_runtime::{
     create_runtime_str,
-    curve::PiecewiseLinear,
     traits::{BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify},
-    Perbill, Permill,
+    Perbill,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
