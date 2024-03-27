@@ -53,7 +53,7 @@ macro_rules! misc_pallet_impls {
             /// The aggregated dispatch type that is available for extrinsics.
             type RuntimeCall = RuntimeCall;
             /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-            type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
+            type Lookup = sp_runtime::traits::AccountIdLookup<polymesh_primitives::AccountId, ()>;
             /// The index type for storing how many extrinsics an account has signed.
             type Index = polymesh_primitives::Index;
             /// The index type for blocks.
@@ -456,7 +456,7 @@ macro_rules! runtime_apis {
         };
 
         /// The address format for describing accounts.
-        pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
+        pub type Address = sp_runtime::MultiAddress<polymesh_primitives::AccountId, ()>;
         /// Block header type as expected by this runtime.
         pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
         /// Block type as expected by this runtime.
