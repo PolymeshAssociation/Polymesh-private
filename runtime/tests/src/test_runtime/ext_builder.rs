@@ -15,7 +15,7 @@ use polymesh_common_utilities::{
     constants::currency::POLY, protocol_fee::ProtocolOp, SystematicIssuers, GC_DID,
 };
 use polymesh_primitives::{
-    identity_id::GenesisIdentityRecord, AccountId, IdentityId, PosRatio, SecondaryKey, Signatory,
+    identity_id::GenesisIdentityRecord, AccountId, IdentityId, PosRatio, SecondaryKey,
 };
 
 use crate::test_runtime::TestRuntime;
@@ -202,6 +202,7 @@ impl ExtBuilder {
         asset::GenesisConfig::<TestRuntime> {
             ticker_registration_config,
             reserved_country_currency_codes: vec![],
+            asset_metadata: vec![],
         }
         .assimilate_storage(storage)
         .unwrap();

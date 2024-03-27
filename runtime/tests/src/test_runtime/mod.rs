@@ -7,16 +7,12 @@ use sp_version::NativeVersion;
 use codec::Encode;
 use frame_support::dispatch::{DispatchInfo, DispatchResult, Weight};
 use frame_support::parameter_types;
-use frame_support::traits::{Currency, Imbalance, KeyOwnerProofSystem, OnUnbalanced};
+use frame_support::traits::{Currency, KeyOwnerProofSystem, OnUnbalanced};
 use frame_support::weights::RuntimeDbWeight;
 use frame_system::EnsureRoot;
-use sp_core::crypto::Pair as PairTrait;
-use sp_core::sr25519::Pair;
 use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
-use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify,
-};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, Verify};
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidity, ValidTransaction};
 use sp_runtime::Perbill;
 use sp_version::RuntimeVersion;
