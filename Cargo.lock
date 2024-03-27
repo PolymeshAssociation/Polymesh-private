@@ -5930,12 +5930,14 @@ dependencies = [
  "sc-consensus",
  "sc-consensus-aura",
  "sc-consensus-grandpa",
- "sc-consensus-slots",
+ "sc-consensus-grandpa-rpc",
  "sc-executor",
  "sc-keystore",
  "sc-network",
  "sc-network-common",
  "sc-rpc",
+ "sc-rpc-api",
+ "sc-rpc-spec-v2",
  "sc-service",
  "sc-sync-state-rpc",
  "sc-telemetry",
@@ -5952,6 +5954,7 @@ dependencies = [
  "sp-core",
  "sp-inherents",
  "sp-keyring",
+ "sp-keystore",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
@@ -7460,6 +7463,26 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "substrate-prometheus-endpoint",
+ "thiserror",
+]
+
+[[package]]
+name = "sc-consensus-grandpa-rpc"
+version = "0.10.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+dependencies = [
+ "finality-grandpa",
+ "futures",
+ "jsonrpsee",
+ "log",
+ "parity-scale-codec",
+ "sc-client-api",
+ "sc-consensus-grandpa",
+ "sc-rpc",
+ "serde",
+ "sp-blockchain",
+ "sp-core",
+ "sp-runtime",
  "thiserror",
 ]
 
@@ -11401,11 +11424,6 @@ source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymes
 
 [[patch.unused]]
 name = "sc-consensus-babe-rpc"
-version = "0.10.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-
-[[patch.unused]]
-name = "sc-consensus-grandpa-rpc"
 version = "0.10.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
 

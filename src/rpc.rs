@@ -95,7 +95,6 @@ where
     use sc_consensus_grandpa_rpc::{Grandpa, GrandpaApiServer};
     use sc_rpc::dev::{Dev, DevApiServer};
     use sc_rpc_spec_v2::chain_spec::{ChainSpec, ChainSpecApiServer};
-    use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
     use substrate_frame_rpc_system::{System, SystemApiServer};
     use substrate_state_trie_migration_rpc::{StateMigration, StateMigrationApiServer};
 
@@ -131,21 +130,11 @@ where
     io.merge(
         Grandpa::new(
             subscription_executor,
-            shared_authority_set.clone(),
+            shared_authority_set,
             shared_voter_state,
             justification_stream,
             finality_provider,
         )
-        .into_rpc(),
-    )?;
-
-    io.merge(
-        SyncState::new(
-            chain_spec,
-            client.clone(),
-            shared_authority_set,
-            shared_epoch_changes,
-        )?
         .into_rpc(),
     )?;
 

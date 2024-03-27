@@ -281,18 +281,22 @@ sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
 sc-consensus = "0.10.0-dev"
 sc-consensus-aura = "0.10.0-dev"
-sc-consensus-slots = "0.10.0-dev"
+sc-consensus-grandpa = "0.10.0-dev"
+sc-consensus-grandpa-rpc = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
 sc-network = "0.10.0-dev"
 sc-network-common = { version = "0.10.0-dev" }
 sc-rpc = "4.0.0-dev"
+sc-rpc-api = "0.10.0-dev"
+sc-rpc-spec-v2 = "0.10.0-dev"
 sc-service = { version = "0.10.0-dev" }
 sc-telemetry = "4.0.0-dev"
 sc-keystore = "4.0.0-dev"
 sc-transaction-pool = "4.0.0-dev"
 sc-transaction-pool-api = "4.0.0-dev"
 sc-sync-state-rpc = { version = "0.10.0-dev" }
-grandpa = { package = "sc-consensus-grandpa", version = "0.10.0-dev" }
+substrate-frame-rpc-system = { version = "4.0.0-dev" }
+substrate-state-trie-migration-rpc = { version = "4.0.0-dev" }
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec" }
@@ -308,6 +312,7 @@ sp-consensus = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-consensus-slots = { workspace = true }
 sp-keyring = { workspace = true }
+sp-keystore = { version = "0.13.0" }
 sp-core = { workspace = true }
 sp-inherents = { workspace = true }
 sp-transaction-storage-proof = { workspace = true }

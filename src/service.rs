@@ -9,7 +9,7 @@ pub use polymesh_private_runtime_production;
 use prometheus_endpoint::Registry;
 use sc_client_api::BlockBackend;
 use sc_consensus_aura::{ImportQueueParams, SlotProportion, StartAuraParams};
-use sc_consensus_slots::SlotProportion;
+use sc_consensus_grandpa::SharedVoterState;
 use sc_executor::NativeElseWasmExecutor;
 pub use sc_executor::NativeExecutionDispatch;
 use sc_network::NetworkService;
@@ -20,7 +20,7 @@ use sc_service::{
 pub use sc_service::{config::PrometheusConfig, ChainSpec, Error};
 use sc_telemetry::{Telemetry, TelemetryWorker};
 pub use sp_api::ConstructRuntimeApi;
-use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
+use sp_consensus_aura::sr25519::{AuthorityId as AuraId, AuthorityPair as AuraPair};
 pub use sp_runtime::traits::BlakeTwo256;
 use sp_runtime::traits::Block as BlockT;
 use std::{sync::Arc, time::Duration};
@@ -79,8 +79,8 @@ native_executor_instance!(ProductionExecutor, polymesh_private_runtime_productio
 pub trait RuntimeApiCollection:
     sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
     + sp_api::ApiExt<Block>
-    + sp_consensus_aura::AuraApi<Block>
-    + grandpa::GrandpaApi<Block>
+    + sp_consensus_aura::AuraApi<Block, AuraId>
+    + sp_consensus_grandpa::GrandpaApi<Block>
     + sp_block_builder::BlockBuilder<Block>
     + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
     + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -103,8 +103,8 @@ impl<Api> RuntimeApiCollection for Api
 where
     Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
         + sp_api::ApiExt<Block>
-        + sp_consensus_aura::AuraApi<Block>
-        + grandpa::GrandpaApi<Block>
+        + sp_consensus_aura::AuraApi<Block, AuraId>
+        + sp_consensus_grandpa::GrandpaApi<Block>
         + sp_block_builder::BlockBuilder<Block>
         + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
         + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -131,12 +131,12 @@ fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceErro
     Ok(())
 }
 
-type FullLinkHalf<R, D> = grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
+type FullLinkHalf<R, D> = sp_consensus_grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
 pub type FullClient<R, D> = sc_service::TFullClient<Block, R, NativeElseWasmExecutor<D>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<R, D> =
-    grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
+    sp_consensus_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
 type FullAuraImportQueue<R, D> = sc_consensus::DefaultImportQueue<Block, FullClient<R, D>>;
 type FullStateBackend = sc_client_api::StateBackendFor<FullBackend, Block>;
 type FullPool<R, D> = sc_transaction_pool::FullPool<Block, FullClient<R, D>>;
@@ -217,7 +217,7 @@ where
         client.clone(),
     );
 
-    let (grandpa_block_import, grandpa_link) = grandpa::block_import(
+    let (grandpa_block_import, grandpa_link) = sp_consensus_grandpa::block_import(
         client.clone(),
         &(client.clone() as Arc<_>),
         select_chain.clone(),
@@ -257,9 +257,9 @@ where
 
         let justification_stream = grandpa_link.justification_stream();
         let shared_authority_set = grandpa_link.shared_authority_set().clone();
-        let shared_voter_state = grandpa::SharedVoterState::empty();
+        let shared_voter_state = SharedVoterState::empty();
 
-        let finality_proof_provider = grandpa::FinalityProofProvider::new_for_service(
+        let finality_proof_provider = sp_consensus_grandpa::FinalityProofProvider::new_for_service(
             backend.clone(),
             Some(shared_authority_set.clone()),
         );
@@ -277,7 +277,7 @@ where
                 select_chain: select_chain.clone(),
                 chain_spec: chain_spec.cloned_box(),
                 deny_unsafe,
-                grandpa: node_rpc::GrandpaDeps {
+                grandpa: crate::rpc::GrandpaDeps {
                     shared_voter_state,
                     shared_authority_set: shared_authority_set.clone(),
                     justification_stream: justification_stream.clone(),
@@ -328,7 +328,7 @@ pub fn new_full_base<R, D, F>(
     with_startup_data: F,
 ) -> Result<NewFullBase<R, D>, ServiceError>
 where
-    F: FnOnce(&FullAuraBlockImport<R, D>),
+    F: FnOnce(&FullGrandpaBlockImport<R, D>),
     R: ConstructRuntimeApi<Block, FullClient<R, D>> + Send + Sync + 'static,
     R::RuntimeApi: RuntimeApiCollection<StateBackend = FullStateBackend>,
     D: NativeExecutionDispatch + 'static,
@@ -346,7 +346,7 @@ where
 
     // TODO: Handle remote keystore.
 
-    let grandpa_protocol_name = grandpa::protocol_standard_name(
+    let grandpa_protocol_name = sp_consensus_grandpa::protocol_standard_name(
         &client
             .block_hash(0)
             .ok()
@@ -358,10 +358,10 @@ where
     config
         .network
         .extra_sets
-        .push(grandpa::grandpa_peers_set_config(
+        .push(sp_consensus_grandpa::grandpa_peers_set_config(
             grandpa_protocol_name.clone(),
         ));
-    let warp_sync = Arc::new(grandpa::warp_proof::NetworkProvider::new(
+    let warp_sync = Arc::new(sp_consensus_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
         grandpa_link.shared_authority_set().clone(),
         Vec::default(),
@@ -398,8 +398,7 @@ where
 
     let role = config.role.clone();
     let force_authoring = config.force_authoring;
-    let backoff_authoring_blocks =
-        Some(sc_consensus_slots::BackoffAuthoringOnFinalizedHeadLagging::default());
+    let backoff_authoring_blocks: Option<()> = None;
     let name = config.network.node_name.clone();
     let enable_grandpa = !config.disable_grandpa;
     let prometheus_registry = config.prometheus_registry().cloned();
@@ -418,7 +417,7 @@ where
         telemetry: telemetry.as_mut(),
     })?;
 
-    (with_startup_data)(&block_import, &aura_link);
+    (with_startup_data)(&block_import);
 
     if role.is_authority() {
         let proposer_factory = sc_basic_authorship::ProposerFactory::new(
@@ -474,7 +473,7 @@ where
             None
         };
 
-        let config = grandpa::Config {
+        let config = sp_consensus_grandpa::Config {
             // FIXME #1578 make this available through chainspec
             gossip_duration: Duration::from_millis(333),
             justification_period: 512,
@@ -492,11 +491,11 @@ where
         // and vote data availability than the observer. The observer has not
         // been tested extensively yet and having most nodes in a network run it
         // could lead to finality stalls.
-        let grandpa_config = grandpa::GrandpaParams {
+        let grandpa_config = sp_consensus_grandpa::GrandpaParams {
             config,
             link: grandpa_link,
             network,
-            voting_rule: grandpa::VotingRulesBuilder::default().build(),
+            voting_rule: sp_consensus_grandpa::VotingRulesBuilder::default().build(),
             prometheus_registry,
             shared_voter_state: SharedVoterState::empty(),
             telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -507,7 +506,7 @@ where
         task_manager.spawn_essential_handle().spawn_blocking(
             "grandpa-voter",
             None,
-            grandpa::run_grandpa_voter(grandpa_config)?,
+            sp_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
         );
     }
 
