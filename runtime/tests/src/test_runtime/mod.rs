@@ -7,7 +7,7 @@ use sp_version::NativeVersion;
 use codec::Encode;
 use frame_support::dispatch::{DispatchInfo, DispatchResult, Weight};
 use frame_support::parameter_types;
-use frame_support::traits::{Currency, KeyOwnerProofSystem, OnUnbalanced};
+use frame_support::traits::{Currency, KeyOwnerProofSystem};
 use frame_support::weights::RuntimeDbWeight;
 use frame_system::EnsureRoot;
 use sp_keyring::AccountKeyring;
@@ -222,9 +222,6 @@ thread_local! {
     pub static FORCE_SESSION_END: RefCell<bool> = RefCell::new(false);
     pub static SESSION_LENGTH: RefCell<BlockNumber> = RefCell::new(2);
 }
-
-pub type NegativeImbalance<T> =
-    <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
 impl ChargeTxFee for TestRuntime {
     fn charge_fee(_len: u32, _info: DispatchInfo) -> TransactionValidity {
