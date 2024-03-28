@@ -1,8 +1,6 @@
 use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
-use polymesh_common_utilities::{
-    constants::currency::ONE_POLY, protocol_fee::ProtocolOp, MaybeBlock, SystematicIssuers,
-};
+use polymesh_common_utilities::{protocol_fee::ProtocolOp, MaybeBlock, SystematicIssuers};
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
     identity_id::GenesisIdentityRecord,
@@ -552,7 +550,7 @@ pub mod production {
                 TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])
                     .expect("Production bootstrap telemetry url is valid; qed"),
             ),
-            Some(&*"/polymesh/production"),
+            Some("/polymesh/production"),
             None,
             Some(polymesh_props(12)),
             Default::default(),
