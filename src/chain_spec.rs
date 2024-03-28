@@ -240,8 +240,8 @@ fn dev_genesis_processed_data(
     };
 
     for (account, stash, _, _) in initial_authorities {
-        add_sk(account);
-        add_sk(stash);
+        add_sk(account.clone());
+        add_sk(stash.clone());
     }
 
     for account in other_funded_accounts {

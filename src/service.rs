@@ -1,6 +1,5 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
-use futures::stream::StreamExt;
 pub use polymesh_primitives::{
     crypto::native_schnorrkel, AccountId, Block, IdentityId, Index as Nonce, Moment, Ticker,
 };
@@ -249,11 +248,7 @@ where
         },
     )?;
 
-    let import_setup = (grandpa_block_import, grandpa_link);
-
-    let (rpc_extensions_builder, rpc_setup) = {
-        let (_, grandpa_link) = &import_setup;
-
+    let rpc_extensions_builder = {
         let justification_stream = grandpa_link.justification_stream();
         let shared_authority_set = grandpa_link.shared_authority_set().clone();
         let shared_voter_state = SharedVoterState::empty();
@@ -290,6 +285,8 @@ where
 
         rpc_extensions_builder
     };
+
+    let import_setup = (grandpa_block_import, grandpa_link);
 
     Ok(sc_service::PartialComponents {
         client,
@@ -457,7 +454,8 @@ where
             compatibility_mode: Default::default(),
         };
 
-        let aura = sc_consensus_aura::start_aura(aura_config)?;
+        let aura =
+            sc_consensus_aura::start_aura::<AuraPair, _, _, _, _, _, _, _, _, _, _>(aura_config)?;
         task_manager
             .spawn_essential_handle()
             .spawn_blocking("aura", Some("block-authoring"), aura);
