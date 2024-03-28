@@ -42,6 +42,7 @@ pub fn create_auditors(idx: u32, rng: &mut StdRng) -> AuditorState<TestRuntime> 
 #[test]
 fn issuers_can_create_confidential_tokens() {
     ExtBuilder::default().build().execute_with(|| {
+        next_block();
         // ------------ Setup
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -95,6 +96,7 @@ fn issuers_can_create_confidential_tokens() {
 #[test]
 fn issuers_can_create_and_mint_tokens() {
     ExtBuilder::default().build().execute_with(|| {
+        next_block();
         // ------------ Setup
         let mut rng = StdRng::from_seed([10u8; 32]);
 
@@ -154,6 +156,7 @@ fn issuers_can_create_and_mint_tokens() {
 #[test]
 fn account_create() {
     ExtBuilder::default().build().execute_with(|| {
+        next_block();
         let mut rng = StdRng::from_seed([10u8; 32]);
         let (asset, _, _) = create_confidential_token::<TestRuntime>("A", &mut rng);
 
