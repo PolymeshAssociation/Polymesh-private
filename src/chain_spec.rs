@@ -23,19 +23,6 @@ use std::convert::TryInto;
 // The URL for the telemetry server.
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polymesh.network/submit/";
 
-// Genesis POLYX distribution via bridge
-const TREASURY_LOCK_HASH: &str =
-    "0x1000000000000000000000000000000000000000000000000000000000000001";
-const KEY_LOCK_HASH: &str = "0x1000000000000000000000000000000000000000000000000000000000000003";
-
-const BOOTSTRAP_KEYS: u128 = 6_000 * ONE_POLY;
-const BOOTSTRAP_TREASURY: u128 = 17_500_000 * ONE_POLY;
-
-const DEV_KEYS: u128 = 30_000_000 * ONE_POLY;
-const DEV_TREASURY: u128 = 50_000_000 * ONE_POLY;
-
-const INITIAL_BOND: u128 = 500 * ONE_POLY;
-
 /// Node `ChainSpec` extensions.
 ///
 /// Additional parameters for some Substrate core modules,
@@ -94,14 +81,6 @@ fn polymesh_props(ss58: u8) -> Properties {
         .as_object()
         .unwrap()
         .clone()
-}
-
-macro_rules! session_keys {
-    () => {
-        fn session_keys(grandpa: GrandpaId, aura: AuraId) -> rt::SessionKeys {
-            rt::SessionKeys { aura, grandpa }
-        }
-    };
 }
 
 macro_rules! asset {
@@ -356,8 +335,6 @@ pub mod develop {
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
 
-    session_keys!();
-
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
         root_key: AccountId,
@@ -484,8 +461,6 @@ pub mod production {
     use polymesh_private_runtime_production::{self as rt, constants::time};
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
-
-    session_keys!();
 
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
@@ -645,8 +620,6 @@ pub mod develop {
     use polymesh_private_runtime_develop::{self as rt, constants::time};
 
     pub type ChainSpec = GenericChainSpec<rt::runtime::GenesisConfig>;
-
-    session_keys!();
 
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
