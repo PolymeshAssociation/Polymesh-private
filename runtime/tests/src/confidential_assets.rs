@@ -72,6 +72,7 @@ fn issuers_can_create_confidential_tokens() {
         // Add another STO.
 
         // Second Issuance is successful.
+        next_block();
         let asset2 = next_asset_id::<TestRuntime>(owner.did);
         assert_ok!(ConfidentialAsset::create_asset(
             owner.origin(),
@@ -107,6 +108,7 @@ fn issuers_can_create_and_mint_tokens() {
 
         // Create a few confidential assets.
         for _idx in 0..3 {
+            next_block();
             create_confidential_token::<TestRuntime>("A", &mut rng);
         }
 
