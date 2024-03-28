@@ -1,9 +1,7 @@
 use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
 use polymesh_common_utilities::{
-    constants::currency::ONE_POLY,
-    protocol_fee::ProtocolOp,
-    MaybeBlock, SystematicIssuers,
+    constants::currency::ONE_POLY, protocol_fee::ProtocolOp, MaybeBlock, SystematicIssuers,
 };
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
@@ -17,9 +15,7 @@ use sc_telemetry::TelemetryEndpoints;
 use serde_json::json;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
-use sp_runtime::{
-    traits::{IdentifyAccount, Verify},
-};
+use sp_runtime::traits::{IdentifyAccount, Verify};
 #[cfg(feature = "std")]
 use sp_runtime::{Deserialize, Serialize};
 use std::convert::TryInto;
