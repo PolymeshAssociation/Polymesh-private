@@ -18,7 +18,7 @@ use polymesh_runtime_common::{
 };
 use sp_runtime::{
     create_runtime_str,
-    traits::{BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify},
+    traits::{BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, Verify},
     Perbill,
 };
 use sp_std::prelude::*;

@@ -80,7 +80,7 @@ pub trait RuntimeApiCollection:
     sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
     + sp_api::ApiExt<Block>
     + sp_consensus_aura::AuraApi<Block, AuraId>
-    + sp_consensus_grandpa::GrandpaApi<Block>
+    + sc_consensus_grandpa::GrandpaApi<Block>
     + sp_block_builder::BlockBuilder<Block>
     + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
     + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -250,7 +250,7 @@ where
         },
     )?;
 
-    let import_setup = (block_import, grandpa_link);
+    let import_setup = (grandpa_block_import, grandpa_link);
 
     let (rpc_extensions_builder, rpc_setup) = {
         let (_, grandpa_link) = &import_setup;
@@ -259,7 +259,7 @@ where
         let shared_authority_set = grandpa_link.shared_authority_set().clone();
         let shared_voter_state = SharedVoterState::empty();
 
-        let finality_proof_provider = sp_consensus_grandpa::FinalityProofProvider::new_for_service(
+        let finality_proof_provider = sc_consensus_grandpa::FinalityProofProvider::new_for_service(
             backend.clone(),
             Some(shared_authority_set.clone()),
         );
@@ -346,7 +346,7 @@ where
 
     // TODO: Handle remote keystore.
 
-    let grandpa_protocol_name = sp_consensus_grandpa::protocol_standard_name(
+    let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
         &client
             .block_hash(0)
             .ok()
@@ -358,10 +358,10 @@ where
     config
         .network
         .extra_sets
-        .push(sp_consensus_grandpa::grandpa_peers_set_config(
+        .push(sc_consensus_grandpa::grandpa_peers_set_config(
             grandpa_protocol_name.clone(),
         ));
-    let warp_sync = Arc::new(sp_consensus_grandpa::warp_proof::NetworkProvider::new(
+    let warp_sync = Arc::new(sc_consensus_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
         grandpa_link.shared_authority_set().clone(),
         Vec::default(),
@@ -473,7 +473,7 @@ where
             None
         };
 
-        let config = sp_consensus_grandpa::Config {
+        let config = sc_consensus_grandpa::Config {
             // FIXME #1578 make this available through chainspec
             gossip_duration: Duration::from_millis(333),
             justification_period: 512,
@@ -491,11 +491,11 @@ where
         // and vote data availability than the observer. The observer has not
         // been tested extensively yet and having most nodes in a network run it
         // could lead to finality stalls.
-        let grandpa_config = sp_consensus_grandpa::GrandpaParams {
+        let grandpa_config = sc_consensus_grandpa::GrandpaParams {
             config,
             link: grandpa_link,
             network,
-            voting_rule: sp_consensus_grandpa::VotingRulesBuilder::default().build(),
+            voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
             prometheus_registry,
             shared_voter_state: SharedVoterState::empty(),
             telemetry: telemetry.as_ref().map(|x| x.handle()),
@@ -506,7 +506,7 @@ where
         task_manager.spawn_essential_handle().spawn_blocking(
             "grandpa-voter",
             None,
-            sp_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
+            sc_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
         );
     }
 
