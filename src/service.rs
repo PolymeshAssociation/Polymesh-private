@@ -251,7 +251,6 @@ where
     let rpc_extensions_builder = {
         let justification_stream = grandpa_link.justification_stream();
         let shared_authority_set = grandpa_link.shared_authority_set().clone();
-        let shared_voter_state = SharedVoterState::empty();
 
         let finality_proof_provider = sc_consensus_grandpa::FinalityProofProvider::new_for_service(
             backend.clone(),
@@ -272,7 +271,7 @@ where
                 chain_spec: chain_spec.cloned_box(),
                 deny_unsafe,
                 grandpa: crate::rpc::GrandpaDeps {
-                    shared_voter_state,
+                    shared_voter_state: SharedVoterState::empty(),
                     shared_authority_set: shared_authority_set.clone(),
                     justification_stream: justification_stream.clone(),
                     subscription_executor,

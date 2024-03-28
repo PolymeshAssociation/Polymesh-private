@@ -383,7 +383,10 @@ pub mod develop {
                 authorities: initial_authorities.iter().map(|x| x.2.clone()).collect(),
             },
             grandpa: rt::runtime::GrandpaConfig {
-                authorities: initial_authorities.iter().map(|x| x.3.clone()).collect(),
+                authorities: initial_authorities
+                    .iter()
+                    .map(|x| (x.3.clone(), 1))
+                    .collect(),
             },
             // Governance Council:
             committee_membership: group_membership!(1),
@@ -505,7 +508,10 @@ pub mod production {
                 authorities: initial_authorities.iter().map(|x| x.2.clone()).collect(),
             },
             grandpa: rt::runtime::GrandpaConfig {
-                authorities: initial_authorities.iter().map(|x| x.3.clone()).collect(),
+                authorities: initial_authorities
+                    .iter()
+                    .map(|x| (x.3.clone(), 1))
+                    .collect(),
             },
             // Governing council
             committee_membership: group_membership!(1, 2, 3), // 3 GC members
