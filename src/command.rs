@@ -147,14 +147,14 @@ pub fn run() -> Result<()> {
             &cli,
             cmd,
             |(c, b, _, tm), _| {
-                let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, backend, blocks| {
+                let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, _backend, blocks| {
                     sc_consensus_grandpa::revert(client, blocks)?;
                     Ok(())
                 });
                 Ok((cmd.run(c, b, Some(aux_revert)), tm))
             },
             |(c, b, _, tm), _| {
-                let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, backend, blocks| {
+                let aux_revert = Box::new(|client: Arc<FullClient<_, _>>, _backend, blocks| {
                     sc_consensus_grandpa::revert(client, blocks)?;
                     Ok(())
                 });

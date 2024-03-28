@@ -427,7 +427,7 @@ where
 
         let aura_config = StartAuraParams {
             slot_duration,
-            client,
+            client: client.clone(),
             select_chain,
             block_import,
             proposer_factory,
@@ -490,7 +490,7 @@ where
         let grandpa_config = sc_consensus_grandpa::GrandpaParams {
             config,
             link: grandpa_link,
-            network,
+            network: network.clone(),
             voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
             prometheus_registry,
             shared_voter_state: SharedVoterState::empty(),

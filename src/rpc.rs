@@ -101,7 +101,7 @@ where
     let FullDeps {
         client,
         pool,
-        select_chain,
+        select_chain: _,
         chain_spec,
         deny_unsafe,
         grandpa,
