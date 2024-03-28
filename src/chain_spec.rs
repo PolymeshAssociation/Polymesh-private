@@ -1,14 +1,14 @@
 use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
 use polymesh_common_utilities::{
-    constants::{currency::ONE_POLY, TREASURY_PALLET_ID},
+    constants::currency::ONE_POLY,
     protocol_fee::ProtocolOp,
     MaybeBlock, SystematicIssuers,
 };
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
     identity_id::GenesisIdentityRecord,
-    AccountId, IdentityId, Moment, PosRatio, SecondaryKey, Signatory, Signature, Ticker,
+    AccountId, IdentityId, Moment, PosRatio, SecondaryKey, Signature, Ticker,
 };
 use sc_chain_spec::{ChainSpecExtension, ChainType};
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
@@ -16,10 +16,9 @@ use sc_service::Properties;
 use sc_telemetry::TelemetryEndpoints;
 use serde_json::json;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{sr25519, Pair, Public, H256};
+use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{
-    traits::{AccountIdConversion, IdentifyAccount, Verify},
-    PerThing,
+    traits::{IdentifyAccount, Verify},
 };
 #[cfg(feature = "std")]
 use sp_runtime::{Deserialize, Serialize};

@@ -13,7 +13,6 @@ use sc_consensus_grandpa::SharedVoterState;
 use sc_executor::NativeElseWasmExecutor;
 pub use sc_executor::NativeExecutionDispatch;
 use sc_network::NetworkService;
-use sc_network_common::{protocol::event::Event, service::NetworkEventStream};
 use sc_service::{
     config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager, WarpSyncParams,
 };
@@ -104,7 +103,7 @@ where
     Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
         + sp_api::ApiExt<Block>
         + sp_consensus_aura::AuraApi<Block, AuraId>
-        + sp_consensus_grandpa::GrandpaApi<Block>
+        + sc_consensus_grandpa::GrandpaApi<Block>
         + sp_block_builder::BlockBuilder<Block>
         + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
         + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -131,12 +130,12 @@ fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceErro
     Ok(())
 }
 
-type FullLinkHalf<R, D> = sp_consensus_grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
+type FullLinkHalf<R, D> = sc_consensus_grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
 pub type FullClient<R, D> = sc_service::TFullClient<Block, R, NativeElseWasmExecutor<D>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<R, D> =
-    sp_consensus_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
+    sc_consensus_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
 type FullAuraImportQueue<R, D> = sc_consensus::DefaultImportQueue<Block, FullClient<R, D>>;
 type FullStateBackend = sc_client_api::StateBackendFor<FullBackend, Block>;
 type FullPool<R, D> = sc_transaction_pool::FullPool<Block, FullClient<R, D>>;
@@ -217,7 +216,7 @@ where
         client.clone(),
     );
 
-    let (grandpa_block_import, grandpa_link) = sp_consensus_grandpa::block_import(
+    let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
         client.clone(),
         &(client.clone() as Arc<_>),
         select_chain.clone(),
