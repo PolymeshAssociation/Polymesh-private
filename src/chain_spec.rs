@@ -1,6 +1,10 @@
 use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
-use polymesh_common_utilities::{protocol_fee::ProtocolOp, MaybeBlock, SystematicIssuers};
+use polymesh_common_utilities::{
+    constants::{currency::ONE_POLY, TREASURY_PALLET_ID},
+    protocol_fee::ProtocolOp,
+    MaybeBlock, SystematicIssuers,
+};
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
     identity_id::GenesisIdentityRecord,
@@ -13,13 +17,19 @@ use sc_telemetry::TelemetryEndpoints;
 use serde_json::json;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{sr25519, Pair, Public};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 #[cfg(feature = "std")]
 use sp_runtime::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 // The URL for the telemetry server.
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polymesh.network/submit/";
+
+const BOOTSTRAP_KEYS: u128 = 6_000 * ONE_POLY;
+const BOOTSTRAP_TREASURY: u128 = 17_500_000 * ONE_POLY;
+
+const DEV_KEYS: u128 = 30_000_000 * ONE_POLY;
+const DEV_TREASURY: u128 = 50_000_000 * ONE_POLY;
 
 /// Node `ChainSpec` extensions.
 ///
@@ -137,7 +147,10 @@ macro_rules! checkpoint {
 type InitialAuth = (AccountId, AccountId, AuraId, GrandpaId);
 
 // alias type to make clippy happy.
-type GenesisProcessedData = Vec<GenesisIdentityRecord<AccountId>>;
+type GenesisProcessedData = (
+    Vec<GenesisIdentityRecord<AccountId>>,
+    Vec<(AccountId, u128)>,
+);
 
 fn adjust_last(bytes: &mut [u8], n: u8) -> &str {
     bytes[bytes.len() - 1] = n + b'0';
@@ -147,6 +160,8 @@ fn adjust_last(bytes: &mut [u8], n: u8) -> &str {
 fn genesis_processed_data(
     initial_authorities: &Vec<InitialAuth>,
     root_key: AccountId, //polymesh_5
+    treasury_amount: u128,
+    key_amount: u128,
 ) -> GenesisProcessedData {
     // Identities and their roles
     // 1 = [Polymath] GenesisCouncil (1 of 3) + UpgradeCommittee (1 of 1) + TechnicalCommittee (1 of 1) + GCReleaseCoordinator
@@ -171,11 +186,13 @@ fn genesis_processed_data(
     // Identity_05
     // Primary Key: polymesh_5
 
-    let mut identities = Vec::with_capacity(5);
-    let mut keys = Vec::with_capacity(initial_authorities.len() + 5 + 2); //11
+    let mut identities = Vec::new();
+    let mut balances = Vec::new();
+    let mut keys = Vec::new();
 
     let mut create_id = |nonce: u8, primary_key: AccountId| {
         keys.push(primary_key.clone());
+        balances.push((primary_key.clone(), key_amount));
         identities.push(GenesisIdentityRecord::new(nonce, primary_key));
     };
 
@@ -187,6 +204,18 @@ fn genesis_processed_data(
     // Creating identity for sudo
     create_id(5u8, root_key);
 
+    for (account, stash, _, _) in initial_authorities {
+        // Make stash and controller 4th Identity's secondary keys.
+        let mut push_key = |key: &AccountId| {
+            balances.push((key.clone(), key_amount));
+            identities[3]
+                .secondary_keys
+                .push(SecondaryKey::from_account_id_with_full_perms(key.clone()))
+        };
+        push_key(account);
+        push_key(stash);
+    }
+
     // Give CDD issuer to operator and sudo since it won't receive CDD from the group automatically
     identities[3]
         .issuers
@@ -197,20 +226,30 @@ fn genesis_processed_data(
         .issuers
         .push(SystematicIssuers::CDDProvider.as_id());
 
-    identities
+    // Treasury
+    balances.push((
+        TREASURY_PALLET_ID.into_account_truncating(),
+        treasury_amount,
+    ));
+
+    (identities, balances)
 }
 
 #[cfg(not(feature = "ci-runtime"))]
 fn dev_genesis_processed_data(
     initial_authorities: &Vec<InitialAuth>,
     other_funded_accounts: Vec<AccountId>,
+    treasury_amount: u128,
+    key_amount: u128,
 ) -> GenesisProcessedData {
     let mut identity = GenesisIdentityRecord::new(1u8, initial_authorities[0].0.clone());
+    let mut balances = Vec::new();
 
     identity
         .secondary_keys
         .reserve(initial_authorities.len() + 2 + other_funded_accounts.len());
-    let mut add_sk = |acc| {
+    let mut add_sk = |acc: AccountId| {
+        balances.push((acc.clone(), key_amount));
         identity
             .secondary_keys
             .push(SecondaryKey::from_account_id_with_full_perms(acc))
@@ -228,7 +267,13 @@ fn dev_genesis_processed_data(
     // The 0th key is the primary key
     identity.secondary_keys.remove(0);
 
-    vec![identity]
+    // Treasury
+    balances.push((
+        TREASURY_PALLET_ID.into_account_truncating(),
+        treasury_amount,
+    ));
+
+    (vec![identity], balances)
 }
 
 fn frame(wasm_binary: Option<&[u8]>) -> frame_system::GenesisConfig {
@@ -336,10 +381,16 @@ pub mod develop {
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
         root_key: AccountId,
-        _enable_println: bool,
         other_funded_accounts: Vec<AccountId>,
+        treasury_amount: u128,
+        key_amount: u128,
     ) -> rt::runtime::GenesisConfig {
-        let identities = dev_genesis_processed_data(&initial_authorities, other_funded_accounts);
+        let (identities, balances) = dev_genesis_processed_data(
+            &initial_authorities,
+            other_funded_accounts,
+            treasury_amount,
+            key_amount,
+        );
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
@@ -349,7 +400,7 @@ pub mod develop {
                 identities,
                 ..Default::default()
             },
-            balances: Default::default(),
+            balances: rt::runtime::BalancesConfig { balances },
             sudo: pallet_sudo::GenesisConfig {
                 key: Some(root_key.clone()),
             },
@@ -391,13 +442,14 @@ pub mod develop {
         genesis(
             vec![get_authority_keys_from_seed("Alice", false)],
             seeded_acc_id("Alice"),
-            true,
             vec![
                 seeded_acc_id("Bob"),
                 seeded_acc_id("Charlie"),
                 seeded_acc_id("Dave"),
                 seeded_acc_id("Eve"),
             ],
+            DEV_TREASURY,
+            DEV_KEYS,
         )
     }
 
@@ -439,8 +491,9 @@ pub mod develop {
                 get_authority_keys_from_seed("Charlie", false),
             ],
             seeded_acc_id("Alice"),
-            true,
             vec![seeded_acc_id("Dave"), seeded_acc_id("Eve")],
+            DEV_TREASURY,
+            DEV_KEYS,
         )
     }
 
@@ -463,9 +516,15 @@ pub mod production {
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
         root_key: AccountId,
-        _enable_println: bool,
+        treasury_amount: u128,
+        key_amount: u128,
     ) -> rt::runtime::GenesisConfig {
-        let identities = genesis_processed_data(&initial_authorities, root_key.clone());
+        let (identities, balances) = genesis_processed_data(
+            &initial_authorities,
+            root_key.clone(),
+            treasury_amount,
+            key_amount,
+        );
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
@@ -475,7 +534,7 @@ pub mod production {
                 identities,
                 ..Default::default()
             },
-            balances: Default::default(),
+            balances: rt::runtime::BalancesConfig { balances },
             pips: pips!(time::DAYS * 30, MaybeBlock::Some(time::DAYS * 90), 1000),
             aura: rt::runtime::AuraConfig {
                 authorities: initial_authorities.iter().map(|x| x.2.clone()).collect(),
@@ -518,7 +577,8 @@ pub mod production {
                 get_authority_keys_from_seed("Charlie", false),
             ],
             seeded_acc_id("polymesh_5"),
-            false,
+            BOOTSTRAP_TREASURY,
+            BOOTSTRAP_KEYS,
         )
     }
 
@@ -561,7 +621,8 @@ pub mod production {
         genesis(
             vec![get_authority_keys_from_seed("Alice", false)],
             seeded_acc_id("Eve"),
-            true,
+            BOOTSTRAP_TREASURY,
+            BOOTSTRAP_KEYS,
         )
     }
 
@@ -590,7 +651,8 @@ pub mod production {
                 get_authority_keys_from_seed("Charlie", false),
             ],
             seeded_acc_id("Eve"),
-            true,
+            BOOTSTRAP_TREASURY,
+            BOOTSTRAP_KEYS,
         )
     }
 
@@ -622,9 +684,15 @@ pub mod develop {
     fn genesis(
         initial_authorities: Vec<InitialAuth>,
         root_key: AccountId,
-        _enable_println: bool,
+        treasury_amount: u128,
+        key_amount: u128,
     ) -> rt::runtime::GenesisConfig {
-        let identities = genesis_processed_data(&initial_authorities, root_key.clone());
+        let (identities, balances) = genesis_processed_data(
+            &initial_authorities,
+            root_key.clone(),
+            treasury_amount,
+            key_amount,
+        );
 
         rt::runtime::GenesisConfig {
             system: frame(rt::WASM_BINARY),
@@ -634,7 +702,7 @@ pub mod develop {
                 identities,
                 ..Default::default()
             },
-            balances: Default::default(),
+            balances: rt::runtime::BalancesConfig { balances },
             sudo: pallet_sudo::GenesisConfig {
                 key: Some(root_key.clone()),
             },
@@ -673,7 +741,8 @@ pub mod develop {
         genesis(
             vec![get_authority_keys_from_seed("Bob", false)],
             seeded_acc_id("Alice"),
-            true,
+            BOOTSTRAP_TREASURY,
+            BOOTSTRAP_KEYS,
         )
     }
 
@@ -702,7 +771,8 @@ pub mod develop {
                 get_authority_keys_from_seed("Charlie", false),
             ],
             seeded_acc_id("Alice"),
-            true,
+            BOOTSTRAP_TREASURY,
+            BOOTSTRAP_KEYS,
         )
     }
 
