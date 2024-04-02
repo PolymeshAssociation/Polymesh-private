@@ -3,7 +3,7 @@ use frame_support::traits::OnInitialize;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng as StdRng;
 use sp_keyring::AccountKeyring;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Hash, Zero};
 
 use confidential_assets::transaction::ConfidentialTransferProof;
 
@@ -32,7 +32,10 @@ macro_rules! assert_affirm_confidential_transaction {
 pub fn next_block() {
     let block_number = frame_system::Pallet::<TestRuntime>::block_number() + 1;
     frame_system::Pallet::<TestRuntime>::set_block_number(block_number);
+    let hash = <TestRuntime as frame_system::Config>::Hashing::hash_of(&block_number);
+    frame_system::Pallet::<TestRuntime>::set_parent_hash(hash);
     pallet_scheduler::Pallet::<TestRuntime>::on_initialize(block_number);
+    pallet_insecure_randomness_collective_flip::Pallet::<TestRuntime>::on_initialize(block_number);
 }
 
 pub fn create_auditors(idx: u32, rng: &mut StdRng) -> AuditorState<TestRuntime> {
