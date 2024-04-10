@@ -59,8 +59,8 @@ type CddServiceProvider = group::Module<TestRuntime, group::Instance2>;
 type Balance = u128;
 type RuntimeBaseCallFilter = TestBaseCallFilter;
 
-// 1 in 4 blocks (on average, not counting collisions) will be primary babe blocks.
-const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
+// Disable babe's primary selector, only use the plain secondary selector.
+const PRIMARY_PROBABILITY: (u64, u64) = (0, 1);
 const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("test-runtime"),
     impl_name: create_runtime_str!("test-runtime"),

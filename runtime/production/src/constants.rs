@@ -18,8 +18,8 @@ pub mod time {
     pub const HOURS: BlockNumber = MINUTES * 60;
     pub const DAYS: BlockNumber = HOURS * 24;
 
-    // 1 in 4 blocks (on average, not counting collisions) will be primary babe blocks.
-    pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
+    // Disable babe's primary selector, only use the plain secondary selector.
+    pub const PRIMARY_PROBABILITY: (u64, u64) = (0, 1);
 }
 
 /// Fee-related.
