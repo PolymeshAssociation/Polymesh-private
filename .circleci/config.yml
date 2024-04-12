@@ -104,6 +104,35 @@ jobs:
           paths:
               - .
       - save-sccache-cache
+  
+  build-arm64:
+    docker:
+      - image: polymeshassociation/rust-arm64:debian-nightly-2023-12-11
+    resource_class: xlarge
+    environment:
+      VERBOSE: "1"
+      RUSTFLAGS: -D warnings
+      RUSTC_WRAPPER: /usr/local/cargo/bin/sccache
+    steps:
+      - checkout
+      - setup-sccache
+      - restore-sccache-cache
+      - run:
+          name: Build release
+          command: cargo build --locked --release
+          no_output_timeout: 30m
+      - run:
+          name: Create assets directory for releases
+          command: mkdir ./assets
+      - run:
+          name: Copy binary to assets
+          command: cp ./target/release/polymesh-private ./assets/polymesh-private-arm64
+      - persist_to_workspace:
+          root: ./assets
+          paths:
+              - .
+      - save-sccache-cache
+
   benchmark-build:
     docker:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
@@ -236,9 +265,36 @@ jobs:
           at: .
       - run: |
           export VERSION=`./scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
-          docker build -f ./.docker/Dockerfile.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian .
+          docker build -f ./.docker/Dockerfile.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian-amd64 --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 .
           echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
           docker push --all-tags $IMAGE_NAME
+  build-docker-arm64-debian:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-private
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: arm.small
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - run: |
+          export VERSION=`./scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker build -f ./.docker/arm64/Dockerfile.debian --tag $IMAGE_NAME:latest-$CIRCLE_BRANCH-debian-arm64 --tag $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64 .
+          echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
+          docker push --all-tags $IMAGE_NAME
+  push-multiarch-image:
+    docker:
+      - image: cimg/deploy:2023.12
+    resource_class: small
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+          at: .
+      - run: |
+          export VERSION=`./scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker manifest create $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+          docker manifest push $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH
 
 workflows:
   commit:
@@ -265,3 +321,25 @@ workflows:
             branches:
               only:
                 - main
+                - build/*
+      - build-docker-arm64-debian:
+          context:
+            - DockerHub
+          requires:
+            - -arm64
+          filters:
+            branches:
+              only:
+                - main
+                - build/*
+      - push-multiarch-image:
+          context:
+            - DockerHub
+          requires:
+            - build-docker-debian
+            - build-docker-arm64-debian
+          filters:
+            branches:
+              only:
+                - main
+                - build/*
