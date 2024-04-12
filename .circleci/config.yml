@@ -271,7 +271,8 @@ jobs:
       IMAGE_NAME: polymeshassociation/polymesh-private
     docker:
       - image: cimg/deploy:2023.12
-    resource_class: arm.small
+    # this is the smallest resource class that supports arm64
+    resource_class: arm.medium
     steps:
       - setup_remote_docker
       - attach_workspace:
