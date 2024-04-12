@@ -326,7 +326,7 @@ workflows:
           context:
             - DockerHub
           requires:
-            - -arm64
+            - build-arm64
           filters:
             branches:
               only:
