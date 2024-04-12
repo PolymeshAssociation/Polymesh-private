@@ -319,7 +319,6 @@ workflows:
             branches:
               only:
                 - main
-                - build-ma-builds
       - benchmark-build
       - coverage
       - rust-integration-test:
@@ -337,18 +336,17 @@ workflows:
             branches:
               only:
                 - main
-                - build-ma-builds
       - build-docker-arm64-debian:
           context:
             - DockerHub
           requires:
+            # this job requires the build job to make sure it has access to all required artifacts in its workspace.
             - build
             - build-arm64
           filters:
             branches:
               only:
                 - main
-                - build-ma-builds
       - push-multiarch-image:
           context:
             - DockerHub
@@ -359,4 +357,3 @@ workflows:
             branches:
               only:
                 - main
-                - build-ma-builds
