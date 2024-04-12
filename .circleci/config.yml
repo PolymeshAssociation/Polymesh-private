@@ -104,7 +104,6 @@ jobs:
           paths:
               - .
       - save-sccache-cache
-  
   build-arm64:
     docker:
       - image: polymeshassociation/rust-arm64:debian-nightly-2023-12-11
@@ -132,7 +131,6 @@ jobs:
           paths:
               - .
       - save-sccache-cache
-
   benchmark-build:
     docker:
       - image: polymeshassociation/rust:debian-nightly-2023-12-11
@@ -304,6 +302,12 @@ workflows:
       - clippy
       - test
       - build
+      - build-arm64:
+          filters:
+            branches:
+              only:
+                - main
+                - build/*
       - benchmark-build
       - coverage
       - rust-integration-test:
