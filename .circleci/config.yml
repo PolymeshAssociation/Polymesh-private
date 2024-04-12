@@ -307,7 +307,7 @@ workflows:
             branches:
               only:
                 - main
-                - build/*
+                - build*
       - benchmark-build
       - coverage
       - rust-integration-test:
@@ -325,7 +325,7 @@ workflows:
             branches:
               only:
                 - main
-                - build/*
+                - build*
       - build-docker-arm64-debian:
           context:
             - DockerHub
@@ -335,7 +335,7 @@ workflows:
             branches:
               only:
                 - main
-                - build/*
+                - build*
       - push-multiarch-image:
           context:
             - DockerHub
@@ -346,4 +346,4 @@ workflows:
             branches:
               only:
                 - main
-                - build/*
+                - build*
