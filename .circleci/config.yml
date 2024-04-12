@@ -107,7 +107,7 @@ jobs:
   build-arm64:
     docker:
       - image: polymeshassociation/rust-arm64:debian-nightly-2023-12-11
-    resource_class: xlarge
+    resource_class: arm.xlarge
     environment:
       VERBOSE: "1"
       RUSTFLAGS: -D warnings
