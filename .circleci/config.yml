@@ -283,6 +283,8 @@ jobs:
           echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
           docker push --all-tags $IMAGE_NAME
   push-multiarch-image:
+    environment:
+      IMAGE_NAME: polymeshassociation/polymesh-private
     docker:
       - image: cimg/deploy:2023.12
     resource_class: small
@@ -292,6 +294,8 @@ jobs:
           at: .
       - run: |
           export VERSION=`./scripts/version.sh "$CIRCLE_BRANCH" "$CIRCLE_SHA1"`
+          docker manifest create $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
+          docker manifest push $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian
           docker manifest create $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-amd64 --amend $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH-debian-arm64
           docker manifest push $IMAGE_NAME:$VERSION-$CIRCLE_BRANCH
 
