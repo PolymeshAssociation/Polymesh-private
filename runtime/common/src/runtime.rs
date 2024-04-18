@@ -21,7 +21,7 @@ macro_rules! misc_pallet_impls {
         pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
             sp_consensus_babe::BabeEpochConfiguration {
                 c: PRIMARY_PROBABILITY,
-                allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+                allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
             };
 
         /// Native version.
