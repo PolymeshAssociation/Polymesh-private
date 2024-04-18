@@ -4,8 +4,6 @@
 
 pub mod constants;
 pub mod runtime;
-#[cfg(feature = "std")]
-pub use pallet_staking::StakerStatus;
 
 #[cfg(feature = "std")]
 pub use runtime::{native_version, WASM_BINARY};

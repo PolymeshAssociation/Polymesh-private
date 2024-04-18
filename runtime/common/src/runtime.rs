@@ -208,7 +208,7 @@ macro_rules! misc_pallet_impls {
 
         impl pallet_authorship::Config for Runtime {
             type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-            type EventHandler = (Staking, ImOnline);
+            type EventHandler = (ImOnline);
         }
 
         impl_opaque_keys! {
@@ -223,10 +223,10 @@ macro_rules! misc_pallet_impls {
         impl pallet_session::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type ValidatorId = polymesh_primitives::AccountId;
-            type ValidatorIdOf = pallet_staking::StashOf<Self>;
+            type ValidatorIdOf = (); //pallet_staking::StashOf<Self>;
             type ShouldEndSession = Babe;
             type NextSessionRotation = Babe;
-            type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+            type SessionManager = (); //pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
             type SessionHandler =
                 <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
             type Keys = SessionKeys;
@@ -234,48 +234,11 @@ macro_rules! misc_pallet_impls {
         }
 
         impl pallet_session::historical::Config for Runtime {
-            type FullIdentification = pallet_staking::Exposure<
-                polymesh_primitives::AccountId,
-                polymesh_primitives::Balance,
-            >;
-            type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
-        }
-
-        impl pallet_staking::Config for Runtime {
-            type Currency = Balances;
-            type UnixTime = Timestamp;
-            type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
-            type RewardRemainder = ();
-            type RuntimeEvent = RuntimeEvent;
-            type Slash = Treasury; // send the slashed funds to the treasury.
-            type Reward = (); // rewards are minted from the void
-            type SessionsPerEra = SessionsPerEra;
-            type BondingDuration = BondingDuration;
-            type SlashDeferDuration = SlashDeferDuration;
-            type SlashCancelOrigin = polymesh_primitives::EnsureRoot;
-            type SessionInterface = Self;
-            type RewardCurve = RewardCurve;
-            type NextNewSession = Session;
-            type ElectionLookahead = ElectionLookahead;
-            type Call = RuntimeCall;
-            type MaxIterations = MaxIterations;
-            type MinSolutionScoreBump = MinSolutionScoreBump;
-            type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-            type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
-            type UnsignedPriority = StakingUnsignedPriority;
-            type RequiredAddOrigin = Self::SlashCancelOrigin;
-            type RequiredRemoveOrigin = Self::SlashCancelOrigin;
-            type RequiredCommissionOrigin = Self::SlashCancelOrigin;
-            type RewardScheduler = Scheduler;
-            type MaxValidatorPerIdentity = MaxValidatorPerIdentity;
-            type MaxVariableInflationTotalIssuance = MaxVariableInflationTotalIssuance;
-            type FixedYearlyReward = FixedYearlyReward;
-            type PalletsOrigin = OriginCaller;
-            type MinimumBond = MinimumBond;
-            type OffchainSolutionWeightLimit = polymesh_runtime_common::OffchainSolutionWeightLimit;
-            type WeightInfo = polymesh_weights::pallet_staking::SubstrateWeight;
-            type MaxNominations = pallet_staking::MaxNominations;
-            type MaxUnlockingChunks = pallet_staking::MaxUnlockingChunks;
+            type FullIdentification = (); /*pallet_staking::Exposure<
+                                              polymesh_primitives::AccountId,
+                                              polymesh_primitives::Balance,
+                                          >;*/
+            type FullIdentificationOf = (); //pallet_staking::ExposureOf<Runtime>;
         }
 
         impl pallet_authority_discovery::Config for Runtime {
@@ -431,7 +394,7 @@ macro_rules! misc_pallet_impls {
         impl pallet_offences::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
-            type OnOffenceHandler = Staking;
+            type OnOffenceHandler = (); //Staking;
         }
 
         type GrandpaKey = (sp_core::crypto::KeyTypeId, pallet_grandpa::AuthorityId);
@@ -869,12 +832,6 @@ macro_rules! runtime_apis {
                     encoded: Vec<u8>,
                 ) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
                     SessionKeys::decode_into_raw_public_keys(&encoded)
-                }
-            }
-
-            impl pallet_staking_rpc_runtime_api::StakingApi<Block> for Runtime {
-                fn get_curve() -> Vec<(Perbill, Perbill)> {
-                    RewardCurve::get().points.to_vec()
                 }
             }
 

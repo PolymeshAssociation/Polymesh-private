@@ -2,7 +2,6 @@ use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
 use pallet_bridge::BridgeTx;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-use pallet_staking::StakerStatus;
 use polymesh_common_utilities::{
     constants::{currency::ONE_POLY, TREASURY_PALLET_ID},
     protocol_fee::ProtocolOp,
@@ -21,10 +20,7 @@ use serde_json::json;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{sr25519, Pair, Public, H256};
-use sp_runtime::{
-    traits::{AccountIdConversion, IdentifyAccount, Verify},
-    PerThing,
-};
+use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 #[cfg(feature = "std")]
 use sp_runtime::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -112,7 +108,7 @@ pub fn get_authority_keys_from_seed(s: &str, uniq: bool) -> InitialAuth {
     )
 }
 
-fn polymath_props(ss58: u8) -> Properties {
+fn polymesh_props(ss58: u8) -> Properties {
     json!({ "ss58Format": ss58, "tokenDecimals": 6, "tokenSymbol": "POLYX" })
         .as_object()
         .unwrap()
@@ -202,13 +198,6 @@ type InitialAuth = (
 // alias type to make clippy happy.
 type GenesisProcessedData = (
     Vec<GenesisIdentityRecord<AccountId>>,
-    Vec<(
-        IdentityId,
-        AccountId,
-        AccountId,
-        u128,
-        StakerStatus<AccountId>,
-    )>,
     Vec<BridgeTx<AccountId>>,
 );
 
@@ -253,37 +242,37 @@ impl BridgeLockId {
 }
 
 fn genesis_processed_data(
-    initial_authorities: &Vec<InitialAuth>, //Alice, Bob, Charlie
-    root_key: AccountId,                    //polymath_5
+    initial_authorities: &Vec<InitialAuth>,
+    root_key: AccountId, //polymesh_5
     treasury_bridge_lock: BridgeLockId,
     key_bridge_locks: Vec<BridgeLockId>,
 ) -> GenesisProcessedData {
     // Identities and their roles
-    // 1 = [Polymath] GenesisCouncil (1 of 3) + UpgradeCommittee (1 of 1) + TechnicalCommittee (1 of 1) + GCReleaseCoordinator
+    // 1 = [Polymesh] GenesisCouncil (1 of 3) + UpgradeCommittee (1 of 1) + TechnicalCommittee (1 of 1) + GCReleaseCoordinator
     // 2 = GenesisCouncil (2 of 3)
     // 3 = GenesisCouncil (3 of 3)
     // 4 = Operator
     // 5 = Bridge + Sudo
 
     // Identity_01
-    // Primary Key: polymath_1
+    // Primary Key: polymesh_1
 
     // Identity_02
-    // Primary Key: polymath_2
+    // Primary Key: polymesh_2
 
     // Identity_03
-    // Primary Key: polymath_3
+    // Primary Key: polymesh_3
 
     // Identity_04
-    // Primary Key: polymath_4
+    // Primary Key: polymesh_4
     // Secondary Keys: Alice, Alice//stash, Bob, Bob//stash, Charlie, Charlie//stash
 
     // Identity_05
-    // Primary Key: polymath_5
+    // Primary Key: polymesh_5
     // Secondary Keys: bridge multisig (controller)
 
-    let mut identities = Vec::with_capacity(5);
-    let mut keys = Vec::with_capacity(5 + 2 * initial_authorities.len()); //11
+    let mut identities = Vec::new();
+    let mut keys = Vec::new();
 
     let mut create_id = |nonce: u8, primary_key: AccountId| {
         keys.push(primary_key.clone());
@@ -292,31 +281,21 @@ fn genesis_processed_data(
 
     // Creating Identities 1-4 (GC + Operators)
     for i in 1..5u8 {
-        create_id(i, seeded_acc_id(adjust_last(&mut { *b"polymath_0" }, i)));
+        create_id(i, seeded_acc_id(adjust_last(&mut { *b"polymesh_0" }, i)));
     }
 
     // Creating identity for sudo + bridge admin
     create_id(5u8, root_key);
 
-    // 3 operators, all self staking at genesis
-    let mut stakers = Vec::with_capacity(initial_authorities.len());
-    for (stash, controller, ..) in initial_authorities {
-        stakers.push((
-            IdentityId::from(4), // All operators have the same Identity
-            stash.clone(),
-            controller.clone(),
-            INITIAL_BOND,
-            pallet_staking::StakerStatus::Validator,
-        ));
+    for (account, stash, _, _, _, _) in initial_authorities {
         // Make stash and controller 4th Identity's secondary keys.
         let mut push_key = |key: &AccountId| {
             identities[3]
                 .secondary_keys
-                .push(SecondaryKey::from_account_id_with_full_perms(key.clone()));
-            keys.push(key.clone());
+                .push(SecondaryKey::from_account_id_with_full_perms(key.clone()))
         };
+        push_key(account);
         push_key(stash);
-        push_key(controller);
     }
 
     // Give CDD issuer to operator and bridge admin / sudo since it won't receive CDD from the group automatically
@@ -358,7 +337,7 @@ fn genesis_processed_data(
         tx_hash: treasury_bridge_lock.tx_hash,
     });
 
-    (identities, stakers, complete_txs)
+    (identities, complete_txs)
 }
 
 #[cfg(not(feature = "ci-runtime"))]
@@ -370,7 +349,6 @@ fn dev_genesis_processed_data(
 ) -> GenesisProcessedData {
     let mut identity = GenesisIdentityRecord::new(1u8, initial_authorities[0].0.clone());
 
-    let mut stakers = Vec::with_capacity(initial_authorities.len());
     identity
         .secondary_keys
         .reserve(initial_authorities.len() * 2 + other_funded_accounts.len());
@@ -379,16 +357,9 @@ fn dev_genesis_processed_data(
             .secondary_keys
             .push(SecondaryKey::from_account_id_with_full_perms(acc))
     };
-    for (stash, controller, ..) in initial_authorities {
-        stakers.push((
-            IdentityId::from(1),
-            stash.clone(),
-            controller.clone(),
-            INITIAL_BOND,
-            pallet_staking::StakerStatus::Validator,
-        ));
+    for (account, stash, _, _, _, _) in initial_authorities {
+        add_sk(account.clone());
         add_sk(stash.clone());
-        add_sk(controller.clone());
     }
 
     for account in other_funded_accounts {
@@ -427,7 +398,7 @@ fn dev_genesis_processed_data(
     // The 0th key is the primary key
     identity.secondary_keys.remove(0);
 
-    (vec![identity], stakers, complete_txs)
+    (vec![identity], complete_txs)
 }
 
 fn bridge_signers() -> Vec<Signatory<AccountId>> {
@@ -458,21 +429,6 @@ macro_rules! session {
                     (x.0.clone(), x.0.clone(), sks)
                 })
                 .collect::<Vec<_>>(),
-        }
-    };
-}
-
-macro_rules! staking {
-    ($auths:expr, $stakers:expr, $cap:expr) => {
-        pallet_staking::GenesisConfig {
-            minimum_validator_count: 1,
-            validator_count: 40,
-            validator_commission_cap: $cap,
-            stakers: $stakers,
-            invulnerables: vec![],
-            slash_reward_fraction: sp_runtime::Perbill::from_percent(10),
-            min_bond_threshold: 0, // Will be updated to 50,000 POLYX once network has stabalised, before external operators join
-            ..Default::default()
         }
     };
 }
@@ -583,7 +539,7 @@ pub mod develop {
         key_bridge_locks: Vec<BridgeLockId>,
         other_funded_accounts: Vec<AccountId>,
     ) -> rt::runtime::GenesisConfig {
-        let (identities, stakers, complete_txs) = dev_genesis_processed_data(
+        let (identities, complete_txs) = dev_genesis_processed_data(
             &initial_authorities,
             treasury_bridge_lock,
             key_bridge_locks,
@@ -613,11 +569,6 @@ pub mod develop {
                 key: Some(root_key.clone()),
             },
             session: session!(initial_authorities, session_keys),
-            staking: staking!(
-                initial_authorities,
-                stakers,
-                PerThing::from_rational(1u64, 4u64)
-            ),
             pips: pips!(time::MINUTES, MaybeBlock::None, 25),
             im_online: Default::default(),
             authority_discovery: Default::default(),
@@ -672,7 +623,7 @@ pub mod develop {
         ctype: ChainType,
         genesis: impl 'static + Sync + Send + Fn() -> rt::runtime::GenesisConfig,
     ) -> ChainSpec {
-        let props = Some(polymath_props(42));
+        let props = Some(polymesh_props(42));
         ChainSpec::from_genesis(
             name,
             id,
@@ -736,7 +687,7 @@ pub mod production {
         treasury_bridge_lock: BridgeLockId,
         key_bridge_locks: Vec<BridgeLockId>,
     ) -> rt::runtime::GenesisConfig {
-        let (identities, stakers, complete_txs) = genesis_processed_data(
+        let (identities, complete_txs) = genesis_processed_data(
             &initial_authorities,
             root_key.clone(),
             treasury_bridge_lock,
@@ -763,11 +714,6 @@ pub mod production {
             },
             indices: pallet_indices::GenesisConfig { indices: vec![] },
             session: session!(initial_authorities, session_keys),
-            staking: staking!(
-                initial_authorities,
-                stakers,
-                PerThing::from_rational(1u64, 10u64)
-            ),
             pips: pips!(time::DAYS * 30, MaybeBlock::Some(time::DAYS * 90), 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
@@ -807,7 +753,7 @@ pub mod production {
                 get_authority_keys_from_seed("Bob", false),
                 get_authority_keys_from_seed("Charlie", false),
             ],
-            seeded_acc_id("polymath_5"),
+            seeded_acc_id("polymesh_5"),
             false,
             BridgeLockId::new(1, BOOTSTRAP_TREASURY, TREASURY_LOCK_HASH),
             BridgeLockId::generate_bridge_locks(2, 20, BOOTSTRAP_KEYS, KEY_LOCK_HASH),
@@ -844,7 +790,7 @@ pub mod production {
             ),
             Some(&*"/polymesh/production"),
             None,
-            Some(polymath_props(12)),
+            Some(polymesh_props(12)),
             Default::default(),
         )
     }
@@ -871,7 +817,7 @@ pub mod production {
             None,
             None,
             None,
-            Some(polymath_props(12)),
+            Some(polymesh_props(12)),
             Default::default(),
         )
     }
@@ -902,7 +848,7 @@ pub mod production {
             None,
             None,
             None,
-            Some(polymath_props(12)),
+            Some(polymesh_props(12)),
             Default::default(),
         )
     }
@@ -924,7 +870,7 @@ pub mod develop {
         treasury_bridge_lock: BridgeLockId,
         key_bridge_locks: Vec<BridgeLockId>,
     ) -> rt::runtime::GenesisConfig {
-        let (identities, stakers, complete_txs) = genesis_processed_data(
+        let (identities, complete_txs) = genesis_processed_data(
             &initial_authorities,
             root_key.clone(),
             treasury_bridge_lock,
@@ -941,8 +887,8 @@ pub mod develop {
             },
             balances: Default::default(),
             bridge: pallet_bridge::GenesisConfig {
-                admin: Some(seeded_acc_id("polymath_1")),
-                creator: Some(seeded_acc_id("polymath_1")),
+                admin: Some(seeded_acc_id("polymesh_1")),
+                creator: Some(seeded_acc_id("polymesh_1")),
                 signatures_required: 3,
                 signers: bridge_signers(),
                 timelock: time::MINUTES * 15,
@@ -954,7 +900,6 @@ pub mod develop {
                 key: Some(root_key.clone()),
             },
             session: session!(initial_authorities, session_keys),
-            staking: staking!(initial_authorities, stakers, PerThing::zero()),
             pips: pips!(time::DAYS * 7, MaybeBlock::None, 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
@@ -1009,7 +954,7 @@ pub mod develop {
             None,
             None,
             None,
-            Some(polymath_props(42)),
+            Some(polymesh_props(42)),
             Default::default(),
         )
     }
@@ -1040,7 +985,7 @@ pub mod develop {
             None,
             None,
             None,
-            Some(polymath_props(42)),
+            Some(polymesh_props(42)),
             Default::default(),
         )
     }

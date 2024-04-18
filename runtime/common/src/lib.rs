@@ -43,7 +43,7 @@ use polymesh_common_utilities::constants::currency::*;
 use polymesh_primitives::{Balance, BlockNumber, IdentityId, Moment};
 use smallvec::smallvec;
 
-pub use impls::{Author, CurrencyToVoteHandler};
+pub use impls::Author;
 
 pub type NegativeImbalance<T> =
     <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;

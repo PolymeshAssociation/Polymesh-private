@@ -34,7 +34,6 @@ pallet-authorship = { workspace = true, default-features = false }
 
 [features]
 equalize = []
-only-staking = []
 default = ["std", "equalize"]
 runtime-benchmarks = []
 testing = []

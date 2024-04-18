@@ -2116,34 +2116,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frame-election-provider-solution-type"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "frame-election-provider-support"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "frame-election-provider-solution-type",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "scale-info",
- "sp-arithmetic",
- "sp-core",
- "sp-npos-elections",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "frame-executive"
 version = "4.0.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
@@ -2811,7 +2783,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite 0.2.13",
- "socket2 0.4.10",
+ "socket2 0.5.5",
  "tokio",
  "tower-service",
  "tracing",
@@ -5362,57 +5334,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-staking"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v6.3.0#ad9c8a12689bcb4a34c47d572cf76a34ecc8454b"
-dependencies = [
- "frame-benchmarking",
- "frame-election-provider-support",
- "frame-support",
- "frame-system",
- "log",
- "pallet-authorship",
- "pallet-babe",
- "pallet-identity",
- "pallet-session",
- "parity-scale-codec",
- "polymesh-common-utilities",
- "polymesh-primitives",
- "rand_chacha 0.2.2",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-npos-elections",
- "sp-runtime",
- "sp-staking",
- "sp-std",
- "static_assertions",
-]
-
-[[package]]
-name = "pallet-staking-reward-curve"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "proc-macro-crate 1.1.3",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "pallet-staking-rpc-runtime-api"
-version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v6.3.0#ad9c8a12689bcb4a34c47d572cf76a34ecc8454b"
-dependencies = [
- "frame-support",
- "sp-api",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-statistics"
 version = "0.1.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v6.3.0#ad9c8a12689bcb4a34c47d572cf76a34ecc8454b"
@@ -6081,9 +6002,6 @@ dependencies = [
  "pallet-relayer",
  "pallet-session",
  "pallet-settlement",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-staking-rpc-runtime-api",
  "pallet-statistics",
  "pallet-sto",
  "pallet-sudo",
@@ -6198,9 +6116,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-settlement",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-staking-rpc-runtime-api",
  "pallet-statistics",
  "pallet-sto",
  "pallet-sudo",
@@ -6230,7 +6145,6 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
- "sp-staking",
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
@@ -6280,9 +6194,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-settlement",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-staking-rpc-runtime-api",
  "pallet-statistics",
  "pallet-sto",
  "pallet-sudo",
@@ -6311,7 +6222,6 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
- "sp-staking",
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
@@ -6362,9 +6272,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-settlement",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-staking-rpc-runtime-api",
  "pallet-statistics",
  "pallet-sto",
  "pallet-sudo",
@@ -6398,7 +6305,6 @@ dependencies = [
  "sp-offchain",
  "sp-runtime",
  "sp-session",
- "sp-staking",
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
@@ -6481,7 +6387,6 @@ dependencies = [
  "pallet-scheduler",
  "pallet-session",
  "pallet-settlement",
- "pallet-staking",
  "pallet-statistics",
  "pallet-sto",
  "pallet-test-utils",
@@ -9242,20 +9147,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-npos-elections"
-version = "4.0.0-dev"
-source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "sp-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
@@ -11641,3 +11532,13 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "frame-election-provider-support"
+version = "4.0.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"
+
+[[patch.unused]]
+name = "sp-npos-elections"
+version = "4.0.0-dev"
+source = "git+https://github.com/PolymeshAssociation/polkadot-sdk?branch=polymesh-v6-monthly-2023-03#74ef745933703849d756dc16d41d938157d6943a"

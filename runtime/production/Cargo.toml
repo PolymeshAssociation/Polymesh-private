@@ -34,7 +34,6 @@ pallet-portfolio = { workspace = true, default-features = false }
 pallet-protocol-fee = { workspace = true, default-features = false }
 pallet-relayer = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
-pallet-staking = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-sudo = { workspace = true, default-features = false }
@@ -45,7 +44,6 @@ polymesh-contracts = { workspace = true, default-features = false }
 
 # RPC
 node-rpc-runtime-api = { workspace = true, default-features = false }
-pallet-staking-rpc-runtime-api = { workspace = true, default-features = false }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true, default-features = false }
 
 # Others
@@ -70,7 +68,6 @@ pallet-preimage = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
 pallet-session = { workspace = true, default-features = false }
-pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 scale-info = { workspace = true, default-features = false, features = ["derive"] }
 sp-api = { workspace = true, default-features = false }
@@ -85,7 +82,6 @@ sp-io = { workspace = true, default-features = false }
 sp-offchain = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 sp-session = { workspace = true, default-features = false }
-sp-staking = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 sp-transaction-pool = { workspace = true, default-features = false }
 sp-version = { workspace = true, default-features = false }
@@ -155,8 +151,6 @@ std = [
     "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-settlement/std",
-    "pallet-staking-rpc-runtime-api/std",
-    "pallet-staking/std",
     "pallet-statistics/std",
     "pallet-sto/std",
     "pallet-sudo/std",
@@ -181,7 +175,6 @@ std = [
     "sp-offchain/std",
     "sp-runtime/std",
     "sp-session/std",
-    "sp-staking/std",
     "sp-std/std",
     "sp-transaction-pool/std",
     "sp-version/std",
