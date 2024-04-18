@@ -351,7 +351,6 @@ mod benches {
         [pallet_preimage, Preimage]
         [pallet_babe, Babe]
         [pallet_indices, Indices]
-        [pallet_session, SessionBench::<Runtime>]
         [pallet_grandpa, Grandpa]
         [pallet_scheduler, Scheduler]
         [pallet_test_utils, TestUtils]
@@ -462,13 +461,11 @@ polymesh_runtime_common::runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{baseline, Benchmarking, BenchmarkBatch,  TrackedStorageKey};
 
-            use crate::benchmarks::pallet_session::Pallet as SessionBench;
             use frame_system_benchmarking::Pallet as SystemBench;
             use baseline::Pallet as BaselineBench;
 
             impl frame_system_benchmarking::Config for Runtime {}
             impl baseline::Config for Runtime {}
-            impl crate::benchmarks::pallet_session::Config for Runtime {}
 
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
@@ -498,7 +495,6 @@ polymesh_runtime_common::runtime_apis! {
             use frame_benchmarking::{baseline, Benchmarking, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
 
-            use crate::benchmarks::pallet_session::Pallet as SessionBench;
             use frame_system_benchmarking::Pallet as SystemBench;
             use baseline::Pallet as BaselineBench;
 
