@@ -4670,7 +4670,6 @@ name = "pallet-bridge"
 version = "1.0.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v6.3.0#ad9c8a12689bcb4a34c47d572cf76a34ecc8454b"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",
@@ -5979,7 +5978,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances 0.1.0",
  "pallet-base",
- "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
  "pallet-confidential-asset",
@@ -6088,7 +6086,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances 0.1.0",
  "pallet-base",
- "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
  "pallet-confidential-asset",
@@ -6166,7 +6163,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances 0.1.0",
  "pallet-base",
- "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
  "pallet-confidential-asset",
@@ -6244,7 +6240,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances 0.1.0",
  "pallet-base",
- "pallet-bridge",
  "pallet-committee",
  "pallet-compliance-manager",
  "pallet-confidential-asset",
@@ -6318,7 +6313,6 @@ dependencies = [
  "frame-system",
  "pallet-authorship",
  "pallet-balances 0.1.0",
- "pallet-bridge",
  "pallet-committee",
  "pallet-group-rpc-runtime-api",
  "pallet-identity",

@@ -122,7 +122,6 @@ exclude = [
 pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
@@ -221,7 +220,6 @@ confidential_assets = { version = "1.0.0", default-features = false }
 pallet-asset = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-base = { workspace = true, default-features = false }
-pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }

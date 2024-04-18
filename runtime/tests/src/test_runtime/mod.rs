@@ -14,14 +14,13 @@ use sp_core::crypto::Pair as PairTrait;
 use sp_core::sr25519::Pair;
 use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
-use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction,
 };
-use sp_runtime::{Perbill, Permill};
+use sp_runtime::Perbill;
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
@@ -40,7 +39,7 @@ use pallet_protocol_fee as protocol_fee;
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 use pallet_utility;
-use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
+use polymesh_common_utilities::constants::currency::DOLLARS;
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
@@ -142,7 +141,6 @@ frame_support::construct_runtime!(
         UpgradeCommittee: pallet_committee::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 13,
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 14,
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>} = 15,
-        Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 16,
         Offences: pallet_offences::{Pallet, Storage, Event} = 18,
         Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 19,
         AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 20,

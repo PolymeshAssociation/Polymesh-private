@@ -322,8 +322,6 @@ construct_runtime!(
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>},
 
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>},
-        // Bridge: Genesis config deps: Multisig, Identity, Committees
-        Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
 
         Offences: pallet_offences::{Pallet, Storage, Event},
 
