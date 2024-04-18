@@ -1,7 +1,6 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 
 use futures::stream::StreamExt;
-use polymesh_node_rpc as node_rpc;
 pub use polymesh_primitives::{
     crypto::native_schnorrkel, AccountId, Block, IdentityId, Index as Nonce, Moment, Ticker,
 };
@@ -79,7 +78,7 @@ pub trait RuntimeApiCollection:
     sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
     + sp_api::ApiExt<Block>
     + sp_consensus_babe::BabeApi<Block>
-    + grandpa::GrandpaApi<Block>
+    + sc_consensus_grandpa::GrandpaApi<Block>
     + sp_block_builder::BlockBuilder<Block>
     + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
     + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -105,7 +104,7 @@ where
     Api: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
         + sp_api::ApiExt<Block>
         + sp_consensus_babe::BabeApi<Block>
-        + grandpa::GrandpaApi<Block>
+        + sc_consensus_grandpa::GrandpaApi<Block>
         + sp_block_builder::BlockBuilder<Block>
         + frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Nonce>
         + node_rpc_runtime_api::transaction_payment::TransactionPaymentApi<Block>
@@ -136,12 +135,12 @@ fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceErro
 
 type BabeLink = sc_consensus_babe::BabeLink<Block>;
 
-type FullLinkHalf<R, D> = grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
+type FullLinkHalf<R, D> = sc_consensus_grandpa::LinkHalf<Block, FullClient<R, D>, FullSelectChain>;
 pub type FullClient<R, D> = sc_service::TFullClient<Block, R, NativeElseWasmExecutor<D>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type FullGrandpaBlockImport<R, D> =
-    grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
+    sc_consensus_grandpa::GrandpaBlockImport<FullBackend, Block, FullClient<R, D>, FullSelectChain>;
 type FullBabeImportQueue<R, D> = sc_consensus::DefaultImportQueue<Block, FullClient<R, D>>;
 type FullStateBackend = sc_client_api::StateBackendFor<FullBackend, Block>;
 type FullPool<R, D> = sc_transaction_pool::FullPool<Block, FullClient<R, D>>;
@@ -154,7 +153,7 @@ pub type FullServiceComponents<R, D, F> = sc_service::PartialComponents<
     (
         F,
         (FullBabeBlockImport<R, D>, FullLinkHalf<R, D>, BabeLink),
-        grandpa::SharedVoterState,
+        sc_consensus_grandpa::SharedVoterState,
         Option<Telemetry>,
     ),
 >;
@@ -224,7 +223,7 @@ where
         client.clone(),
     );
 
-    let (grandpa_block_import, grandpa_link) = grandpa::block_import(
+    let (grandpa_block_import, grandpa_link) = sc_consensus_grandpa::block_import(
         client.clone(),
         &(client.clone() as Arc<_>),
         select_chain.clone(),
@@ -268,10 +267,10 @@ where
 
         let justification_stream = grandpa_link.justification_stream();
         let shared_authority_set = grandpa_link.shared_authority_set().clone();
-        let shared_voter_state = grandpa::SharedVoterState::empty();
+        let shared_voter_state = sc_consensus_grandpa::SharedVoterState::empty();
         let rpc_setup = shared_voter_state.clone();
 
-        let finality_proof_provider = grandpa::FinalityProofProvider::new_for_service(
+        let finality_proof_provider = sc_consensus_grandpa::FinalityProofProvider::new_for_service(
             backend.clone(),
             Some(shared_authority_set.clone()),
         );
@@ -287,18 +286,18 @@ where
 
         let rpc_backend = backend.clone();
         let rpc_extensions_builder = move |deny_unsafe, subscription_executor| {
-            let deps = node_rpc::FullDeps {
+            let deps = crate::rpc::FullDeps {
                 client: client.clone(),
                 pool: pool.clone(),
                 select_chain: select_chain.clone(),
                 chain_spec: chain_spec.cloned_box(),
                 deny_unsafe,
-                babe: node_rpc::BabeDeps {
+                babe: crate::rpc::BabeDeps {
                     babe_config: babe_config.clone(),
                     shared_epoch_changes: shared_epoch_changes.clone(),
                     keystore: keystore.clone(),
                 },
-                grandpa: node_rpc::GrandpaDeps {
+                grandpa: crate::rpc::GrandpaDeps {
                     shared_voter_state: shared_voter_state.clone(),
                     shared_authority_set: shared_authority_set.clone(),
                     justification_stream: justification_stream.clone(),
@@ -307,7 +306,7 @@ where
                 },
             };
 
-            node_rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
+            crate::rpc::create_full(deps, rpc_backend.clone()).map_err(Into::into)
         };
 
         (rpc_extensions_builder, rpc_setup)
@@ -367,7 +366,7 @@ where
 
     let shared_voter_state = rpc_setup;
     let auth_disc_publish_non_global_ips = config.network.allow_non_globals_in_dht;
-    let grandpa_protocol_name = grandpa::protocol_standard_name(
+    let grandpa_protocol_name = sc_consensus_grandpa::protocol_standard_name(
         &client
             .block_hash(0)
             .ok()
@@ -379,10 +378,10 @@ where
     config
         .network
         .extra_sets
-        .push(grandpa::grandpa_peers_set_config(
+        .push(sc_consensus_grandpa::grandpa_peers_set_config(
             grandpa_protocol_name.clone(),
         ));
-    let warp_sync = Arc::new(grandpa::warp_proof::NetworkProvider::new(
+    let warp_sync = Arc::new(sc_consensus_grandpa::warp_proof::NetworkProvider::new(
         backend.clone(),
         import_setup.1.shared_authority_set().clone(),
         Vec::default(),
@@ -539,7 +538,7 @@ where
         None
     };
 
-    let config = grandpa::Config {
+    let config = sc_consensus_grandpa::Config {
         // FIXME #1578 make this available through chainspec
         gossip_duration: std::time::Duration::from_millis(333),
         justification_period: 512,
@@ -558,12 +557,12 @@ where
         // and vote data availability than the observer. The observer has not
         // been tested extensively yet and having most nodes in a network run it
         // could lead to finality stalls.
-        let grandpa_config = grandpa::GrandpaParams {
+        let grandpa_config = sc_consensus_grandpa::GrandpaParams {
             config,
             link: grandpa_link,
             network: network.clone(),
             telemetry: telemetry.as_ref().map(|x| x.handle()),
-            voting_rule: grandpa::VotingRulesBuilder::default().build(),
+            voting_rule: sc_consensus_grandpa::VotingRulesBuilder::default().build(),
             prometheus_registry,
             shared_voter_state,
         };
@@ -573,7 +572,7 @@ where
         task_manager.spawn_essential_handle().spawn_blocking(
             "grandpa-voter",
             None,
-            grandpa::run_grandpa_voter(grandpa_config)?,
+            sc_consensus_grandpa::run_grandpa_voter(grandpa_config)?,
         );
     }
 

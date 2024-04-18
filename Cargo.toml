@@ -166,7 +166,6 @@ pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/P
 pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 
 # Build tool
 polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
@@ -271,7 +270,6 @@ pallet-group-rpc-runtime-api = { workspace = true }
 pallet-protocol-fee-rpc = { workspace = true }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true }
 pallet-staking-rpc-runtime-api = { workspace = true }
-polymesh-node-rpc = { workspace = true }
 
 # Runtimes
 polymesh-private-runtime-develop = { path = "runtime/develop" }
@@ -294,16 +292,24 @@ sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
 sc-consensus = "0.10.0-dev"
 sc-consensus-babe = "0.10.0-dev"
+sc-consensus-babe-rpc = "0.10.0-dev"
+sc-consensus-epochs = { version = "0.10.0-dev" }
 sc-consensus-slots = "0.10.0-dev"
+sc-consensus-grandpa = "0.10.0-dev"
+sc-consensus-grandpa-rpc = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
 sc-network = "0.10.0-dev"
 sc-network-common = { version = "0.10.0-dev" }
 sc-rpc = "4.0.0-dev"
+sc-rpc-api = "0.10.0-dev"
+sc-rpc-spec-v2 = "0.10.0-dev"
 sc-service = { version = "0.10.0-dev" }
 sc-telemetry = "4.0.0-dev"
 sc-transaction-pool = "4.0.0-dev"
 sc-sync-state-rpc = { version = "0.10.0-dev" }
-grandpa = { package = "sc-consensus-grandpa", version = "0.10.0-dev" }
+sc-transaction-pool-api = { version = "4.0.0-dev" }
+substrate-frame-rpc-system = { version = "4.0.0-dev" }
+substrate-state-trie-migration-rpc = { version = "4.0.0-dev" }
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec" }
@@ -323,6 +329,7 @@ sp-consensus = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-slots = { workspace = true }
 sp-keyring = { workspace = true }
+sp-keystore = { version = "0.13.0" }
 sp-core = { workspace = true }
 sp-inherents = { workspace = true }
 sp-transaction-storage-proof = { workspace = true }

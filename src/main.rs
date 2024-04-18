@@ -7,6 +7,7 @@ mod chain_spec;
 mod service;
 mod cli;
 mod command;
+mod rpc;
 
 fn main() -> Result<(), sc_cli::Error> {
     command::run()
