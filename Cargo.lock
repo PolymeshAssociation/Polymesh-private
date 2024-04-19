@@ -6064,6 +6064,7 @@ dependencies = [
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
  "substrate-state-trie-migration-rpc",
+ "substrate-validator-set",
 ]
 
 [[package]]
@@ -6145,6 +6146,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "substrate-validator-set",
 ]
 
 [[package]]
@@ -6221,6 +6223,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "substrate-validator-set",
 ]
 
 [[package]]
@@ -6303,6 +6306,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "substrate-validator-set",
 ]
 
 [[package]]
@@ -9621,6 +9625,25 @@ dependencies = [
  "sp-state-machine",
  "sp-trie",
  "trie-db",
+]
+
+[[package]]
+name = "substrate-validator-set"
+version = "0.9.42"
+source = "git+https://github.com/PolymeshAssociation/substrate-validator-set?branch=polymesh-v6-monthly-2023-03#b6badb3e9cdc79ddc0a272a8dcbf800a38ade243"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-session",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
 ]
 
 [[package]]

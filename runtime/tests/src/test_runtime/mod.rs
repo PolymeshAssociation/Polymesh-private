@@ -83,7 +83,8 @@ parameter_types! {
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const MaxSetIdSessionEntries: u32 = 0;
     pub const ReportLongevity: u64 = 1_000;
-    pub const MaxAuthorities: u32 = 100_000;
+    pub const MinAuthorities: u32 = 2;
+    pub const MaxAuthorities: u32 = 10_000;
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
     pub const MaxPeerDataEncodingSize: u32 = 1_000;
@@ -141,6 +142,10 @@ frame_support::construct_runtime!(
         UpgradeCommittee: pallet_committee::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 13,
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 14,
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>} = 15,
+
+        // PoA
+        ValidatorSet: validator_set = 17,
+
         Offences: pallet_offences::{Pallet, Storage, Event} = 18,
         Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 19,
         AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 20,

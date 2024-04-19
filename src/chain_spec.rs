@@ -465,6 +465,12 @@ pub mod develop {
             pips: pips!(time::MINUTES, MaybeBlock::None, 25),
             im_online: Default::default(),
             authority_discovery: Default::default(),
+            validator_set: validator_set::GenesisConfig {
+                initial_validators: initial_authorities
+                    .iter()
+                    .map(|x| x.0.clone())
+                    .collect::<Vec<_>>(),
+            },
             babe: pallet_babe::GenesisConfig {
                 authorities: vec![],
                 epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -598,6 +604,12 @@ pub mod production {
             pips: pips!(time::DAYS * 30, MaybeBlock::Some(time::DAYS * 90), 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
+            validator_set: validator_set::GenesisConfig {
+                initial_validators: initial_authorities
+                    .iter()
+                    .map(|x| x.0.clone())
+                    .collect::<Vec<_>>(),
+            },
             babe: pallet_babe::GenesisConfig {
                 authorities: vec![],
                 epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -771,6 +783,12 @@ pub mod develop {
             pips: pips!(time::DAYS * 7, MaybeBlock::None, 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
+            validator_set: validator_set::GenesisConfig {
+                initial_validators: initial_authorities
+                    .iter()
+                    .map(|x| x.0.clone())
+                    .collect::<Vec<_>>(),
+            },
             babe: pallet_babe::GenesisConfig {
                 authorities: vec![],
                 epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
