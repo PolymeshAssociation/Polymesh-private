@@ -99,7 +99,7 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/p
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
+confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "main" }
 #confidential_assets = { path = "../confidential_assets" }
 curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
 
