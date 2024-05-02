@@ -44,18 +44,6 @@ const DEV_TREASURY: u128 = 50_000_000 * ONE_POLY;
 
 const INITIAL_BOND: u128 = 500 * ONE_POLY;
 
-// 1 in 4 blocks (on average, not counting collisions) will be primary babe blocks.
-const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
-const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
-    sp_consensus_babe::BabeEpochConfiguration {
-        c: PRIMARY_PROBABILITY,
-        allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
-    };
-const BABE_GENESIS: pallet_babe::GenesisConfig = pallet_babe::GenesisConfig {
-    authorities: vec![],
-    epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG),
-};
-
 /// Node `ChainSpec` extensions.
 ///
 /// Additional parameters for some Substrate core modules,
@@ -626,7 +614,10 @@ pub mod develop {
             pips: pips!(time::MINUTES, MaybeBlock::None, 25),
             im_online: Default::default(),
             authority_discovery: Default::default(),
-            babe: BABE_GENESIS,
+            babe: pallet_babe::GenesisConfig {
+                authorities: vec![],
+                epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
+            },
             grandpa: Default::default(),
             // Governance Council:
             committee_membership: group_membership!(1),
@@ -773,7 +764,10 @@ pub mod production {
             pips: pips!(time::DAYS * 30, MaybeBlock::Some(time::DAYS * 90), 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
-            babe: BABE_GENESIS,
+            babe: pallet_babe::GenesisConfig {
+                authorities: vec![],
+                epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
+            },
             grandpa: Default::default(),
             // Governing council
             committee_membership: group_membership!(1, 2, 3), // 3 GC members
@@ -957,7 +951,10 @@ pub mod develop {
             pips: pips!(time::DAYS * 7, MaybeBlock::None, 1000),
             im_online: Default::default(),
             authority_discovery: Default::default(),
-            babe: BABE_GENESIS,
+            babe: pallet_babe::GenesisConfig {
+                authorities: vec![],
+                epoch_config: Some(rt::runtime::BABE_GENESIS_EPOCH_CONFIG),
+            },
             grandpa: Default::default(),
             // Governing council
             committee_membership: group_membership!(1, 2, 3, 5),
