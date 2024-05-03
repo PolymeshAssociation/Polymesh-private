@@ -11,8 +11,8 @@ use polymesh_common_utilities::{
 };
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
-    identity_id::GenesisIdentityRecord, AccountId, IdentityId, Moment, PosRatio, SecondaryKey,
-    Signatory, Signature, Ticker,
+    identity_id::GenesisIdentityRecord,
+    AccountId, IdentityId, Moment, PosRatio, SecondaryKey, Signatory, Signature, Ticker,
 };
 use sc_chain_spec::{ChainSpecExtension, ChainType};
 use sc_service::Properties;
