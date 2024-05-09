@@ -251,6 +251,7 @@ parameter_types! {
     pub const MaxScheduledPerBlock: u32 = 50;
 
     pub const InitialPOLYX: Balance = 41;
+    pub const MaxGivenAuths: u32 = 1024;
     pub const SignedClaimHandicap: u64 = 2;
     pub const StorageSizeOffset: u32 = 8;
     pub const MaxDepth: u32 = 100;
@@ -410,6 +411,7 @@ impl polymesh_common_utilities::traits::identity::Config for TestRuntime {
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
     type MultiSigBalanceLimit = polymesh_runtime_common::MultiSigBalanceLimit;
+    type MaxGivenAuths = MaxGivenAuths;
 }
 
 impl pips::Config for TestRuntime {
