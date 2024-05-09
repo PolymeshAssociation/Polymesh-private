@@ -585,7 +585,7 @@ macro_rules! runtime_apis {
         use pallet_pips::{Vote, VoteCount};
         use pallet_protocol_fee_rpc_runtime_api::CappedFee;
         use polymesh_primitives::asset::GranularCanTransferResult;
-        use polymesh_primitives::settlement::{InstructionId, ExecuteInstructionInfo, AffirmationCount};
+        use polymesh_primitives::settlement::{Leg, InstructionId, ExecuteInstructionInfo, AffirmationCount};
         use polymesh_primitives::compliance_manager::{AssetComplianceResult, ComplianceReport};
         use polymesh_primitives::{
             asset::CheckpointId, IdentityId, Index, NFTs,PortfolioId, Signatory, Ticker,
