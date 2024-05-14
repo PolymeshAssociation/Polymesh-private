@@ -22,7 +22,7 @@ pub mod time {
     pub const DAYS: BlockNumber = HOURS * 24;
 
     // Disable babe's primary selector, only use the plain secondary selector.
-    pub const PRIMARY_PROBABILITY: (u64, u64) = (0, 1);
+    pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 }
 
 /// Fee-related.
