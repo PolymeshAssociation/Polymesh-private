@@ -51,7 +51,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     authoring_version: 1,
     // `spec_version: aaa_bbb_ccd` should match node version v`aaa.bbb.cc`
     // N.B. `d` is unpinned from the binary version
-    spec_version: 1_000_020,
+    spec_version: 1_000_030,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -124,6 +124,7 @@ parameter_types! {
 
     // Identity:
     pub const InitialPOLYX: Balance = 0;
+    pub const MaxGivenAuths: u32 = 1024;
 
     // Contracts:
     pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
@@ -215,6 +216,7 @@ impl polymesh_common_utilities::traits::identity::Config for Runtime {
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
     type MultiSigBalanceLimit = polymesh_runtime_common::MultiSigBalanceLimit;
+    type MaxGivenAuths = MaxGivenAuths;
 }
 
 impl pallet_committee::Config<GovernanceCommittee> for Runtime {

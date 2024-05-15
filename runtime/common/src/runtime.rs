@@ -242,7 +242,6 @@ macro_rules! misc_pallet_impls {
         }
 
         impl pallet_staking::Config for Runtime {
-            const MAX_NOMINATIONS: u32 = pallet_staking::MAX_NOMINATIONS;
             type Currency = Balances;
             type UnixTime = Timestamp;
             type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
@@ -273,10 +272,10 @@ macro_rules! misc_pallet_impls {
             type FixedYearlyReward = FixedYearlyReward;
             type PalletsOrigin = OriginCaller;
             type MinimumBond = MinimumBond;
-            // The unsigned solution weight targeted by the OCW. We set it to the maximum possible value of
-            // a single extrinsic.
             type OffchainSolutionWeightLimit = polymesh_runtime_common::OffchainSolutionWeightLimit;
             type WeightInfo = polymesh_weights::pallet_staking::SubstrateWeight;
+            type MaxNominations = pallet_staking::MaxNominations;
+            type MaxUnlockingChunks = pallet_staking::MaxUnlockingChunks;
         }
 
         impl pallet_authority_discovery::Config for Runtime {
@@ -586,10 +585,11 @@ macro_rules! runtime_apis {
         use pallet_pips::{Vote, VoteCount};
         use pallet_protocol_fee_rpc_runtime_api::CappedFee;
         use polymesh_primitives::asset::GranularCanTransferResult;
-        use polymesh_primitives::settlement::{InstructionId, ExecuteInstructionInfo, AffirmationCount};
+        use polymesh_primitives::settlement::{Leg, InstructionId, ExecuteInstructionInfo, AffirmationCount};
+        use polymesh_primitives::compliance_manager::{AssetComplianceResult, ComplianceReport};
         use polymesh_primitives::{
-            asset::CheckpointId, compliance_manager::AssetComplianceResult, IdentityId, Index, NFTs,
-            PortfolioId, Signatory, Ticker, WeightMeter, IdentityClaim
+            asset::CheckpointId, IdentityId, Index, NFTs,PortfolioId, Signatory, Ticker,
+            WeightMeter, IdentityClaim
         };
 
         /// The address format for describing accounts.
@@ -1001,7 +1001,13 @@ macro_rules! runtime_apis {
                     nfts: &NFTs
                 ) -> frame_support::dispatch::DispatchResult {
                     let mut weight_meter = WeightMeter::max_limit_no_minimum();
-                    Nft::validate_nft_transfer(sender_portfolio, receiver_portfolio, nfts, &mut weight_meter)
+                    Nft::validate_nft_transfer(
+                        sender_portfolio,
+                        receiver_portfolio,
+                        nfts,
+                        false,
+                        Some(&mut weight_meter)
+                    )
                 }
             }
 
@@ -1019,6 +1025,36 @@ macro_rules! runtime_apis {
                     portfolios: Vec<PortfolioId>,
                 ) -> AffirmationCount {
                     Settlement::affirmation_count(instruction_id, portfolios)
+                }
+
+                #[inline]
+                fn get_transfer_report(leg: Leg, skip_locked_check: bool) -> Vec<DispatchError> {
+                    let mut weight_meter = WeightMeter::max_limit_no_minimum();
+                    Settlement::transfer_report(leg, skip_locked_check, &mut weight_meter)
+                }
+
+                #[inline]
+                fn get_execute_instruction_report(instruction_id: InstructionId) -> Vec<DispatchError> {
+                    let mut weight_meter = WeightMeter::max_limit_no_minimum();
+                    Settlement::execute_instruction_report(&instruction_id, &mut weight_meter)
+                }
+
+            }
+
+            impl node_rpc_runtime_api::compliance::ComplianceApi<Block> for Runtime {
+                #[inline]
+                fn compliance_report(
+                    ticker: &Ticker,
+                    sender_identity: &IdentityId,
+                    receiver_identity: &IdentityId,
+                ) -> FrameResult<ComplianceReport, DispatchError> {
+                    let mut weight_meter = WeightMeter::max_limit_no_minimum();
+                    ComplianceManager::compliance_report(
+                        ticker,
+                        sender_identity,
+                        receiver_identity,
+                        &mut weight_meter
+                    )
                 }
             }
 
