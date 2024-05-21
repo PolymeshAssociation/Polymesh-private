@@ -174,6 +174,33 @@ impl From<&ElgamalPublicKey> for AuditorAccount {
     }
 }
 
+/// Confidential move of assets from one account to another.
+#[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
+#[scale_info(skip_type_params(T))]
+pub struct ConfidentialMoveFunds<T: Config> {
+    /// Confidential account of the sender.
+    pub sender: ConfidentialAccount,
+    /// Confidential account of the receiver.
+    pub receiver: ConfidentialAccount,
+    /// Assets to move and the confidential proofs.
+    /// TODO: Create a new limit.
+    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerLeg>,
+}
+
+impl<T: Config> ConfidentialMoveFunds<T> {
+    pub fn new(sender: ConfidentialAccount, receiver: ConfidentialAccount) -> Self {
+        Self {
+            sender,
+            receiver,
+            proofs: Default::default(),
+        }
+    }
+
+    pub fn insert(&mut self, asset_id: AssetId, proof: ConfidentialTransferProof) -> bool {
+        self.proofs.try_insert(asset_id, proof).is_ok()
+    }
+}
+
 /// A set of confidential asset transfers between the same sender & receiver.
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
@@ -1253,6 +1280,20 @@ pub mod pallet {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
             Self::base_burn(caller_did, asset_id, amount, account, proof)
         }
+
+        /// Move assets between confidential accounts of the same identity.
+        ///
+        /// TODO: weights.
+        #[pallet::call_index(17)]
+        #[pallet::weight(0)]
+        pub fn move_assets(
+            origin: OriginFor<T>,
+            moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxNumberOfLegs>,
+        ) -> DispatchResultWithPostInfo {
+            let did = PalletIdentity::<T>::ensure_perms(origin)?;
+            Self::base_move_assets(did, moves)?;
+            Ok(().into())
+        }
     }
 }
 
@@ -1348,7 +1389,7 @@ impl<T: Config> Pallet<T> {
 
         let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's confidential account.
-        Self::account_deposit_amount(account, asset_id, enc_issued_amount)?;
+        Self::account_deposit_amount(account, asset_id, enc_issued_amount);
 
         // Emit Issue event with new `total_supply`.
         Self::deposit_event(Event::<T>::Issued {
@@ -1499,7 +1540,7 @@ impl<T: Config> Pallet<T> {
         match IncomingBalance::<T>::take(&account, asset_id) {
             Some(incoming_balance) => {
                 // If there is an incoming balance, deposit it into the confidential account balance.
-                Self::account_deposit_amount(account, asset_id, incoming_balance)?;
+                Self::account_deposit_amount(account, asset_id, incoming_balance);
             }
             None => (),
         }
@@ -1519,7 +1560,7 @@ impl<T: Config> Pallet<T> {
         let assets = IncomingBalance::<T>::drain_prefix(&account).take(max_updates as _);
         for (asset_id, incoming_balance) in assets {
             // If there is an incoming balance, deposit it into the confidential account balance.
-            Self::account_deposit_amount(account, asset_id, incoming_balance)?;
+            Self::account_deposit_amount(account, asset_id, incoming_balance);
         }
 
         Ok(())
@@ -1910,6 +1951,116 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn base_move_assets(
+        caller_did: IdentityId,
+        moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxNumberOfLegs>,
+    ) -> DispatchResultWithPostInfo {
+        let mut asset_auditors = BTreeMap::new();
+        // Verify the caller is allowed to move funds.
+        for funds in &moves {
+            Self::validate_move_funds(caller_did, funds, &mut asset_auditors)?;
+        }
+        let mut batch = None;
+        // TODO: Return actual weight.
+        for funds in moves {
+            Self::base_move_asset(funds, &asset_auditors, &mut batch)?;
+        }
+        if let Some(batch) = batch {
+            let valid = batch
+                .finalize()
+                .map_err(|_| Error::<T>::InvalidSenderProof)?;
+            ensure!(valid, Error::<T>::InvalidSenderProof);
+        }
+        Ok(().into())
+    }
+
+    fn validate_move_funds(
+        caller_did: IdentityId,
+        funds: &ConfidentialMoveFunds<T>,
+        asset_auditors: &mut BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
+    ) -> DispatchResult {
+        use sp_std::collections::btree_map::Entry;
+
+        // Ensure `caller_did` owns sender & receiver account.
+        Self::ensure_account_owner(caller_did, &funds.sender)?;
+        Self::ensure_account_owner(caller_did, &funds.receiver)?;
+
+        // Get the asset auditors and verify that the proofs have
+        // the required number of auditors.
+        for (asset_id, proof) in &funds.proofs {
+            let auditor_count = match asset_auditors.entry(*asset_id) {
+                Entry::Vacant(entry) => {
+                    // Ensure that the asset isn't frozen.
+                    ensure!(!Self::asset_frozen(asset_id), Error::<T>::AssetFrozen);
+                    // Get the asset's auditors.
+                    let asset = Self::asset_auditors(asset_id)
+                        .ok_or(Error::<T>::UnknownConfidentialAsset)?;
+                    let count = asset.auditors.len();
+                    // Load and cache the required auditors for the asset.
+                    entry.insert(asset.auditors.into());
+                    count
+                }
+                Entry::Occupied(entry) => entry.get().len(),
+            };
+            // Ensure that the sender's asset isn't frozen.
+            ensure!(
+                !Self::account_asset_frozen(funds.sender, asset_id),
+                Error::<T>::AccountAssetFrozen
+            );
+            // Ensure the proof has enough auditors.
+            ensure!(
+                Ok(auditor_count) == proof.auditor_count(),
+                Error::<T>::InvalidSenderProof
+            );
+        }
+        Ok(())
+    }
+
+    fn base_move_asset(
+        funds: ConfidentialMoveFunds<T>,
+        asset_auditors: &BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
+        batch: &mut Option<BatchVerify>,
+    ) -> DispatchResult {
+        let sender = funds.sender;
+        let receiver = funds.receiver;
+
+        for (asset_id, proof) in funds.proofs {
+            let auditors = asset_auditors
+                .get(&asset_id)
+                .ok_or(Error::<T>::InvalidSenderProof)?;
+            // Get the sender's current balance.
+            let sender_init_balance = Self::account_balance(&sender, asset_id)
+                .ok_or(Error::<T>::ConfidentialAccountMissing)?;
+
+            let sender_amount = proof.sender_amount();
+            let receiver_amount = proof.receiver_amount();
+            let req = VerifyConfidentialTransferRequest {
+                sender: sender.0,
+                sender_balance: sender_init_balance,
+                receiver: receiver.0,
+                auditors: auditors.iter().map(|account| account.0).collect(),
+                proof: proof.encode(),
+                seed: Self::get_seed(true),
+            };
+
+            // Create a batch if this is the first proof.
+            let batch = batch.get_or_insert_with(|| BatchVerify::create());
+            // Submit proof to the batch for verification.
+            batch
+                .submit_transfer_request(req)
+                .map_err(|_| Error::<T>::InvalidSenderProof)?;
+
+            // Withdraw the amount from the sender's account.
+            Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
+            // Deposit the amount into the receiver's account.
+            Self::account_deposit_amount(receiver, asset_id, receiver_amount);
+        }
+
+        // TODO: Emit asset moved event.
+
+        Ok(())
+    }
+
     fn base_execute_transaction(
         caller_did: IdentityId,
         transaction_id: TransactionId,
@@ -2146,11 +2297,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Add the `amount` to the confidential account's balance.
-    fn account_deposit_amount(
-        account: ConfidentialAccount,
-        asset_id: AssetId,
-        amount: CipherText,
-    ) -> DispatchResult {
+    fn account_deposit_amount(account: ConfidentialAccount, asset_id: AssetId, amount: CipherText) {
         let balance = AccountBalance::<T>::mutate(account, asset_id, |balance| match balance {
             Some(balance) => {
                 *balance += amount;
@@ -2167,7 +2314,6 @@ impl<T: Config> Pallet<T> {
             amount,
             balance,
         });
-        Ok(())
     }
 
     /// Add the `amount` to the confidential account's `IncomingBalance` accumulator.
