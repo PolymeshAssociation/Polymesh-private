@@ -71,6 +71,16 @@ pub trait WeightInfo {
     fn mediator_affirm_transaction() -> Weight;
     fn execute_transaction(l: u32) -> Weight;
     fn reject_transaction(l: u32) -> Weight;
+    fn move_assets(m: u32, a: u32) -> Weight;
+
+    fn move_assets_vec<T: Config>(moves: &[ConfidentialMoveFunds<T>]) -> Weight {
+        let m_count = moves.len() as u32;
+        let mut a_count = 0u32;
+        for funds in moves {
+            a_count += funds.proofs.len() as u32;
+        }
+        Self::move_assets(m_count, a_count)
+    }
 
     fn affirm_transactions<T: Config>(transactions: &[AffirmTransaction<T>]) -> Weight {
         if transactions.len() > 0 {
@@ -1299,9 +1309,8 @@ pub mod pallet {
 
         /// Move assets between confidential accounts of the same identity.
         ///
-        /// TODO: weights.
         #[pallet::call_index(17)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::move_assets_vec(moves.as_slice()))]
         pub fn move_assets(
             origin: OriginFor<T>,
             moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
@@ -1979,7 +1988,7 @@ impl<T: Config> Pallet<T> {
         let mut batch = None;
         // TODO: Return actual weight.
         for funds in moves {
-            Self::base_move_asset(caller_did, funds, &asset_auditors, &mut batch)?;
+            Self::base_move_funds(caller_did, funds, &asset_auditors, &mut batch)?;
         }
         if let Some(batch) = batch {
             let valid = batch
@@ -2032,7 +2041,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn base_move_asset(
+    fn base_move_funds(
         caller_did: IdentityId,
         funds: ConfidentialMoveFunds<T>,
         asset_auditors: &BTreeMap<AssetId, BTreeSet<AuditorAccount>>,

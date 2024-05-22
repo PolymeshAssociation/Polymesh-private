@@ -170,19 +170,32 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         Self::new_from_seed(name, asset * TICKER_SEED + auditor * AUDITOR_SEED, rng)
     }
 
-    fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
-        let user = user::<T>(name, seed);
+    fn gen_keys(rng: &mut StdRng) -> ElgamalKeys {
         // These are the encryptions keys used by `confidential_assets` and are different from
         // the signing keys that Polymesh uses for singing transactions.
         let elg_secret = ElgamalSecretKey::new(Scalar::random(rng));
 
+        ElgamalKeys {
+            public: elg_secret.get_public_key(),
+            secret: elg_secret,
+        }
+    }
+
+    fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
+        let user = user::<T>(name, seed);
         Self {
             user,
-            sec: ElgamalKeys {
-                public: elg_secret.get_public_key(),
-                secret: elg_secret,
-            },
+            sec: Self::gen_keys(rng),
         }
+    }
+
+    pub fn new_account(&self, rng: &mut StdRng) -> Self {
+        let user = Self {
+            user: self.user.clone(),
+            sec: Self::gen_keys(rng),
+        };
+        user.create_account();
+        user
     }
 
     pub fn pub_key(&self) -> ElgamalPublicKey {
@@ -234,6 +247,18 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
             .expect("verify confidential balance")
     }
 
+    pub fn fund_account(
+        &self,
+        asset: AssetId,
+        amount: ConfidentialBalance,
+        rng: &mut StdRng,
+    ) -> CipherText {
+        let key = self.pub_key();
+        let (_, balance) = key.encrypt_value(amount.into(), rng);
+        self.set_balance(asset, balance);
+        balance
+    }
+
     pub fn burn_proof(
         &self,
         asset_id: AssetId,
@@ -247,12 +272,60 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
                 .unwrap();
         proof
     }
+
+    pub fn create_asset(
+        &self,
+        idx: u32,
+        total_supply: ConfidentialBalance,
+        auditors: u32,
+        mediators: u32,
+        rng: &mut StdRng,
+    ) -> (AssetId, ConfidentialBalance, AuditorState<T>) {
+        let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
+        let asset_id = next_asset_id::<T>(self.did());
+        assert_ok!(Pallet::<T>::create_asset(
+            self.origin(),
+            Default::default(),
+            auditors.get_asset_auditors(),
+        ));
+
+        // In the initial call, the total_supply must be zero.
+        assert_eq!(
+            Pallet::<T>::confidential_asset_details(asset_id)
+                .expect("Asset details")
+                .total_supply,
+            Zero::zero()
+        );
+
+        // Wallet submits the transaction to the chain for verification.
+        assert_ok!(Pallet::<T>::mint(
+            self.origin(),
+            asset_id,
+            total_supply.into(), // convert to u128
+            self.account(),
+        ));
+
+        // ------------------------- Ensuring that the asset details are set correctly
+
+        // A correct entry is added.
+        assert_eq!(
+            Pallet::<T>::confidential_asset_details(asset_id)
+                .expect("Asset details")
+                .owner_did,
+            self.did()
+        );
+
+        // -------------------------- Ensure the encrypted balance matches the minted amount.
+        self.ensure_balance(asset_id, total_supply);
+
+        (asset_id, total_supply, auditors)
+    }
 }
 
 /// Create issuer's confidential account, create asset and mint.
 pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     name: &'static str,
-    total_supply: u128,
+    total_supply: ConfidentialBalance,
     idx: u32,
     auditors: u32,
     mediators: u32,
@@ -264,52 +337,11 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     AuditorState<T>,
 ) {
     let owner = ConfidentialUser::asset_user(name, idx, rng);
-
-    let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
-    let asset_id = next_asset_id::<T>(owner.did());
-    assert_ok!(Pallet::<T>::create_asset(
-        owner.origin(),
-        Default::default(),
-        auditors.get_asset_auditors(),
-    ));
-
-    // In the initial call, the total_supply must be zero.
-    assert_eq!(
-        Pallet::<T>::confidential_asset_details(asset_id)
-            .expect("Asset details")
-            .total_supply,
-        Zero::zero()
-    );
-
-    // ---------------- prepare for minting the asset
-
     owner.create_account();
 
-    // ------------- Computations that will happen in owner's Wallet ----------
-    let amount: ConfidentialBalance = total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
-
-    // Wallet submits the transaction to the chain for verification.
-    assert_ok!(Pallet::<T>::mint(
-        owner.origin(),
-        asset_id,
-        amount.into(), // convert to u128
-        owner.account(),
-    ));
-
-    // ------------------------- Ensuring that the asset details are set correctly
-
-    // A correct entry is added.
-    assert_eq!(
-        Pallet::<T>::confidential_asset_details(asset_id)
-            .expect("Asset details")
-            .owner_did,
-        owner.did()
-    );
-
-    // -------------------------- Ensure the encrypted balance matches the minted amount.
-    owner.ensure_balance(asset_id, amount);
-
-    (asset_id, owner, amount, auditors)
+    let (asset_id, balance, auditors) =
+        owner.create_asset(idx, total_supply, auditors, mediators, rng);
+    (asset_id, owner, balance, auditors)
 }
 
 #[derive(Clone)]
@@ -338,7 +370,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         // Setup confidential asset.
         let (asset_id, issuer, issuer_balance, auditors) = create_account_and_mint_token::<T>(
             "issuer",
-            total_supply as u128,
+            total_supply,
             leg_id,
             auditors,
             mediators,

@@ -411,4 +411,7 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().writes(5))
             .saturating_add(DbWeight::get().writes((23_u64).saturating_mul(l.into())))
     }
+    fn move_assets(_m: u32, _s: u32) -> Weight {
+        Weight::from_ref_time(267_492_000)
+    }
 }

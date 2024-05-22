@@ -198,7 +198,7 @@ fn basic_confidential_settlement() {
             let (asset, alice, alice_init_balance, auditors) =
                 create_account_and_mint_token::<TestRuntime>(
                     "alice",
-                    total_supply as u128,
+                    total_supply,
                     0,
                     4,
                     4,
