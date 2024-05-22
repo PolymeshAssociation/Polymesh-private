@@ -296,9 +296,9 @@ benchmarks! {
 
     move_assets {
         // Number of move batches (each batch has the same from/to account)
-        let m in 1 .. (T::MaxMoveFunds::get());
+        let m in 0 .. (T::MaxMoveFunds::get());
         // Number of assets to move in each batch.
-        let a in 1 .. (T::MaxAssetsPerMoveFunds::get());
+        let a in 0 .. (T::MaxAssetsPerMoveFunds::get());
 
         let m = m as usize;
         let a = a as usize;

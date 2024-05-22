@@ -1,3 +1,5 @@
+#!/bin/sh
+export RAYON_NUM_THREADS=8
 ./target/release/polymesh-private benchmark pallet -s 100 -r 5 -p=pallet_im_online -e=* --heap-pages 4096 --db-cache 512 --execution wasm --wasm-execution compiled --output  ./pallets/weights/src/ --template ./.maintain/frame-weight-template.hbs  >> data.txt 2>> log.txt
 ./target/release/polymesh-private benchmark pallet -s 100 -r 5 -p=pallet_compliance_manager -e=* --heap-pages 4096 --db-cache 512 --execution wasm --wasm-execution compiled --output  ./pallets/weights/src/ --template ./.maintain/frame-weight-template.hbs  >> data.txt 2>> log.txt
 ./target/release/polymesh-private benchmark pallet -s 100 -r 5 -p=pallet_sto -e=* --heap-pages 4096 --db-cache 512 --execution wasm --wasm-execution compiled --output  ./pallets/weights/src/ --template ./.maintain/frame-weight-template.hbs  >> data.txt 2>> log.txt

@@ -67,6 +67,7 @@ pub trait WeightInfo {
     fn disallow_venues(l: u32) -> Weight;
     fn add_transaction(l: u32, m: u32) -> Weight;
     fn sender_affirm_transaction(a: u32) -> Weight;
+    fn sender_affirm_transaction_batch(a: u32) -> Weight;
     fn receiver_affirm_transaction() -> Weight;
     fn mediator_affirm_transaction() -> Weight;
     fn execute_transaction(l: u32) -> Weight;
