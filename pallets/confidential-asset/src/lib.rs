@@ -178,20 +178,19 @@ impl From<&ElgamalPublicKey> for AuditorAccount {
 #[derive(Clone, Debug, Encode, Decode, TypeInfo, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct ConfidentialMoveFunds<T: Config> {
-    /// Confidential account of the sender.
-    pub sender: ConfidentialAccount,
-    /// Confidential account of the receiver.
-    pub receiver: ConfidentialAccount,
+    /// Confidential account that the funds will be moved from.
+    pub from: ConfidentialAccount,
+    /// Confidential account that the funds will be moved to.
+    pub to: ConfidentialAccount,
     /// Assets to move and the confidential proofs.
-    /// TODO: Create a new limit.
-    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerLeg>,
+    pub proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerMoveFunds>,
 }
 
 impl<T: Config> ConfidentialMoveFunds<T> {
-    pub fn new(sender: ConfidentialAccount, receiver: ConfidentialAccount) -> Self {
+    pub fn new(from: ConfidentialAccount, to: ConfidentialAccount) -> Self {
         Self {
-            sender,
-            receiver,
+            from,
+            to,
             proofs: Default::default(),
         }
     }
@@ -496,6 +495,12 @@ pub mod pallet {
 
         /// Maximum number of confidential asset mediators.
         type MaxAssetMediators: GetExtra<u32>;
+
+        /// Maximum number of assets per move funds.
+        type MaxAssetsPerMoveFunds: GetExtra<u32>;
+
+        /// Maximum number of move funds.
+        type MaxMoveFunds: GetExtra<u32>;
     }
 
     #[pallet::event]
@@ -686,6 +691,17 @@ pub mod pallet {
             account: ConfidentialAccount,
             /// Confidential asset id.
             asset_id: AssetId,
+        },
+        /// Confidential asset moved between accounts.
+        FundsMoved {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Confidential account the funds were moved from.
+            from: ConfidentialAccount,
+            /// Confidential account the funds were moved to.
+            to: ConfidentialAccount,
+            /// Confidential assets moved.
+            assets: Vec<AssetId>,
         },
     }
 
@@ -1288,7 +1304,7 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn move_assets(
             origin: OriginFor<T>,
-            moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxNumberOfLegs>,
+            moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
         ) -> DispatchResultWithPostInfo {
             let did = PalletIdentity::<T>::ensure_perms(origin)?;
             Self::base_move_assets(did, moves)?;
@@ -1953,7 +1969,7 @@ impl<T: Config> Pallet<T> {
 
     fn base_move_assets(
         caller_did: IdentityId,
-        moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxNumberOfLegs>,
+        moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
     ) -> DispatchResultWithPostInfo {
         let mut asset_auditors = BTreeMap::new();
         // Verify the caller is allowed to move funds.
@@ -1963,7 +1979,7 @@ impl<T: Config> Pallet<T> {
         let mut batch = None;
         // TODO: Return actual weight.
         for funds in moves {
-            Self::base_move_asset(funds, &asset_auditors, &mut batch)?;
+            Self::base_move_asset(caller_did, funds, &asset_auditors, &mut batch)?;
         }
         if let Some(batch) = batch {
             let valid = batch
@@ -1981,9 +1997,9 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         use sp_std::collections::btree_map::Entry;
 
-        // Ensure `caller_did` owns sender & receiver account.
-        Self::ensure_account_owner(caller_did, &funds.sender)?;
-        Self::ensure_account_owner(caller_did, &funds.receiver)?;
+        // Ensure `caller_did` owns `from` and `to` accounts.
+        Self::ensure_account_owner(caller_did, &funds.from)?;
+        Self::ensure_account_owner(caller_did, &funds.to)?;
 
         // Get the asset auditors and verify that the proofs have
         // the required number of auditors.
@@ -2002,9 +2018,9 @@ impl<T: Config> Pallet<T> {
                 }
                 Entry::Occupied(entry) => entry.get().len(),
             };
-            // Ensure that the sender's asset isn't frozen.
+            // Ensure that the `from` account's asset isn't frozen.
             ensure!(
-                !Self::account_asset_frozen(funds.sender, asset_id),
+                !Self::account_asset_frozen(funds.from, asset_id),
                 Error::<T>::AccountAssetFrozen
             );
             // Ensure the proof has enough auditors.
@@ -2017,27 +2033,30 @@ impl<T: Config> Pallet<T> {
     }
 
     fn base_move_asset(
+        caller_did: IdentityId,
         funds: ConfidentialMoveFunds<T>,
         asset_auditors: &BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
         batch: &mut Option<BatchVerify>,
     ) -> DispatchResult {
-        let sender = funds.sender;
-        let receiver = funds.receiver;
+        let from = funds.from;
+        let to = funds.to;
+        let mut assets = Vec::with_capacity(funds.proofs.len());
 
         for (asset_id, proof) in funds.proofs {
+            assets.push(asset_id);
             let auditors = asset_auditors
                 .get(&asset_id)
                 .ok_or(Error::<T>::InvalidSenderProof)?;
-            // Get the sender's current balance.
-            let sender_init_balance = Self::account_balance(&sender, asset_id)
+            // Get the `from` current balance.
+            let from_init_balance = Self::account_balance(&from, asset_id)
                 .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-            let sender_amount = proof.sender_amount();
-            let receiver_amount = proof.receiver_amount();
+            let from_amount = proof.sender_amount();
+            let to_amount = proof.receiver_amount();
             let req = VerifyConfidentialTransferRequest {
-                sender: sender.0,
-                sender_balance: sender_init_balance,
-                receiver: receiver.0,
+                sender: from.0,
+                sender_balance: from_init_balance,
+                receiver: to.0,
                 auditors: auditors.iter().map(|account| account.0).collect(),
                 proof: proof.encode(),
                 seed: Self::get_seed(true),
@@ -2050,13 +2069,19 @@ impl<T: Config> Pallet<T> {
                 .submit_transfer_request(req)
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
-            // Withdraw the amount from the sender's account.
-            Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
-            // Deposit the amount into the receiver's account.
-            Self::account_deposit_amount(receiver, asset_id, receiver_amount);
+            // Withdraw the amount from the `from` account.
+            Self::account_withdraw_amount(from, asset_id, from_amount)?;
+            // Deposit the amount into the `to` account.
+            Self::account_deposit_amount(to, asset_id, to_amount);
         }
 
-        // TODO: Emit asset moved event.
+        // Emit funds moved event.
+        Self::deposit_event(Event::<T>::FundsMoved {
+            caller_did,
+            from,
+            to,
+            assets,
+        });
 
         Ok(())
     }

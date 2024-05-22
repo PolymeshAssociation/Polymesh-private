@@ -110,6 +110,8 @@ pub type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
+pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
 impl TestUtilsFn<AccountId> for Runtime {
@@ -292,6 +294,8 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
     type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
+    type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
+    type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {

@@ -163,6 +163,8 @@ type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -306,6 +308,8 @@ impl pallet_confidential_asset::Config for Runtime {
     type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
     type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
+    type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
+    type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
 }
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
