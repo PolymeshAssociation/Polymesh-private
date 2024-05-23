@@ -442,39 +442,6 @@ impl crate::WeightInfo for SubstrateWeight {
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset AccountDid (r:60 w:0)
-    // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset AssetFrozen (r:900 w:0)
-    // Proof Skipped: ConfidentialAsset AssetFrozen (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset AssetAuditors (r:900 w:0)
-    // Proof Skipped: ConfidentialAsset AssetAuditors (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset AccountAssetFrozen (r:900 w:0)
-    // Proof Skipped: ConfidentialAsset AccountAssetFrozen (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset AccountBalance (r:1800 w:1800)
-    // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset RngNonce (r:1 w:1)
-    // Proof Skipped: ConfidentialAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
-    // Storage: Babe NextRandomness (r:1 w:0)
-    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
-    // Storage: Babe EpochStart (r:1 w:0)
-    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-    /// The range of component `m` is `[0, 30]`.
-    /// The range of component `a` is `[0, 30]`.
-    fn move_assets(m: u32, a: u32) -> Weight {
-        // Minimum execution time: 8_687 nanoseconds.
-        Weight::from_ref_time(8_907_000)
-            // Standard Error: 321_195_633
-            .saturating_add(Weight::from_ref_time(7_795_209_750).saturating_mul(m.into()))
-            // Standard Error: 321_195_633
-            .saturating_add(Weight::from_ref_time(7_755_568_679).saturating_mul(a.into()))
-            .saturating_add(DbWeight::get().reads(1))
-            .saturating_add(DbWeight::get().reads((55_u64).saturating_mul(m.into())))
-            .saturating_add(DbWeight::get().reads((53_u64).saturating_mul(a.into())))
-            .saturating_add(DbWeight::get().writes((21_u64).saturating_mul(m.into())))
-            .saturating_add(DbWeight::get().writes((21_u64).saturating_mul(a.into())))
-    }
-    // Storage: Identity KeyRecords (r:1 w:0)
-    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountDid (r:2000 w:0)
     // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
     /// The range of component `m` is `[0, 1000]`.

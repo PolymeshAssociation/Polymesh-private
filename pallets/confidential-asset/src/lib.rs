@@ -72,7 +72,6 @@ pub trait WeightInfo {
     fn mediator_affirm_transaction() -> Weight;
     fn execute_transaction(l: u32) -> Weight;
     fn reject_transaction(l: u32) -> Weight;
-    fn move_assets(m: u32, a: u32) -> Weight;
     fn move_assets_no_assets(m: u32) -> Weight;
     fn move_assets_one_batch(a: u32) -> Weight;
 

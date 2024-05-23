@@ -294,19 +294,6 @@ benchmarks! {
         let mediator = leg.mediator(0);
     }: _(mediator.raw_origin(), tx.id, l)
 
-    move_assets {
-        // Number of move batches (each batch has the same from/to account)
-        let m in 0 .. (T::MaxMoveFunds::get());
-        // Number of assets to move in each batch.
-        let a in 0 .. (T::MaxAssetsPerMoveFunds::get());
-
-        let m = m as usize;
-        let a = a as usize;
-        let mut rng = StdRng::from_seed([10u8; 32]);
-        // Generate confidential assets and move funds.
-        let (signer, moves) = create_move_funds::<T>(m, a, &mut rng);
-    }: move_assets(signer.raw_origin(), moves)
-
     move_assets_no_assets {
         // Number of move batches (each batch has the same from/to account)
         let m in 0 .. (T::MaxMoveFunds::get());
