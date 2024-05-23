@@ -17,7 +17,6 @@ polymesh-extensions = { workspace = true, default-features = false }
 pallet-asset = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-base = { workspace = true, default-features = false }
-pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
@@ -34,7 +33,6 @@ pallet-protocol-fee = { workspace = true, default-features = false }
 pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
-pallet-staking = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 pallet-test-utils = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false }
@@ -57,7 +55,6 @@ sp-version = { workspace = true, default-features = false }
 sp-api = { workspace = true, default-features = false }
 sp-inherents = { workspace = true, default-features = false }
 sp-offchain = { workspace = true, default-features = false }
-sp-staking = { workspace = true, default-features = false }
 sp-consensus-babe = { workspace = true, default-features = false }
 sp-consensus-grandpa = { workspace = true, default-features = false }
 sp-session = { workspace = true, default-features = false }
@@ -79,9 +76,11 @@ pallet-session = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, default-features = false }
 pallet-babe = { workspace = true, default-features = false }
 pallet-authority-discovery = { workspace = true, default-features = false }
-pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
+
+# PoA
+validator-set = { workspace = true, default-features = false }
 
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
@@ -90,7 +89,6 @@ frame-support = { workspace = true, default-features = false }
 frame-system-rpc-runtime-api = { workspace = true, default-features = false }
 pallet-group-rpc-runtime-api = { workspace = true, default-features = false }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true, default-features = false }
-pallet-staking-rpc-runtime-api = { workspace = true, default-features = false }
 node-rpc-runtime-api = { workspace = true, default-features = false }
 
 # Used for runtime benchmarking
@@ -145,7 +143,6 @@ std = [
   "pallet-babe/std",
   "pallet-balances/std",
   "pallet-sto/std",
-  "pallet-bridge/std",
   "pallet-committee/std",
   "pallet-compliance-manager/std",
   "pallet-confidential-asset/std",
@@ -172,9 +169,8 @@ std = [
   "pallet-insecure-randomness-collective-flip/std",
   "pallet-scheduler/std",
   "pallet-session/std",
+  "validator-set/std",
   "pallet-settlement/std",
-  "pallet-staking-rpc-runtime-api/std",
-  "pallet-staking/std",
   "pallet-statistics/std",
   "pallet-sudo/std",
   "pallet-test-utils/std",
@@ -198,7 +194,6 @@ std = [
   "sp-offchain/std",
   "sp-runtime/std",
   "sp-session/std",
-  "sp-staking/std",
   "sp-std/std",
   "sp-transaction-pool/std",
   "sp-version/std",
@@ -236,13 +231,11 @@ runtime-benchmarks = [
   "pallet-relayer/runtime-benchmarks",
   "pallet-settlement/runtime-benchmarks",
   "pallet-sto/runtime-benchmarks",
-  "pallet-staking/runtime-benchmarks",
   "pallet-statistics/runtime-benchmarks",
   "pallet-timestamp/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
   "pallet-test-utils/runtime-benchmarks",
-  "pallet-staking/runtime-benchmarks",
   "polymesh-common-utilities/runtime-benchmarks",
   "polymesh-contracts/runtime-benchmarks",
   "polymesh-primitives/runtime-benchmarks",

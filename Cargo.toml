@@ -33,7 +33,6 @@ pallet-preimage = { git = "https://github.com/PolymeshAssociation/polkadot-sdk",
 pallet-insecure-randomness-collective-flip = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-scheduler = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-session = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
-pallet-staking-reward-curve = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 pallet-timestamp = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-authority-discovery = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sc-basic-authorship = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
@@ -84,7 +83,6 @@ sp-runtime = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", bran
 sp-weights = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-runtime-interface = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-session = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
-sp-staking = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-state-machine = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-std = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 sp-storage = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
@@ -101,9 +99,11 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/p
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
+confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "main" }
 #confidential_assets = { path = "../confidential_assets" }
 curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
+
+substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
 
 [workspace]
 members = [
@@ -124,7 +124,6 @@ exclude = [
 pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-pallet-bridge = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
@@ -142,7 +141,6 @@ pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.g
 pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-pallet-staking = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
@@ -165,8 +163,6 @@ pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git"
 pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-pallet-staking-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
-polymesh-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
 
 # Build tool
 polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v6.3.0", default-features = false }
@@ -190,7 +186,6 @@ pallet-preimage = { version = "4.0.0-dev", default-features = false }
 pallet-insecure-randomness-collective-flip = { version = "4.0.0-dev", default-features = false }
 pallet-scheduler = { version = "4.0.0-dev", default-features = false }
 pallet-session = { version = "4.0.0-dev", default-features = false }
-pallet-staking-reward-curve = { version = "4.0.0-dev", default-features = false }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 sp-api = { version = "4.0.0-dev", default-features = false }
@@ -212,7 +207,6 @@ sp-runtime = { version = "7.0.0", default-features = false }
 sp-runtime-interface = { version = "7.0.0", default-features = false }
 sp-timestamp = { version = "4.0.0-dev", default-features = false }
 sp-session = { version = "4.0.0-dev", default-features = false }
-sp-staking = { version = "4.0.0-dev", default-features = false }
 sp-std = { version = "5.0.0", default-features = false }
 sp-transaction-pool = { version = "4.0.0-dev", default-features = false }
 sp-version = { version = "5.0.0", default-features = false }
@@ -223,12 +217,14 @@ rand_core = { version = "0.6", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 confidential_assets = { version = "1.0.0", default-features = false }
 
+# Validator set (PoA)
+validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }
+
 [dependencies]
 # Our pallets
 pallet-asset = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-base = { workspace = true, default-features = false }
-pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
@@ -246,8 +242,6 @@ pallet-protocol-fee = { workspace = true, default-features = false }
 pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
-pallet-staking = { workspace = true, default-features = false }
-pallet-staking-reward-curve = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 pallet-test-utils = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false }
@@ -263,6 +257,9 @@ polymesh-primitives = { workspace = true, default-features = false }
 polymesh-weights = { workspace = true, default-features = false }
 polymesh-extensions = { workspace = true, default-features = false }
 
+# PoA
+validator-set = { workspace = true, default-features = false }
+
 # RPC
 node-rpc = { workspace = true }
 node-rpc-runtime-api = { workspace = true }
@@ -270,8 +267,6 @@ pallet-group-rpc = { workspace = true }
 pallet-group-rpc-runtime-api = { workspace = true }
 pallet-protocol-fee-rpc = { workspace = true }
 pallet-protocol-fee-rpc-runtime-api = { workspace = true }
-pallet-staking-rpc-runtime-api = { workspace = true }
-polymesh-node-rpc = { workspace = true }
 
 # Runtimes
 polymesh-private-runtime-develop = { path = "runtime/develop" }
@@ -294,16 +289,24 @@ sc-cli = { version = "0.10.0-dev" }
 sc-client-api = "4.0.0-dev"
 sc-consensus = "0.10.0-dev"
 sc-consensus-babe = "0.10.0-dev"
+sc-consensus-babe-rpc = "0.10.0-dev"
+sc-consensus-epochs = { version = "0.10.0-dev" }
 sc-consensus-slots = "0.10.0-dev"
+sc-consensus-grandpa = "0.10.0-dev"
+sc-consensus-grandpa-rpc = "0.10.0-dev"
 sc-executor = { version = "0.10.0-dev" }
 sc-network = "0.10.0-dev"
 sc-network-common = { version = "0.10.0-dev" }
 sc-rpc = "4.0.0-dev"
+sc-rpc-api = "0.10.0-dev"
+sc-rpc-spec-v2 = "0.10.0-dev"
 sc-service = { version = "0.10.0-dev" }
 sc-telemetry = "4.0.0-dev"
 sc-transaction-pool = "4.0.0-dev"
 sc-sync-state-rpc = { version = "0.10.0-dev" }
-grandpa = { package = "sc-consensus-grandpa", version = "0.10.0-dev" }
+sc-transaction-pool-api = { version = "4.0.0-dev" }
+substrate-frame-rpc-system = { version = "4.0.0-dev" }
+substrate-state-trie-migration-rpc = { version = "4.0.0-dev" }
 
 # Substrate
 codec = { workspace = true, package = "parity-scale-codec" }
@@ -323,6 +326,7 @@ sp-consensus = { workspace = true }
 sp-consensus-babe = { workspace = true }
 sp-consensus-slots = { workspace = true }
 sp-keyring = { workspace = true }
+sp-keystore = { version = "0.13.0" }
 sp-core = { workspace = true }
 sp-inherents = { workspace = true }
 sp-transaction-storage-proof = { workspace = true }

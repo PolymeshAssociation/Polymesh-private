@@ -56,7 +56,6 @@ avx2_backend = [
 ]
 
 no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std", "u64_backend"]
-only-staking = []
 std = [
     "rand_core/std",
     "rand_chacha/std",

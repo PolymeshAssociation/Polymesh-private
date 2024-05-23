@@ -9,7 +9,6 @@ polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-primitives = { workspace = true, default-features = false }
 
 pallet-balances = { workspace = true, default-features = false  }
-pallet-bridge = { workspace = true, default-features = false }
 pallet-committee = { workspace = true, default-features = false }
 pallet-identity = { workspace = true, default-features = false  }
 pallet-multisig = { workspace = true, default-features = false }
@@ -34,7 +33,6 @@ pallet-authorship = { workspace = true, default-features = false }
 
 [features]
 equalize = []
-only-staking = []
 default = ["std", "equalize"]
 runtime-benchmarks = []
 testing = []

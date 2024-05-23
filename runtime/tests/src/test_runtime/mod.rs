@@ -14,14 +14,13 @@ use sp_core::crypto::Pair as PairTrait;
 use sp_core::sr25519::Pair;
 use sp_keyring::AccountKeyring;
 use sp_runtime::create_runtime_str;
-use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify,
 };
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction,
 };
-use sp_runtime::{Perbill, Permill};
+use sp_runtime::Perbill;
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
 use std::convert::From;
@@ -40,7 +39,7 @@ use pallet_protocol_fee as protocol_fee;
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 use pallet_utility;
-use polymesh_common_utilities::constants::currency::{DOLLARS, POLY};
+use polymesh_common_utilities::constants::currency::DOLLARS;
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_common_utilities::traits::group::GroupTrait;
 use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
@@ -73,47 +72,22 @@ const VERSION: RuntimeVersion = RuntimeVersion {
     state_version: 1,
 };
 
-pallet_staking_reward_curve::build! {
-    const REWARD_CURVE: PiecewiseLinear<'_> = curve!(
-        min_inflation: 0_025_000,
-        max_inflation: 0_140_000,
-        ideal_stake: 0_700_000,
-        falloff: 0_050_000,
-        max_piece_count: 40,
-        test_precision: 0_005_000,
-    );
-}
-
 parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const Version: RuntimeVersion = VERSION;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3;
-    pub const BondingDuration: pallet_staking::EraIndex = 7;
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 4;
-    pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-    pub const MaxIterations: u32 = 10;
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
-    pub const MaxNominatorRewardedPerValidator: u32 = 2048;
-    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
     pub const IndexDeposit: Balance = DOLLARS;
-    pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-    pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
-    pub const MaxValidatorPerIdentity: Permill = Permill::from_percent(33);
-    pub const MaxVariableInflationTotalIssuance: Balance = 1_000_000_000 * POLY;
-    pub const FixedYearlyReward: Balance = 140_000_000 * POLY;
-    pub const MinimumBond: Balance = 1 * POLY;
     pub const MaxNumberOfFungibleAssets: u32 = 100;
     pub const MaxNumberOfNFTsPerLeg: u32 = 10;
     pub const MaxNumberOfNFTs: u32 = 100;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
-    pub const MaxAuthorities: u32 = 100_000;
+    pub const MaxSetIdSessionEntries: u32 = 0;
+    pub const ReportLongevity: u64 = 1_000;
+    pub const MinAuthorities: u32 = 2;
+    pub const MaxAuthorities: u32 = 10_000;
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
     pub const MaxPeerDataEncodingSize: u32 = 1_000;
-    pub const ReportLongevity: u64 =
-        BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
     pub const MaxNumberOfCollectionKeys: u8 = u8::MAX;
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
@@ -168,8 +142,10 @@ frame_support::construct_runtime!(
         UpgradeCommittee: pallet_committee::<Instance4>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 13,
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>} = 14,
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>} = 15,
-        Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 16,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned} = 17,
+
+        // PoA
+        ValidatorSet: validator_set = 17,
+
         Offences: pallet_offences::{Pallet, Storage, Event} = 18,
         Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 19,
         AuthorityDiscovery: pallet_authority_discovery::{Pallet, Config} = 20,

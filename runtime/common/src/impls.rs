@@ -38,8 +38,6 @@ use frame_support::traits::{Currency, OnUnbalanced};
 use frame_system as system;
 use pallet_authorship as authorship;
 use pallet_balances as balances;
-use polymesh_primitives::Balance;
-use sp_runtime::traits::Convert;
 
 pub struct Author<R>(sp_std::marker::PhantomData<R>);
 
@@ -53,37 +51,5 @@ where
         if let Some(author) = authorship::Pallet::<R>::author() {
             <balances::Module<R>>::resolve_creating(&author, amount);
         }
-    }
-}
-
-/// Struct that handles the conversion of Balance -> `u128`. This is used for staking's election
-/// calculation.
-pub struct CurrencyToVoteHandler<R>(sp_std::marker::PhantomData<R>);
-
-impl<R> CurrencyToVoteHandler<R>
-where
-    R: balances::Config,
-{
-    fn factor() -> Balance {
-        let issuance: Balance = <balances::Module<R>>::total_issuance();
-        (issuance / u64::max_value() as Balance).max(1)
-    }
-}
-
-impl<R> Convert<Balance, u64> for CurrencyToVoteHandler<R>
-where
-    R: balances::Config,
-{
-    fn convert(x: Balance) -> u64 {
-        (x / Self::factor()) as u64
-    }
-}
-
-impl<R> Convert<u128, Balance> for CurrencyToVoteHandler<R>
-where
-    R: balances::Config,
-{
-    fn convert(x: u128) -> Balance {
-        x * Self::factor()
     }
 }
