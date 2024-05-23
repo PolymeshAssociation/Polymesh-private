@@ -4784,6 +4784,7 @@ dependencies = [
  "frame-system",
  "pallet-balances 0.1.0",
  "pallet-base",
+ "pallet-committee",
  "pallet-identity",
  "pallet-portfolio",
  "pallet-statistics",
