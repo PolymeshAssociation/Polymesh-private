@@ -110,8 +110,16 @@ pub type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
-pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<30>;
-pub type ConfidentialAssetMaxMoveFunds = ConstSize<30>;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
+#[cfg(feature = "runtime-benchmarks")]
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
 impl TestUtilsFn<AccountId> for Runtime {

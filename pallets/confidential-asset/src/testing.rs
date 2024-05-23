@@ -344,6 +344,80 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     (asset_id, owner, balance, auditors)
 }
 
+pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+    m: usize,
+    a: usize,
+    rng: &mut StdRng,
+) -> (
+    ConfidentialUser<T>,
+    BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
+) {
+    // Generate confidential assets.
+    let total_supply = 4_000_000_000 as ConfidentialBalance;
+    let max_auditors = T::MaxAssetAuditors::get();
+    let mut assets = Vec::with_capacity(a);
+    for idx in 0..(m * a) {
+        let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
+            "issuer",
+            total_supply,
+            idx as u32,
+            max_auditors,
+            0,
+            rng,
+        );
+        assets.push((asset, auditors));
+    }
+
+    // Generate all confidential accounts using the same on-chain user.
+    let signer = ConfidentialUser::<T>::new("one", rng);
+    let amount = 10;
+    // Create the confidential move funds.
+    let mut moves = BoundedVec::default();
+    let batch = BatchVerify::create();
+    for m_idx in 0..m {
+        // Generate all confidential accounts using the same on-chain user.
+        let from = signer.new_account(rng);
+        let to = signer.new_account(rng);
+        let funds = ConfidentialMoveFunds::new(from.account(), to.account());
+        for a_idx in 0..a {
+            let idx = (m_idx * a) + a_idx;
+            let (asset, auditors) = &assets[idx];
+            // fund both from/to accounts so they have balances for this asset.
+            let init_balance = amount * 10;
+            let from_enc_balance = from.fund_account(*asset, init_balance, rng);
+            to.fund_account(*asset, 1, rng);
+
+            let auditor_keys = auditors.build_auditor_set();
+            let mut seed = [0; 32];
+            rng.fill_bytes(&mut seed);
+            let req = GenerateTransferProofRequest::new(
+                from.sec.clone(),
+                from_enc_balance,
+                init_balance,
+                to.pub_key(),
+                auditor_keys,
+                amount as u64,
+                seed,
+            );
+            batch
+                .generate_transfer_proof(req)
+                .expect("Batched generate transfer proof");
+        }
+        moves.try_push(funds).expect("Shouldn't go over limit");
+    }
+    let proofs = batch.get_proofs().expect("batch get proofs");
+    for m_idx in 0..m {
+        let funds = &mut moves[m_idx];
+        for a_idx in 0..a {
+            let idx = (m_idx * a) + a_idx;
+            let (asset, _) = assets[idx];
+            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
+            assert!(funds.insert(asset, proof));
+        }
+    }
+    (signer, moves)
+}
+
 #[derive(Clone)]
 pub struct TransactionLegState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub asset_id: AssetId,

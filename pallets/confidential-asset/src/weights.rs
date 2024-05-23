@@ -473,4 +473,46 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().writes((21_u64).saturating_mul(m.into())))
             .saturating_add(DbWeight::get().writes((21_u64).saturating_mul(a.into())))
     }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountDid (r:2000 w:0)
+    // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
+    /// The range of component `m` is `[0, 1000]`.
+    fn move_assets_no_assets(m: u32) -> Weight {
+        // Minimum execution time: 7_844 nanoseconds.
+        Weight::from_ref_time(8_025_000)
+            // Standard Error: 25_721
+            .saturating_add(Weight::from_ref_time(41_304_712).saturating_mul(m.into()))
+            .saturating_add(DbWeight::get().reads(1))
+            .saturating_add(DbWeight::get().reads((2_u64).saturating_mul(m.into())))
+    }
+    // Storage: Identity KeyRecords (r:1 w:0)
+    // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountDid (r:2 w:0)
+    // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AssetFrozen (r:1000 w:0)
+    // Proof Skipped: ConfidentialAsset AssetFrozen (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AssetAuditors (r:1000 w:0)
+    // Proof Skipped: ConfidentialAsset AssetAuditors (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountAssetFrozen (r:1000 w:0)
+    // Proof Skipped: ConfidentialAsset AccountAssetFrozen (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset AccountBalance (r:2000 w:2000)
+    // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset RngNonce (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: Babe NextRandomness (r:1 w:0)
+    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+    // Storage: Babe EpochStart (r:1 w:0)
+    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// The range of component `a` is `[0, 1000]`.
+    fn move_assets_one_batch(a: u32) -> Weight {
+        // Minimum execution time: 55_664 nanoseconds.
+        Weight::from_ref_time(1_426_817_798)
+            // Standard Error: 1_300_887
+            .saturating_add(Weight::from_ref_time(622_509_034).saturating_mul(a.into()))
+            .saturating_add(DbWeight::get().reads(5))
+            .saturating_add(DbWeight::get().reads((5_u64).saturating_mul(a.into())))
+            .saturating_add(DbWeight::get().writes(1))
+            .saturating_add(DbWeight::get().writes((2_u64).saturating_mul(a.into())))
+    }
 }

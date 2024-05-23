@@ -303,64 +303,27 @@ benchmarks! {
         let m = m as usize;
         let a = a as usize;
         let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential assets and move funds.
+        let (signer, moves) = create_move_funds::<T>(m, a, &mut rng);
+    }: move_assets(signer.raw_origin(), moves)
 
-        // Generate confidential assets.
-        let total_supply = 4_000_000_000 as ConfidentialBalance;
-        let max_auditors = T::MaxAssetAuditors::get();
-        let mut assets = Vec::with_capacity(a);
-        for idx in 0..(m * a) {
-            let (asset, _, _, auditors) =
-              create_account_and_mint_token::<T>("issuer", total_supply, idx as u32, max_auditors, 0, &mut rng);
-            assets.push((asset, auditors));
-        }
+    move_assets_no_assets {
+        // Number of move batches (each batch has the same from/to account)
+        let m in 0 .. (T::MaxMoveFunds::get());
 
-        // Generate all confidential accounts using the same on-chain user.
-        let signer = ConfidentialUser::<T>::new("one", &mut rng);
-        let amount = 10;
-        // Create the confidential move funds.
-        let mut moves = BoundedVec::default();
-        let batch = BatchVerify::create();
-        for m_idx in 0..m {
-          // Generate all confidential accounts using the same on-chain user.
-          let from = signer.new_account(&mut rng);
-          let to = signer.new_account(&mut rng);
-          let funds = ConfidentialMoveFunds::new(from.account(), to.account());
-          for a_idx in 0..a {
-            let idx = (m_idx * a) + a_idx;
-            let (asset, auditors) = &assets[idx];
-            // fund both from/to accounts so they have balances for this asset.
-            let init_balance = amount * 10;
-            let from_enc_balance = from.fund_account(*asset, init_balance, &mut rng);
-            to.fund_account(*asset, 1, &mut rng);
+        let m = m as usize;
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential assets and move funds.
+        let (signer, moves) = create_move_funds::<T>(m, 0, &mut rng);
+    }: move_assets(signer.raw_origin(), moves)
 
-            let auditor_keys = auditors.build_auditor_set();
-            let mut seed = [0; 32];
-            rng.fill_bytes(&mut seed);
-            let req = GenerateTransferProofRequest::new(
-                from.sec.clone(),
-                from_enc_balance,
-                init_balance,
-                to.pub_key(),
-                auditor_keys,
-                amount as u64,
-                seed,
-            );
-            batch
-                .generate_transfer_proof(req)
-                .expect("Batched generate transfer proof");
-          }
-          moves.try_push(funds).expect("Shouldn't go over limit");
-        }
-        let proofs = batch.get_proofs().expect("batch get proofs");
-        for m_idx in 0..m {
-          let funds = &mut moves[m_idx];
-          for a_idx in 0..a {
-            let idx = (m_idx * a) + a_idx;
-            let (asset, _) = assets[idx];
-            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
-            assert!(funds.insert(asset, proof));
-          }
-        }
-    }: _(signer.raw_origin(), moves)
+    move_assets_one_batch {
+        // Number of assets to move in each batch.
+        let a in 0 .. (T::MaxAssetsPerMoveFunds::get());
 
+        let a = a as usize;
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential assets and move funds.
+        let (signer, moves) = create_move_funds::<T>(1, a, &mut rng);
+    }: move_assets(signer.raw_origin(), moves)
 }

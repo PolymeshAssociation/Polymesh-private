@@ -154,8 +154,16 @@ type ConfidentialAssetMaxVenueMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
-type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<30>;
-type ConfidentialAssetMaxMoveFunds = ConstSize<30>;
+
+#[cfg(feature = "runtime-benchmarks")]
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
+#[cfg(feature = "runtime-benchmarks")]
+type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
