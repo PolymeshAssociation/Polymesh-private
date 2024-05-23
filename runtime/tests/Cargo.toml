@@ -80,6 +80,9 @@ pallet-authority-discovery = { workspace = true, default-features = false }
 pallet-insecure-randomness-collective-flip = { workspace = true, default-features = false }
 pallet-scheduler = { workspace = true, default-features = false }
 
+# PoA
+validator-set = { workspace = true, default-features = false }
+
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 
@@ -137,6 +140,7 @@ std = [
   "pallet-insecure-randomness-collective-flip/std",
   "pallet-scheduler/std",
   "pallet-session/std",
+  "validator-set/std",
   "pallet-settlement/std",
   "pallet-statistics/std",
   "pallet-sudo/std",

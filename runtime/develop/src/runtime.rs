@@ -96,7 +96,8 @@ parameter_types! {
 
     pub const MaxSetIdSessionEntries: u32 = 0;
     pub const ReportLongevity: u64 = 1_000;
-    pub const MaxAuthorities: u32 = 100_000;
+    pub const MinAuthorities: u32 = 1;
+    pub const MaxAuthorities: u32 = 10_000;
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
     pub const MaxPeerDataEncodingSize: u32 = 1_000;
@@ -401,6 +402,9 @@ construct_runtime!(
         UpgradeCommitteeMembership: pallet_group::<Instance4>::{Pallet, Call, Storage, Event<T>, Config<T>},
 
         MultiSig: pallet_multisig::{Pallet, Call, Config, Storage, Event<T>},
+
+        // PoA
+        ValidatorSet: validator_set,
 
         Offences: pallet_offences::{Pallet, Storage, Event},
 

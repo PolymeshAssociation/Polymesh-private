@@ -21,7 +21,7 @@ macro_rules! misc_pallet_impls {
         pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
             sp_consensus_babe::BabeEpochConfiguration {
                 c: PRIMARY_PROBABILITY,
-                allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+                allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
             };
 
         /// Native version.
@@ -219,13 +219,20 @@ macro_rules! misc_pallet_impls {
             }
         }
 
+        impl validator_set::Config for Runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type AddRemoveOrigin = polymesh_primitives::EnsureRoot;
+            type MinAuthorities = MinAuthorities;
+            type WeightInfo = validator_set::weights::SubstrateWeight<Runtime>;
+        }
+
         impl pallet_session::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type ValidatorId = polymesh_primitives::AccountId;
-            type ValidatorIdOf = (); //pallet_staking::StashOf<Self>;
+            type ValidatorIdOf = validator_set::ValidatorOf<Self>;
             type ShouldEndSession = Babe;
             type NextSessionRotation = Babe;
-            type SessionManager = (); //pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+            type SessionManager = ValidatorSet; //pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
             type SessionHandler =
                 <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
             type Keys = SessionKeys;

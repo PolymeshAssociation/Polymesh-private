@@ -99,9 +99,11 @@ substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/p
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
 bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "ssh://git@github.com/PolymeshAssociation/confidential_assets.git", branch = "main" }
+confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "main" }
 #confidential_assets = { path = "../confidential_assets" }
 curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
+
+substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
 
 [workspace]
 members = [
@@ -215,6 +217,9 @@ rand_core = { version = "0.6", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 confidential_assets = { version = "1.0.0", default-features = false }
 
+# Validator set (PoA)
+validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }
+
 [dependencies]
 # Our pallets
 pallet-asset = { workspace = true, default-features = false }
@@ -251,6 +256,9 @@ polymesh-runtime-common = { workspace = true, default-features = false }
 polymesh-primitives = { workspace = true, default-features = false }
 polymesh-weights = { workspace = true, default-features = false }
 polymesh-extensions = { workspace = true, default-features = false }
+
+# PoA
+validator-set = { workspace = true, default-features = false }
 
 # RPC
 node-rpc = { workspace = true }

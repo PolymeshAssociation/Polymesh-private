@@ -85,6 +85,9 @@ sp-std = { workspace = true, default-features = false }
 sp-transaction-pool = { workspace = true, default-features = false }
 sp-version = { workspace = true, default-features = false }
 
+# PoA
+validator-set = { workspace = true, default-features = false }
+
 [build-dependencies]
 polymesh-build-tool = { workspace = true, default-features = false }
 
@@ -148,6 +151,7 @@ std = [
     "pallet-insecure-randomness-collective-flip/std",
     "pallet-scheduler/std",
     "pallet-session/std",
+		"validator-set/std",
     "pallet-settlement/std",
     "pallet-statistics/std",
     "pallet-sto/std",
