@@ -355,6 +355,7 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     // Generate confidential assets.
     let total_supply = 4_000_000_000 as ConfidentialBalance;
     let max_auditors = T::MaxAssetAuditors::get();
+    let max_mediators = T::MaxAssetMediators::get();
     let mut assets = Vec::with_capacity(a);
     for idx in 0..(m * a) {
         let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
@@ -362,7 +363,7 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
             total_supply,
             idx as u32,
             max_auditors,
-            0,
+            max_mediators,
             rng,
         );
         assets.push((asset, auditors));
@@ -373,7 +374,7 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let amount = 10;
     // Create the confidential move funds.
     let mut moves = BoundedVec::default();
-    let batch = BatchVerify::create();
+    let mut batch = BatchVerify::create();
     for m_idx in 0..m {
         // Generate all confidential accounts using the same on-chain user.
         let from = signer.new_account(rng);
@@ -670,7 +671,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
 
     pub fn affirm_legs(&self, rng: &mut StdRng) {
         // Use batch to generate sender proofs.
-        let batch = BatchVerify::create();
+        let mut batch = BatchVerify::create();
         for idx in 0..self.legs.len() {
             self.leg(idx as _).batch_sender_proof(&batch, rng);
         }

@@ -43,7 +43,7 @@ impl InnerBatchVerifiers {
         &mut self,
         id: BatchId,
         req: VerifyConfidentialProofRequest,
-    ) -> Result<(), ()> {
+    ) -> Result<(), Error> {
         if let Some(batch) = self.batches.get_mut(&id) {
             let (req_id, tx) = batch.next_req();
             self.pool.spawn(move || {
@@ -51,12 +51,12 @@ impl InnerBatchVerifiers {
                 let _ = tx.send(BatchResult {
                     id: req_id,
                     result,
-                    proof: Err(()),
+                    proof: Err(Error::VerifyFailed),
                 });
             });
             Ok(())
         } else {
-            Err(())
+            Err(Error::VerifyFailed)
         }
     }
 
@@ -64,25 +64,29 @@ impl InnerBatchVerifiers {
         self.batches.remove(&id)
     }
 
+    pub fn batch_cancel(&mut self, id: BatchId) {
+        self.batches.remove(&id);
+    }
+
     #[cfg(feature = "runtime-benchmarks")]
     pub fn batch_generate_proof(
         &mut self,
         id: BatchId,
         req: GenerateProofRequest,
-    ) -> Result<(), ()> {
+    ) -> Result<(), Error> {
         if let Some(batch) = self.batches.get_mut(&id) {
             let (req_id, tx) = batch.next_req();
             self.pool.spawn(move || {
                 let proof = req.generate();
                 let _ = tx.send(BatchResult {
                     id: req_id,
-                    result: Err(()),
+                    result: Err(Error::VerifyFailed),
                     proof,
                 });
             });
             Ok(())
         } else {
-            Err(())
+            Err(Error::VerifyFailed)
         }
     }
 }
@@ -100,7 +104,7 @@ impl BatchVerifiers {
         inner.create_batch()
     }
 
-    pub fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), ()> {
+    pub fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), Error> {
         let mut inner = BATCH_VERIFIERS.0.write().unwrap();
         inner.batch_submit(id, req)
     }
@@ -110,8 +114,13 @@ impl BatchVerifiers {
         inner.batch_finish(id)
     }
 
+    pub fn batch_cancel(id: BatchId) {
+        let mut inner = BATCH_VERIFIERS.0.write().unwrap();
+        inner.batch_cancel(id);
+    }
+
     #[cfg(feature = "runtime-benchmarks")]
-    pub fn batch_generate_proof(id: BatchId, req: GenerateProofRequest) -> Result<(), ()> {
+    pub fn batch_generate_proof(id: BatchId, req: GenerateProofRequest) -> Result<(), Error> {
         let mut inner = BATCH_VERIFIERS.0.write().unwrap();
         inner.batch_generate_proof(id, req)
     }
@@ -120,8 +129,8 @@ impl BatchVerifiers {
 #[derive(Debug)]
 pub struct BatchResult {
     pub id: BatchReqId,
-    pub result: Result<VerifyConfidentialProofResponse, ()>,
-    pub proof: Result<GenerateProofResponse, ()>,
+    pub result: Result<VerifyConfidentialProofResponse, Error>,
+    pub proof: Result<GenerateProofResponse, Error>,
 }
 
 #[derive(Debug)]
@@ -143,19 +152,19 @@ impl BatchVerifier {
         (id, self.tx.clone())
     }
 
-    pub fn finalize(self) -> Result<bool, ()> {
+    pub fn finalize(self) -> Result<bool, Error> {
         let Self { count, rx, tx } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
         for _x in 0..count {
             let res = rx.recv().map_err(|err| {
                 log::warn!("Failed to recv Proof response: {err:?}");
-                ()
+                Error::VerifyFailed
             })?;
             let valid = res.result?.is_valid();
             if !valid {
                 // Invalid proof.
-                return Err(());
+                return Err(Error::VerifyFailed);
             }
             resps.insert(res.id, valid);
         }
@@ -163,19 +172,19 @@ impl BatchVerifier {
             Ok(true)
         } else {
             // Wrong number of responses.
-            Err(())
+            Err(Error::VerifyFailed)
         }
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    pub fn get_proofs(self) -> Result<Vec<GenerateProofResponse>, ()> {
+    pub fn get_proofs(self) -> Result<Vec<GenerateProofResponse>, Error> {
         let Self { count, rx, tx } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
         for _x in 0..count {
             let res = rx.recv().map_err(|err| {
                 log::warn!("Failed to recv Proof response: {err:?}");
-                ()
+                Error::VerifyFailed
             })?;
             let proof = res.proof?;
             resps.insert(res.id, proof);
@@ -184,7 +193,7 @@ impl BatchVerifier {
             Ok(resps.into_iter().map(|(_, proof)| proof).collect())
         } else {
             // Wrong number of responses.
-            Err(())
+            Err(Error::VerifyFailed)
         }
     }
 }

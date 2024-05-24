@@ -26,6 +26,12 @@ pub type BatchId = u32;
 
 pub type BatchReqId = u32;
 
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    VerifyFailed,
+    BatchClosed,
+}
+
 /// Verify confidential asset transfer request.
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct VerifyConfidentialTransferRequest {
@@ -59,11 +65,11 @@ impl VerifyConfidentialTransferRequest {
         ConfidentialTransferProof::decode(&mut self.proof.as_slice()).ok()
     }
 
-    pub fn verify(&self) -> Result<bool, ()> {
-        let init_tx = self.into_tx().ok_or(())?;
-        let sender_account = self.sender_account().ok_or(())?;
-        let receiver_account = self.receiver_account().ok_or(())?;
-        let auditors = self.build_auditor_set().ok_or(())?;
+    pub fn verify(&self) -> Result<bool, Error> {
+        let init_tx = self.into_tx().ok_or(Error::VerifyFailed)?;
+        let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
+        let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
+        let auditors = self.build_auditor_set().ok_or(Error::VerifyFailed)?;
 
         // Verify the sender's proof.
         let mut rng = Rng::from_seed(self.seed);
@@ -75,7 +81,7 @@ impl VerifyConfidentialTransferRequest {
                 &auditors,
                 &mut rng,
             )
-            .map_err(|_| ())?;
+            .map_err(|_| Error::VerifyFailed)?;
 
         Ok(true)
     }
@@ -83,7 +89,7 @@ impl VerifyConfidentialTransferRequest {
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialTransferRequest {
-    pub fn verify(&self) -> Result<bool, ()> {
+    pub fn verify(&self) -> Result<bool, Error> {
         native_confidential_assets::verify_sender_proof(self)
     }
 }
@@ -100,14 +106,14 @@ pub struct VerifyConfidentialBurnRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<bool, ()> {
-        let issuer_account = self.issuer.into_public_key().ok_or(())?;
+    pub fn verify(&self) -> Result<bool, Error> {
+        let issuer_account = self.issuer.into_public_key().ok_or(Error::VerifyFailed)?;
 
         // Verify the issuer's proof.
         let mut rng = Rng::from_seed(self.seed);
         self.proof
             .verify(&issuer_account, &self.issuer_balance, self.amount, &mut rng)
-            .map_err(|_| ())?;
+            .map_err(|_| Error::VerifyFailed)?;
 
         Ok(true)
     }
@@ -115,7 +121,7 @@ impl VerifyConfidentialBurnRequest {
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<bool, ()> {
+    pub fn verify(&self) -> Result<bool, Error> {
         native_confidential_assets::verify_burn_proof(self)
     }
 }
@@ -144,7 +150,7 @@ pub enum VerifyConfidentialProofRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, ()> {
+    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, Error> {
         match self {
             Self::TransferProof(req) => {
                 let resp = req.verify()?;
@@ -160,7 +166,7 @@ impl VerifyConfidentialProofRequest {
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, ()> {
+    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, Error> {
         native_confidential_assets::verify_proof(self)
     }
 }
@@ -200,7 +206,7 @@ impl GenerateTransferProofRequest {
     }
 
     #[cfg(feature = "std")]
-    pub fn generate(&self) -> Result<GenerateProofResponse, ()> {
+    pub fn generate(&self) -> Result<GenerateProofResponse, Error> {
         let mut rng = Rng::from_seed(self.seed);
         let proof = ConfidentialTransferProof::new(
             &self.sender_account,
@@ -211,7 +217,7 @@ impl GenerateTransferProofRequest {
             self.amount,
             &mut rng,
         )
-        .map_err(|_| ())?;
+        .map_err(|_| Error::VerifyFailed)?;
         Ok(GenerateProofResponse {
             proof: proof.encode(),
         })
@@ -226,7 +232,7 @@ pub enum GenerateProofRequest {
 
 #[cfg(feature = "std")]
 impl GenerateProofRequest {
-    pub fn generate(&self) -> Result<GenerateProofResponse, ()> {
+    pub fn generate(&self) -> Result<GenerateProofResponse, Error> {
         match self {
             Self::TransferProof(req) => req.generate(),
         }
@@ -240,68 +246,85 @@ pub struct GenerateProofResponse {
 }
 
 impl GenerateProofResponse {
-    pub fn transfer_proof(&self) -> Result<ConfidentialTransferProof, ()> {
-        ConfidentialTransferProof::decode(&mut self.proof.as_slice()).map_err(|_| ())
+    pub fn transfer_proof(&self) -> Result<ConfidentialTransferProof, Error> {
+        ConfidentialTransferProof::decode(&mut self.proof.as_slice())
+            .map_err(|_| Error::VerifyFailed)
     }
 }
 
 /// Batch Verify confidential asset proofs.
 #[derive(Debug)]
 pub struct BatchVerify {
-    pub id: BatchId,
+    pub id: Option<BatchId>,
+}
+
+impl Drop for BatchVerify {
+    fn drop(&mut self) {
+        if let Some(id) = self.id {
+            native_confidential_assets::batch_cancel(id)
+        }
+    }
 }
 
 impl BatchVerify {
     pub fn create() -> Self {
         let id = native_confidential_assets::create_batch();
-        Self { id }
+        Self { id: Some(id) }
     }
 
-    pub fn submit(&self, req: VerifyConfidentialProofRequest) -> Result<(), ()> {
-        native_confidential_assets::batch_submit(self.id, req)
+    fn id(&self) -> Result<BatchId, Error> {
+        self.id.ok_or(Error::BatchClosed)
+    }
+
+    pub fn submit(&self, req: VerifyConfidentialProofRequest) -> Result<(), Error> {
+        let id = self.id()?;
+        native_confidential_assets::batch_submit(id, req)
     }
 
     pub fn submit_transfer_request(
         &self,
         req: VerifyConfidentialTransferRequest,
-    ) -> Result<(), ()> {
+    ) -> Result<(), Error> {
         self.submit(VerifyConfidentialProofRequest::TransferProof(req))
     }
 
-    pub fn finalize(&self) -> Result<bool, ()> {
-        native_confidential_assets::batch_finish(self.id)
+    pub fn finalize(&mut self) -> Result<bool, Error> {
+        let id = self.id.take().ok_or(Error::BatchClosed)?;
+        native_confidential_assets::batch_finish(id)
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    pub fn generate_proof(&self, req: GenerateProofRequest) -> Result<(), ()> {
-        native_confidential_assets::batch_generate_proof(self.id, req)
+    pub fn generate_proof(&self, req: GenerateProofRequest) -> Result<(), Error> {
+        let id = self.id()?;
+        native_confidential_assets::batch_generate_proof(id, req)
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    pub fn generate_transfer_proof(&self, req: GenerateTransferProofRequest) -> Result<(), ()> {
+    pub fn generate_transfer_proof(&self, req: GenerateTransferProofRequest) -> Result<(), Error> {
         self.generate_proof(GenerateProofRequest::TransferProof(req))
     }
 
     #[cfg(feature = "runtime-benchmarks")]
-    pub fn get_proofs(&self) -> Result<Vec<GenerateProofResponse>, ()> {
-        native_confidential_assets::batch_get_proofs(self.id)
+    pub fn get_proofs(&mut self) -> Result<Vec<GenerateProofResponse>, Error> {
+        let id = self.id.take().ok_or(Error::BatchClosed)?;
+        native_confidential_assets::batch_get_proofs(id)
     }
 }
 
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
-    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<bool, ()> {
+    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<bool, Error> {
         req.verify()
     }
 
-    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<bool, ()> {
+    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<bool, Error> {
         req.verify()
     }
 
     fn verify_proof(
         req: &VerifyConfidentialProofRequest,
-    ) -> Result<VerifyConfidentialProofResponse, ()> {
+    ) -> Result<VerifyConfidentialProofResponse, Error> {
         req.verify()
     }
 
@@ -309,31 +332,35 @@ pub trait NativeConfidentialAssets {
         batch::BatchVerifiers::create_batch()
     }
 
-    fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), ()> {
+    fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), Error> {
         batch::BatchVerifiers::batch_submit(id, req)
     }
 
-    fn batch_finish(id: BatchId) -> Result<bool, ()> {
-        let batch = batch::BatchVerifiers::batch_finish(id).ok_or(())?;
+    fn batch_finish(id: BatchId) -> Result<bool, Error> {
+        let batch = batch::BatchVerifiers::batch_finish(id).ok_or(Error::VerifyFailed)?;
         batch.finalize()
     }
 
-    fn batch_generate_proof(_id: BatchId, _req: GenerateProofRequest) -> Result<(), ()> {
+    fn batch_cancel(id: BatchId) {
+        batch::BatchVerifiers::batch_cancel(id);
+    }
+
+    fn batch_generate_proof(_id: BatchId, _req: GenerateProofRequest) -> Result<(), Error> {
         #[cfg(feature = "runtime-benchmarks")]
         {
             batch::BatchVerifiers::batch_generate_proof(_id, _req)
         }
         #[cfg(not(feature = "runtime-benchmarks"))]
-        Err(())
+        Err(Error::VerifyFailed)
     }
 
-    fn batch_get_proofs(_id: BatchId) -> Result<Vec<GenerateProofResponse>, ()> {
+    fn batch_get_proofs(_id: BatchId) -> Result<Vec<GenerateProofResponse>, Error> {
         #[cfg(feature = "runtime-benchmarks")]
         {
-            let batch = batch::BatchVerifiers::batch_finish(_id).ok_or(())?;
+            let batch = batch::BatchVerifiers::batch_finish(_id).ok_or(Error::VerifyFailed)?;
             batch.get_proofs()
         }
         #[cfg(not(feature = "runtime-benchmarks"))]
-        Err(())
+        Err(Error::VerifyFailed)
     }
 }

@@ -210,7 +210,7 @@ benchmarks! {
         let mut witness_rng = StdRng::from_seed(seed);
         let witness = CommitmentWitness::new(amount.into(), Scalar::random(&mut witness_rng));
         let sender_amount = issuer.sec.public.encrypt(&witness);
-        let batch = BatchVerify::create();
+        let mut batch = BatchVerify::create();
         // Make sure to start with an empty list of legs.
         tx.legs = Vec::with_capacity(l as usize);
         for id in 0..l {

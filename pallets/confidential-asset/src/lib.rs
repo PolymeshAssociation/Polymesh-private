@@ -80,6 +80,7 @@ pub trait WeightInfo {
         let base = Self::move_assets_no_assets(0);
         let mut weight = base;
         for funds in moves {
+            // TODO: round to a multiple of 4.
             // Calculate the cost of this batch (substrate the extrinsic overhead).
             let batch = Self::move_assets_one_batch(funds.proofs.len() as u32).saturating_sub(base);
             weight = weight.saturating_add(batch);
@@ -1855,7 +1856,7 @@ impl<T: Config> Pallet<T> {
         for tx in transactions.0 {
             Self::base_affirm_transaction(caller_did, tx.id, tx.leg, &mut batch)?;
         }
-        if let Some(batch) = batch {
+        if let Some(mut batch) = batch {
             let valid = batch
                 .finalize()
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
@@ -1990,17 +1991,15 @@ impl<T: Config> Pallet<T> {
         for funds in &moves {
             Self::validate_move_funds(caller_did, funds, &mut asset_auditors)?;
         }
-        let mut batch = None;
+        let mut batch = BatchVerify::create();
         // TODO: Return actual weight.
         for funds in moves {
             Self::base_move_funds(caller_did, funds, &asset_auditors, &mut batch)?;
         }
-        if let Some(batch) = batch {
-            let valid = batch
-                .finalize()
-                .map_err(|_| Error::<T>::InvalidSenderProof)?;
-            ensure!(valid, Error::<T>::InvalidSenderProof);
-        }
+        let valid = batch
+            .finalize()
+            .map_err(|_| Error::<T>::InvalidSenderProof)?;
+        ensure!(valid, Error::<T>::InvalidSenderProof);
         Ok(().into())
     }
 
@@ -2050,7 +2049,7 @@ impl<T: Config> Pallet<T> {
         caller_did: IdentityId,
         funds: ConfidentialMoveFunds<T>,
         asset_auditors: &BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
-        batch: &mut Option<BatchVerify>,
+        batch: &mut BatchVerify,
     ) -> DispatchResult {
         let from = funds.from;
         let to = funds.to;
@@ -2076,8 +2075,6 @@ impl<T: Config> Pallet<T> {
                 seed: Self::get_seed(true),
             };
 
-            // Create a batch if this is the first proof.
-            let batch = batch.get_or_insert_with(|| BatchVerify::create());
             // Submit proof to the batch for verification.
             batch
                 .submit_transfer_request(req)
