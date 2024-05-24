@@ -716,8 +716,8 @@ pub mod pallet {
             from: ConfidentialAccount,
             /// Confidential account the funds were moved to.
             to: ConfidentialAccount,
-            /// Confidential assets moved.
-            assets: Vec<AssetId>,
+            /// Assets moved and the confidential proofs.
+            proofs: BoundedBTreeMap<AssetId, ConfidentialTransferProof, T::MaxAssetsPerMoveFunds>,
         },
     }
 
@@ -1987,15 +1987,11 @@ impl<T: Config> Pallet<T> {
         moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
     ) -> DispatchResultWithPostInfo {
         let mut asset_auditors = BTreeMap::new();
-        // Verify the caller is allowed to move funds.
-        for funds in &moves {
-            Self::validate_move_funds(caller_did, funds, &mut asset_auditors)?;
-        }
         let mut batch = BatchVerify::create();
-        // TODO: Return actual weight.
         for funds in moves {
-            Self::base_move_funds(caller_did, funds, &asset_auditors, &mut batch)?;
+            Self::base_move_funds(caller_did, funds, &mut asset_auditors, &mut batch)?;
         }
+        // Verify that all proofs are valid.
         let valid = batch
             .finalize()
             .map_err(|_| Error::<T>::InvalidSenderProof)?;
@@ -2003,20 +1999,22 @@ impl<T: Config> Pallet<T> {
         Ok(().into())
     }
 
-    fn validate_move_funds(
+    fn base_move_funds(
         caller_did: IdentityId,
-        funds: &ConfidentialMoveFunds<T>,
+        funds: ConfidentialMoveFunds<T>,
         asset_auditors: &mut BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
+        batch: &mut BatchVerify,
     ) -> DispatchResult {
         use sp_std::collections::btree_map::Entry;
 
+        let from = funds.from;
+        let to = funds.to;
         // Ensure `caller_did` owns `from` and `to` accounts.
-        Self::ensure_account_owner(caller_did, &funds.from)?;
-        Self::ensure_account_owner(caller_did, &funds.to)?;
+        Self::ensure_account_owner(caller_did, &from)?;
+        Self::ensure_account_owner(caller_did, &to)?;
 
-        // Get the asset auditors and verify that the proofs have
-        // the required number of auditors.
         for (asset_id, proof) in &funds.proofs {
+            // Get the asset auditors.
             let auditor_count = match asset_auditors.entry(*asset_id) {
                 Entry::Vacant(entry) => {
                     // Ensure that the asset isn't frozen.
@@ -2041,24 +2039,8 @@ impl<T: Config> Pallet<T> {
                 Ok(auditor_count) == proof.auditor_count(),
                 Error::<T>::InvalidSenderProof
             );
-        }
-        Ok(())
-    }
-
-    fn base_move_funds(
-        caller_did: IdentityId,
-        funds: ConfidentialMoveFunds<T>,
-        asset_auditors: &BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
-        batch: &mut BatchVerify,
-    ) -> DispatchResult {
-        let from = funds.from;
-        let to = funds.to;
-        let mut assets = Vec::with_capacity(funds.proofs.len());
-
-        for (asset_id, proof) in funds.proofs {
-            assets.push(asset_id);
             let auditors = asset_auditors
-                .get(&asset_id)
+                .get(asset_id)
                 .ok_or(Error::<T>::InvalidSenderProof)?;
             // Get the `from` current balance.
             let from_init_balance = Self::account_balance(&from, asset_id)
@@ -2081,9 +2063,9 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
             // Withdraw the amount from the `from` account.
-            Self::account_withdraw_amount(from, asset_id, from_amount)?;
+            Self::account_withdraw_amount(from, *asset_id, from_amount)?;
             // Deposit the amount into the `to` account.
-            Self::account_deposit_amount(to, asset_id, to_amount);
+            Self::account_deposit_amount(to, *asset_id, to_amount);
         }
 
         // Emit funds moved event.
@@ -2091,7 +2073,7 @@ impl<T: Config> Pallet<T> {
             caller_did,
             from,
             to,
-            assets,
+            proofs: funds.proofs,
         });
 
         Ok(())
