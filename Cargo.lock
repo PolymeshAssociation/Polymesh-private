@@ -1013,7 +1013,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=main#752f70b4b8223832158061bcdb2ded540a7ddbb1"
+source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=compressed_ciphertext#283574e5411cd15ad824affc8405e31001120b0d"
 dependencies = [
  "bulletproofs",
  "byteorder",
@@ -5951,6 +5951,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "rayon",
+ "scale-info",
  "sp-runtime-interface",
  "sp-std",
 ]
@@ -10272,7 +10273,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

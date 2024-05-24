@@ -13,8 +13,8 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use confidential_assets::{
     burn::ConfidentialBurnProof, transaction::ConfidentialTransferProof,
-    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalKeys,
-    ElgamalPublicKey,
+    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey,
+    ElgamalKeys, ElgamalPublicKey,
 };
 
 use crate::*;
@@ -23,7 +23,7 @@ use crate::*;
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct VerifyConfidentialTransferRequest {
     pub sender: CompressedElgamalPublicKey,
-    pub sender_balance: CipherText,
+    pub sender_balance: HostCipherText,
     pub receiver: CompressedElgamalPublicKey,
     pub auditors: Vec<CompressedElgamalPublicKey>,
     pub proof: Vec<u8>,
@@ -54,6 +54,7 @@ impl VerifyConfidentialTransferRequest {
 
     pub fn verify(&self) -> Result<bool, Error> {
         let init_tx = self.into_tx().ok_or(Error::VerifyFailed)?;
+        let sender_balance = self.sender_balance.0.decompress();
         let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
         let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
         let auditors = self.build_auditor_set().ok_or(Error::VerifyFailed)?;
@@ -63,7 +64,7 @@ impl VerifyConfidentialTransferRequest {
         init_tx
             .verify(
                 &sender_account,
-                &self.sender_balance,
+                &sender_balance,
                 &receiver_account,
                 &auditors,
                 &mut rng,
@@ -85,7 +86,7 @@ impl VerifyConfidentialTransferRequest {
 #[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub struct VerifyConfidentialBurnRequest {
     pub issuer: CompressedElgamalPublicKey,
-    pub issuer_balance: CipherText,
+    pub issuer_balance: HostCipherText,
     pub amount: ConfidentialBalance,
     pub proof: ConfidentialBurnProof,
     pub seed: [u8; 32],
@@ -94,12 +95,13 @@ pub struct VerifyConfidentialBurnRequest {
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
     pub fn verify(&self) -> Result<bool, Error> {
+        let issuer_balance = self.issuer_balance.0.decompress();
         let issuer_account = self.issuer.into_public_key().ok_or(Error::VerifyFailed)?;
 
         // Verify the issuer's proof.
         let mut rng = Rng::from_seed(self.seed);
         self.proof
-            .verify(&issuer_account, &self.issuer_balance, self.amount, &mut rng)
+            .verify(&issuer_account, &issuer_balance, self.amount, &mut rng)
             .map_err(|_| Error::VerifyFailed)?;
 
         Ok(true)

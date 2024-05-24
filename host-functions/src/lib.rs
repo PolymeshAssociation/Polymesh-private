@@ -7,15 +7,14 @@ use codec::{Decode, Encode};
 use sp_runtime_interface::runtime_interface;
 use sp_std::prelude::Vec;
 
-use confidential_assets::{
-    CipherText,
-};
-
 #[cfg(feature = "std")]
 mod batch;
 
 mod proofs;
 pub use proofs::*;
+
+mod elgamal;
+pub use elgamal::*;
 
 pub type BatchId = u32;
 
@@ -44,22 +43,12 @@ pub trait NativeConfidentialAssets {
         req.verify()
     }
 
-    fn elgamal_add(
-      val1: Vec<u8>,
-      val2: Vec<u8>,
-    ) -> Option<Vec<u8>> {
-        let val1 = CipherText::decode(&mut &val1[..]).ok()?;
-        let val2 = CipherText::decode(&mut &val2[..]).ok()?;
-        Some((val1 + val2).encode())
+    fn cipher_add(val1: HostCipherText, val2: HostCipherText) -> HostCipherText {
+        val1 + val2
     }
 
-    fn elgamal_sub(
-      val1: Vec<u8>,
-      val2: Vec<u8>,
-    ) -> Option<Vec<u8>> {
-        let val1 = CipherText::decode(&mut &val1[..]).ok()?;
-        let val2 = CipherText::decode(&mut &val2[..]).ok()?;
-        Some((val1 - val2).encode())
+    fn cipher_sub(val1: HostCipherText, val2: HostCipherText) -> HostCipherText {
+        val1 - val2
     }
 
     fn create_batch() -> BatchId {

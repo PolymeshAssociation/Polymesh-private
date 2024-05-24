@@ -7,7 +7,9 @@ use frame_support::assert_ok;
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::{RngCore, SeedableRng};
 
-use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest};
+use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest, HostCipherText};
+
+use codec::{Decode, Encode};
 
 use confidential_assets::{elgamal::CommitmentWitness, Balance as ConfidentialBalance, Scalar};
 
@@ -313,4 +315,73 @@ benchmarks! {
         // Generate confidential assets and move funds.
         let (signer, moves) = create_move_funds::<T>(1, a, &mut rng);
     }: move_assets(signer.raw_origin(), moves)
+
+    elgamal_wasm {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let sender = ConfidentialUser::<T>::new("sender", &mut rng);
+        let receiver = ConfidentialUser::<T>::new("receiver", &mut rng);
+
+        let sender_key = sender.pub_key();
+        let receiver_key = receiver.pub_key();
+
+        // Init. balances.
+        let (_, sender_init_balance) = sender_key.encrypt_value(1000u64.into(), &mut rng);
+        let (_, receiver_init_balance) = receiver_key.encrypt_value(100u64.into(), &mut rng);
+        let enc_sender_init_balance = sender_init_balance.encode();
+        let enc_receiver_init_balance = receiver_init_balance.encode();
+
+        // Transfer amount.
+        let amount = 10u64;
+        let (_, sender_amount) = sender_key.encrypt_value(amount.into(), &mut rng);
+        let (_, receiver_amount) = receiver_key.encrypt_value(amount.into(), &mut rng);
+        let enc_sender_amount = sender_amount.encode();
+        let enc_receiver_amount = receiver_amount.encode();
+
+        // Final balances.
+        let enc_sender_balance = (sender_init_balance - sender_amount).encode();
+        let enc_receiver_balance = (receiver_init_balance + receiver_amount).encode();
+    }: {
+        // Decode init. balances.
+        let sender_init_balance = CipherText::decode(&mut &enc_sender_init_balance[..]).unwrap();
+        let receiver_init_balance = CipherText::decode(&mut &enc_receiver_init_balance[..]).unwrap();
+        // Decode transfer amount.
+        let sender_amount = CipherText::decode(&mut &enc_sender_amount[..]).unwrap();
+        let receiver_amount = CipherText::decode(&mut &enc_receiver_amount[..]).unwrap();
+
+        let enc_sender_result = (sender_init_balance - sender_amount).encode();
+        let enc_receiver_result = (receiver_init_balance + receiver_amount).encode();
+        assert_eq!(enc_sender_balance, enc_sender_result);
+        assert_eq!(enc_receiver_balance, enc_receiver_result);
+    }
+
+    elgamal_host {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        let sender = ConfidentialUser::<T>::new("sender", &mut rng);
+        let receiver = ConfidentialUser::<T>::new("receiver", &mut rng);
+
+        let sender_key = sender.pub_key();
+        let receiver_key = receiver.pub_key();
+
+        // Init. balances.
+        let (_, sender_init_balance) = sender_key.encrypt_value(1000u64.into(), &mut rng);
+        let (_, receiver_init_balance) = receiver_key.encrypt_value(100u64.into(), &mut rng);
+        let enc_sender_init_balance: HostCipherText = sender_init_balance.into();
+        let enc_receiver_init_balance: HostCipherText = receiver_init_balance.into();
+
+        // Transfer amount.
+        let amount = 10u64;
+        let (_, sender_amount) = sender_key.encrypt_value(amount.into(), &mut rng);
+        let (_, receiver_amount) = receiver_key.encrypt_value(amount.into(), &mut rng);
+        let enc_sender_amount: HostCipherText = sender_amount.into();
+        let enc_receiver_amount: HostCipherText = receiver_amount.into();
+
+        // Final balances.
+        let enc_sender_balance: HostCipherText = (sender_init_balance - sender_amount).into();
+        let enc_receiver_balance: HostCipherText = (receiver_init_balance + receiver_amount).into();
+    }: {
+        let enc_sender_result = enc_sender_init_balance - enc_sender_amount;
+        let enc_receiver_result = enc_receiver_init_balance + enc_receiver_amount;
+        assert_eq!(enc_sender_balance, enc_sender_result);
+        assert_eq!(enc_receiver_balance, enc_receiver_result);
+    }
 }

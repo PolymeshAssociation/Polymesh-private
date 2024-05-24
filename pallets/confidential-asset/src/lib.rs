@@ -31,7 +31,7 @@ use polymesh_common_utilities::{
     balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
 };
 use polymesh_host_functions::{
-    BatchVerify, VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest,
+    BatchVerify, HostCipherText, VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest,
 };
 use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
 use scale_info::TypeInfo;
@@ -336,9 +336,9 @@ pub struct ConfidentialAssetDetails<T: Config> {
 /// Confidential transaction leg asset pending state.
 #[derive(Encode, Decode, TypeInfo, Clone, Debug, PartialEq, Eq)]
 pub struct TransactionLegAssetState {
-    pub sender_init_balance: CipherText,
-    pub sender_amount: CipherText,
-    pub receiver_amount: CipherText,
+    pub sender_init_balance: HostCipherText,
+    pub sender_amount: HostCipherText,
+    pub receiver_amount: HostCipherText,
 }
 
 /// Confidential transaction leg pending state.
@@ -648,9 +648,9 @@ pub mod pallet {
             /// Confidential asset id.
             asset_id: AssetId,
             /// Encrypted amount withdrawn from `account`.
-            amount: CipherText,
+            amount: HostCipherText,
             /// Updated encrypted balance of `account`.
-            balance: CipherText,
+            balance: HostCipherText,
         },
         /// Confidential account balance increased.
         /// This happens when the receiver calls `apply_incoming_balance`.
@@ -660,9 +660,9 @@ pub mod pallet {
             /// Confidential asset id.
             asset_id: AssetId,
             /// Encrypted amount deposited into `account`.
-            amount: CipherText,
+            amount: HostCipherText,
             /// Updated encrypted balance of `account`.
-            balance: CipherText,
+            balance: HostCipherText,
         },
         /// Confidential account has an incoming amount.
         /// This happens when a transaction executes.
@@ -672,9 +672,9 @@ pub mod pallet {
             /// Confidential asset id.
             asset_id: AssetId,
             /// Encrypted amount incoming for `account`.
-            amount: CipherText,
+            amount: HostCipherText,
             /// Updated encrypted incoming balance of `account`.
-            incoming_balance: CipherText,
+            incoming_balance: HostCipherText,
         },
         /// Confidential asset frozen.
         AssetFrozen {
@@ -882,7 +882,7 @@ pub mod pallet {
 
     /// Contains the encrypted balance of a confidential account.
     ///
-    /// account -> asset id -> Option<CipherText>
+    /// account -> asset id -> Option<HostCipherText>
     #[pallet::storage]
     #[pallet::getter(fn account_balance)]
     pub type AccountBalance<T: Config> = StorageDoubleMap<
@@ -891,12 +891,12 @@ pub mod pallet {
         ConfidentialAccount,
         Blake2_128Concat,
         AssetId,
-        CipherText,
+        HostCipherText,
     >;
 
     /// Accumulates the encrypted incoming balance for a confidential account.
     ///
-    /// account -> asset id -> Option<CipherText>
+    /// account -> asset id -> Option<HostCipherText>
     #[pallet::storage]
     #[pallet::getter(fn incoming_balance)]
     pub type IncomingBalance<T: Config> = StorageDoubleMap<
@@ -905,7 +905,7 @@ pub mod pallet {
         ConfidentialAccount,
         Blake2_128Concat,
         AssetId,
-        CipherText,
+        HostCipherText,
     >;
 
     /// Legs of a transaction.
@@ -1420,7 +1420,7 @@ impl<T: Config> Pallet<T> {
 
         let enc_issued_amount = CipherText::value(amount.into());
         // Deposit the minted assets into the issuer's confidential account.
-        Self::account_deposit_amount(account, asset_id, enc_issued_amount);
+        Self::account_deposit_amount(account, asset_id, enc_issued_amount.into());
 
         // Emit Issue event with new `total_supply`.
         Self::deposit_event(Event::<T>::Issued {
@@ -1477,7 +1477,7 @@ impl<T: Config> Pallet<T> {
         let res = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
         ensure!(res, Error::<T>::InvalidSenderProof);
         // Withdraw the minted assets from the issuer's confidential account.
-        Self::account_withdraw_amount(account, asset_id, enc_amount)?;
+        Self::account_withdraw_amount(account, asset_id, enc_amount.into())?;
 
         // Emit Burned event with new `total_supply`.
         Self::deposit_event(Event::<T>::Burned {
@@ -1907,8 +1907,8 @@ impl<T: Config> Pallet<T> {
                     let sender_init_balance = Self::account_balance(&sender, asset_id)
                         .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-                    let sender_amount = proof.sender_amount();
-                    let receiver_amount = proof.receiver_amount();
+                    let sender_amount = proof.sender_amount_compressed();
+                    let receiver_amount = proof.receiver_amount_compressed();
                     let req = VerifyConfidentialTransferRequest {
                         sender: sender.0,
                         sender_balance: sender_init_balance,
@@ -1926,15 +1926,15 @@ impl<T: Config> Pallet<T> {
                         .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
                     // Withdraw the transaction amount when the sender affirms.
-                    Self::account_withdraw_amount(sender, asset_id, sender_amount)?;
+                    Self::account_withdraw_amount(sender, asset_id, sender_amount.into())?;
 
                     // Store the pending state for this transaction leg.
                     leg_state.asset_state.insert(
                         asset_id,
                         TransactionLegAssetState {
                             sender_init_balance,
-                            sender_amount,
-                            receiver_amount,
+                            sender_amount: sender_amount.into(),
+                            receiver_amount: receiver_amount.into(),
                         },
                     );
                 }
@@ -2046,8 +2046,8 @@ impl<T: Config> Pallet<T> {
             let from_init_balance = Self::account_balance(&from, asset_id)
                 .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-            let from_amount = proof.sender_amount();
-            let to_amount = proof.receiver_amount();
+            let from_amount = proof.sender_amount_compressed();
+            let to_amount = proof.receiver_amount_compressed();
             let req = VerifyConfidentialTransferRequest {
                 sender: from.0,
                 sender_balance: from_init_balance,
@@ -2063,9 +2063,9 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
 
             // Withdraw the amount from the `from` account.
-            Self::account_withdraw_amount(from, *asset_id, from_amount)?;
+            Self::account_withdraw_amount(from, *asset_id, from_amount.into())?;
             // Deposit the amount into the `to` account.
-            Self::account_deposit_amount(to, *asset_id, to_amount);
+            Self::account_deposit_amount(to, *asset_id, to_amount.into());
         }
 
         // Emit funds moved event.
@@ -2291,12 +2291,12 @@ impl<T: Config> Pallet<T> {
     fn account_withdraw_amount(
         account: ConfidentialAccount,
         asset_id: AssetId,
-        amount: CipherText,
+        amount: HostCipherText,
     ) -> DispatchResult {
         let balance = AccountBalance::<T>::try_mutate(
             account,
             asset_id,
-            |balance| -> Result<CipherText, DispatchError> {
+            |balance| -> Result<HostCipherText, DispatchError> {
                 if let Some(ref mut balance) = balance {
                     *balance -= amount;
                     Ok(*balance)
@@ -2315,7 +2315,11 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Add the `amount` to the confidential account's balance.
-    fn account_deposit_amount(account: ConfidentialAccount, asset_id: AssetId, amount: CipherText) {
+    fn account_deposit_amount(
+        account: ConfidentialAccount,
+        asset_id: AssetId,
+        amount: HostCipherText,
+    ) {
         let balance = AccountBalance::<T>::mutate(account, asset_id, |balance| match balance {
             Some(balance) => {
                 *balance += amount;
@@ -2338,7 +2342,7 @@ impl<T: Config> Pallet<T> {
     fn account_deposit_amount_incoming(
         account: ConfidentialAccount,
         asset_id: AssetId,
-        amount: CipherText,
+        amount: HostCipherText,
     ) {
         let incoming_balance =
             IncomingBalance::<T>::mutate(account, asset_id, |incoming_balance| {

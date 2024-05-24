@@ -228,15 +228,18 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     }
 
     pub fn set_balance(&self, asset: AssetId, balance: CipherText) {
-        AccountBalance::<T>::insert(self.account(), asset, balance)
+        AccountBalance::<T>::insert(self.account(), asset, balance.compress())
     }
 
     pub fn set_incoming_balance(&self, asset: AssetId, balance: CipherText) {
-        IncomingBalance::<T>::insert(self.account(), asset, balance)
+        IncomingBalance::<T>::insert(self.account(), asset, balance.compress())
     }
 
     pub fn enc_balance(&self, asset: AssetId) -> CipherText {
-        Pallet::<T>::account_balance(self.account(), asset).unwrap_or_default()
+        Pallet::<T>::account_balance(self.account(), asset)
+            .unwrap_or_default()
+            .0
+            .decompress()
     }
 
     pub fn ensure_balance(&self, asset: AssetId, balance: ConfidentialBalance) {
