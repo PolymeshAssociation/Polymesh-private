@@ -75,6 +75,12 @@ pub trait WeightInfo {
     fn move_assets_no_assets(m: u32) -> Weight;
     fn move_assets_one_batch(a: u32) -> Weight;
 
+    fn batch_verify_sender_proofs(a: u32) -> Weight;
+    fn verify_sender_proofs(a: u32) -> Weight;
+    fn verify_one_sender_proof() -> Weight;
+    fn elgamal_wasm() -> Weight;
+    fn elgamal_host() -> Weight;
+
     fn move_assets_vec<T: Config>(moves: &[ConfidentialMoveFunds<T>]) -> Weight {
         let host_threads = T::BatchHostThreads::get();
         // Base extrinsic overhead (check call permissions).

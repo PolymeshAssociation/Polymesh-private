@@ -358,6 +358,8 @@ benchmarks! {
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential assets and move funds.
         let (signer, moves) = create_move_funds::<T>(1, a, &mut rng);
+        // Skip verifying proofs.
+        BatchVerify::set_skip_verify(true);
     }: move_assets(signer.raw_origin(), moves)
 
     elgamal_wasm {

@@ -256,6 +256,13 @@ impl Drop for BatchVerify {
 }
 
 impl BatchVerify {
+    /// Only available for benchmarking to isolate the proof verification
+    /// costs from runtime costs.
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn set_skip_verify(skip: bool) {
+        native_confidential_assets::set_skip_verify(skip);
+    }
+
     pub fn create() -> Self {
         let id = native_confidential_assets::create_batch();
         Self { id: Some(id) }

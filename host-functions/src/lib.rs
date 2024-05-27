@@ -68,6 +68,11 @@ pub trait NativeConfidentialAssets {
         batch::BatchVerifiers::batch_cancel(id);
     }
 
+    fn set_skip_verify(_skip: bool) {
+        #[cfg(feature = "runtime-benchmarks")]
+        batch::BatchVerifiers::set_skip_verify(_skip);
+    }
+
     fn batch_generate_proof(_id: BatchId, _req: GenerateProofRequest) -> Result<(), Error> {
         #[cfg(feature = "runtime-benchmarks")]
         {

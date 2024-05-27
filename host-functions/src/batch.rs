@@ -12,8 +12,10 @@ lazy_static::lazy_static! {
     static ref BATCH_VERIFIERS: BatchVerifiers = {
         BatchVerifiers::new(None)
     };
+}
 
-    #[cfg(feature = "runtime-benchmarks")]
+#[cfg(feature = "runtime-benchmarks")]
+lazy_static::lazy_static! {
     static ref CACHE_PROOFS: Arc<RwLock<HashMap<Hash, GenerateProofResponse>>> = {
         Arc::new(RwLock::new(HashMap::new()))
     };
@@ -26,6 +28,10 @@ struct InnerBatchVerifiers {
     batches: HashMap<BatchId, BatchVerifier>,
     pool: rayon::ThreadPool,
     next_id: BatchId,
+    /// Only available for benchmarking to isolate the proof verification
+    /// costs from runtime costs.
+    #[cfg(feature = "runtime-benchmarks")]
+    skip_verify: bool,
 }
 
 impl InnerBatchVerifiers {
@@ -39,6 +45,8 @@ impl InnerBatchVerifiers {
             batches: Default::default(),
             pool,
             next_id: 0,
+            #[cfg(feature = "runtime-benchmarks")]
+            skip_verify: false,
         }
     }
 
@@ -56,6 +64,18 @@ impl InnerBatchVerifiers {
     ) -> Result<(), Error> {
         if let Some(batch) = self.batches.get_mut(&id) {
             let (req_id, tx) = batch.next_req();
+            // Only available for benchmarking to isolate the proof verification
+            // costs from runtime costs.
+            #[cfg(feature = "runtime-benchmarks")]
+            if self.skip_verify {
+                let _ = tx.send(BatchResult {
+                    id: req_id,
+                    result: Ok(VerifyConfidentialProofResponse::TransferProof(true)),
+                    proof: Err(Error::VerifyFailed),
+                    key: None,
+                });
+                return Ok(());
+            }
             self.pool.spawn(move || {
                 let result = req.verify();
                 let _ = tx.send(BatchResult {
@@ -72,11 +92,26 @@ impl InnerBatchVerifiers {
     }
 
     pub fn batch_finish(&mut self, id: BatchId) -> Option<BatchVerifier> {
+        #[cfg(feature = "runtime-benchmarks")]
+        if self.skip_verify {
+            self.skip_verify = false;
+        }
         self.batches.remove(&id)
     }
 
     pub fn batch_cancel(&mut self, id: BatchId) {
+        #[cfg(feature = "runtime-benchmarks")]
+        if self.skip_verify {
+            self.skip_verify = false;
+        }
         self.batches.remove(&id);
+    }
+
+    /// Only available for benchmarking to isolate the proof verification
+    /// costs from runtime costs.
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn set_skip_verify(&mut self, skip: bool) {
+        self.skip_verify = skip;
     }
 
     #[cfg(feature = "runtime-benchmarks")]
@@ -142,6 +177,14 @@ impl BatchVerifiers {
     pub fn batch_cancel(id: BatchId) {
         let mut inner = BATCH_VERIFIERS.0.write().unwrap();
         inner.batch_cancel(id);
+    }
+
+    /// Only available for benchmarking to isolate the proof verification
+    /// costs from runtime costs.
+    #[cfg(feature = "runtime-benchmarks")]
+    pub fn set_skip_verify(skip: bool) {
+        let mut inner = BATCH_VERIFIERS.0.write().unwrap();
+        inner.set_skip_verify(skip);
     }
 
     #[cfg(feature = "runtime-benchmarks")]
