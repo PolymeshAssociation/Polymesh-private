@@ -247,9 +247,9 @@ benchmarks! {
         }
         let proofs = batch.get_proofs().expect("batch get proofs");
         let mut affirms = Vec::new();
-        for id in 0..l {
-          let leg_id = TransactionLegId(id);
-          let proof = proofs[id as usize].transfer_proof().expect("Transfer proof");
+        for (id, proof) in proofs.into_iter().enumerate() {
+          let leg_id = TransactionLegId(id as u32);
+          let proof = proof.transfer_proof().expect("Transfer proof");
           let mut transfers = ConfidentialTransfers::new();
           transfers.insert(asset_id, proof);
           affirms.push(AffirmLeg::sender(leg_id, transfers));
@@ -344,20 +344,18 @@ benchmarks! {
         // Number of move batches (each batch has the same from/to account)
         let m in 0 .. (T::MaxMoveFunds::get());
 
-        let m = m as usize;
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential assets and move funds.
-        let (signer, moves) = create_move_funds::<T>(m, 0, &mut rng);
+        let (signer, moves) = create_move_funds::<T>(m as _, 0, &mut rng);
     }: move_assets(signer.raw_origin(), moves)
 
     move_assets_one_batch {
         // Number of assets to move in each batch.
         let a in 0 .. (T::MaxAssetsPerMoveFunds::get());
 
-        let a = a as usize;
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential assets and move funds.
-        let (signer, moves) = create_move_funds::<T>(1, a, &mut rng);
+        let (signer, moves) = create_move_funds::<T>(1, a as _, &mut rng);
         // Skip verifying proofs.
         BatchVerify::set_skip_verify(true);
     }: move_assets(signer.raw_origin(), moves)

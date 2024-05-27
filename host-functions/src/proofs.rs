@@ -26,7 +26,7 @@ pub struct VerifyConfidentialTransferRequest {
     pub sender_balance: HostCipherText,
     pub receiver: CompressedElgamalPublicKey,
     pub auditors: Vec<CompressedElgamalPublicKey>,
-    pub proof: Vec<u8>,
+    pub proof: ConfidentialTransferProof,
     pub seed: [u8; 32],
 }
 
@@ -48,12 +48,7 @@ impl VerifyConfidentialTransferRequest {
             .collect()
     }
 
-    fn into_tx(&self) -> Option<ConfidentialTransferProof> {
-        ConfidentialTransferProof::decode(&mut self.proof.as_slice()).ok()
-    }
-
     pub fn verify(&self) -> Result<bool, Error> {
-        let init_tx = self.into_tx().ok_or(Error::VerifyFailed)?;
         let sender_balance = self.sender_balance.0.decompress();
         let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
         let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
@@ -61,7 +56,7 @@ impl VerifyConfidentialTransferRequest {
 
         // Verify the sender's proof.
         let mut rng = Rng::from_seed(self.seed);
-        init_tx
+        self.proof
             .verify(
                 &sender_account,
                 &sender_balance,
@@ -207,9 +202,7 @@ impl GenerateTransferProofRequest {
             &mut rng,
         )
         .map_err(|_| Error::VerifyFailed)?;
-        Ok(GenerateProofResponse {
-            proof: proof.encode(),
-        })
+        Ok(GenerateProofResponse::TransferProof(proof))
     }
 }
 
@@ -230,14 +223,15 @@ impl GenerateProofRequest {
 
 /// Generate confidential asset proof response.
 #[derive(PassByCodec, Encode, Decode, Clone, Debug)]
-pub struct GenerateProofResponse {
-    pub proof: Vec<u8>,
+pub enum GenerateProofResponse {
+    TransferProof(ConfidentialTransferProof),
 }
 
 impl GenerateProofResponse {
-    pub fn transfer_proof(&self) -> Result<ConfidentialTransferProof, Error> {
-        ConfidentialTransferProof::decode(&mut self.proof.as_slice())
-            .map_err(|_| Error::VerifyFailed)
+    pub fn transfer_proof(self) -> Result<ConfidentialTransferProof, Error> {
+        match self {
+            Self::TransferProof(proof) => Ok(proof),
+        }
     }
 }
 

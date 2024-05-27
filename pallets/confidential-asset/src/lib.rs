@@ -1925,7 +1925,7 @@ impl<T: Config> Pallet<T> {
                         sender_balance: sender_init_balance,
                         receiver: receiver.0,
                         auditors: auditors.iter().map(|account| account.0).collect(),
-                        proof: proof.encode(),
+                        proof: proof.clone(),
                         seed: Self::get_seed(true),
                     };
 
@@ -2064,7 +2064,7 @@ impl<T: Config> Pallet<T> {
                 sender_balance: from_init_balance,
                 receiver: to.0,
                 auditors: auditors.iter().map(|account| account.0).collect(),
-                proof: proof.encode(),
+                proof: proof.clone(),
                 seed: Self::get_seed(true),
             };
 

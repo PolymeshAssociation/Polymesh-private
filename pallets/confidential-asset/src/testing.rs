@@ -418,7 +418,7 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
             sender_balance: from_init_balance.into(),
             receiver: to.into(),
             auditors,
-            proof: proof.encode(),
+            proof,
             seed,
         };
         requests.push(req);
@@ -489,12 +489,12 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
         moves.try_push(funds).expect("Shouldn't go over limit");
     }
     let proofs = batch.get_proofs().expect("batch get proofs");
+    let mut asset_proof = proofs.into_iter().zip(assets.into_iter().map(|(asset, _)| asset));
     for m_idx in 0..m {
         let funds = &mut moves[m_idx];
-        for a_idx in 0..a {
-            let idx = (m_idx * a) + a_idx;
-            let (asset, _) = assets[idx];
-            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
+        for _ in 0..a {
+            let (proof, asset) = asset_proof.next().expect("next asset/proof pair");
+            let proof = proof.transfer_proof().expect("Transfer proof");
             assert!(funds.insert(asset, proof));
         }
     }
@@ -758,8 +758,8 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
             self.leg(idx as _).batch_sender_proof(&batch, rng);
         }
         let proofs = batch.get_proofs().expect("batch get proofs");
-        for idx in 0..self.legs.len() {
-            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
+        for (idx, proof) in proofs.into_iter().enumerate() {
+            let proof = proof.transfer_proof().expect("Transfer proof");
             self.leg(idx as _).batch_sender_affirm(self.id, proof);
         }
 
