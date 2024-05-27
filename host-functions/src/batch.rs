@@ -3,13 +3,23 @@ use std::sync::{Arc, RwLock};
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
+#[cfg(feature = "runtime-benchmarks")]
+use sp_core::hashing::twox_64;
+
 use crate::*;
 
 lazy_static::lazy_static! {
     static ref BATCH_VERIFIERS: BatchVerifiers = {
         BatchVerifiers::new(None)
     };
+
+    #[cfg(feature = "runtime-benchmarks")]
+    static ref CACHE_PROOFS: Arc<RwLock<HashMap<Hash, GenerateProofResponse>>> = {
+        Arc::new(RwLock::new(HashMap::new()))
+    };
 }
+
+pub type Hash = [u8; 8];
 
 #[derive(Debug)]
 struct InnerBatchVerifiers {
@@ -52,6 +62,7 @@ impl InnerBatchVerifiers {
                     id: req_id,
                     result,
                     proof: Err(Error::VerifyFailed),
+                    key: None,
                 });
             });
             Ok(())
@@ -76,12 +87,26 @@ impl InnerBatchVerifiers {
     ) -> Result<(), Error> {
         if let Some(batch) = self.batches.get_mut(&id) {
             let (req_id, tx) = batch.next_req();
+            let key = req.using_encoded(twox_64);
+            {
+                let cache = CACHE_PROOFS.read().unwrap();
+                if let Some(proof) = cache.get(&key) {
+                    let _ = tx.send(BatchResult {
+                        id: req_id,
+                        result: Err(Error::VerifyFailed),
+                        proof: Ok(proof.clone()),
+                        key: None,
+                    });
+                    return Ok(());
+                }
+            }
             self.pool.spawn(move || {
                 let proof = req.generate();
                 let _ = tx.send(BatchResult {
                     id: req_id,
                     result: Err(Error::VerifyFailed),
                     proof,
+                    key: Some(key),
                 });
             });
             Ok(())
@@ -131,6 +156,7 @@ pub struct BatchResult {
     pub id: BatchReqId,
     pub result: Result<VerifyConfidentialProofResponse, Error>,
     pub proof: Result<GenerateProofResponse, Error>,
+    pub key: Option<Hash>,
 }
 
 #[derive(Debug)]
@@ -181,12 +207,16 @@ impl BatchVerifier {
         let Self { count, rx, tx } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
+        let mut cache = CACHE_PROOFS.write().unwrap();
         for _x in 0..count {
             let res = rx.recv().map_err(|err| {
                 log::warn!("Failed to recv Proof response: {err:?}");
                 Error::VerifyFailed
             })?;
             let proof = res.proof?;
+            if let Some(key) = res.key {
+                cache.insert(key, proof.clone());
+            }
             resps.insert(res.id, proof);
         }
         if resps.len() == count as usize {

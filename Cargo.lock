@@ -5952,6 +5952,7 @@ dependencies = [
  "rand_core 0.6.4",
  "rayon",
  "scale-info",
+ "sp-core",
  "sp-runtime-interface",
  "sp-std",
 ]
