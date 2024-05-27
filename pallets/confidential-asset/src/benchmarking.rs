@@ -24,6 +24,19 @@ use crate::*;
 pub const MAX_LEGS: u32 = 100;
 pub const MAX_MEDIATORS: u32 = MAX_LEGS * 8;
 
+fn verify_requests(requests: Vec<VerifyConfidentialTransferRequest>) {
+    let mut batch = BatchVerify::create();
+    for req in requests {
+        // Submit proof to the batch for verification.
+        batch
+            .submit_transfer_request(req)
+            .expect("Submit verify request");
+    }
+    // Verify that all proofs are valid.
+    let valid = batch.finalize().expect("Batch finalized");
+    assert!(valid);
+}
+
 benchmarks! {
     where_clause { where T: Config, T: TestUtilsFn<AccountIdOf<T>> }
 
@@ -295,6 +308,37 @@ benchmarks! {
         let leg = tx.leg(0);
         let mediator = leg.mediator(0);
     }: _(mediator.raw_origin(), tx.id, l)
+
+    batch_verify_sender_proofs {
+        // Number of proofs to verify.
+        let a in 0 .. (512 / T::BatchHostThreads::get());
+
+        let a = (a * T::BatchHostThreads::get()) as usize;
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential transfer proofs to verify.
+        let requests = generate_proof_verify_requests::<T>(a, &mut rng);
+    }: {
+        verify_requests(requests);
+    }
+
+    verify_sender_proofs {
+        // Number of proofs to verify.
+        let a in 0 .. 256;
+
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential transfer proofs to verify.
+        let requests = generate_proof_verify_requests::<T>(a as usize, &mut rng);
+    }: {
+        verify_requests(requests);
+    }
+
+    verify_one_sender_proof {
+        let mut rng = StdRng::from_seed([10u8; 32]);
+        // Generate confidential transfer proofs to verify.
+        let requests = generate_proof_verify_requests::<T>(1, &mut rng);
+    }: {
+        verify_requests(requests);
+    }
 
     move_assets_no_assets {
         // Number of move batches (each batch has the same from/to account)

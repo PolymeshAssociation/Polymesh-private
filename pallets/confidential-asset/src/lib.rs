@@ -76,13 +76,15 @@ pub trait WeightInfo {
     fn move_assets_one_batch(a: u32) -> Weight;
 
     fn move_assets_vec<T: Config>(moves: &[ConfidentialMoveFunds<T>]) -> Weight {
+        let host_threads = T::BatchHostThreads::get();
         // Base extrinsic overhead (check call permissions).
         let base = Self::move_assets_no_assets(0);
         let mut weight = base;
         for funds in moves {
-            // TODO: round to a multiple of 4.
+            // Round proof count to a multiple of `BatchHostThreads`.
+            let count = ((funds.proofs.len() as u32) + host_threads - 1) / host_threads;
             // Calculate the cost of this batch (substrate the extrinsic overhead).
-            let batch = Self::move_assets_one_batch(funds.proofs.len() as u32).saturating_sub(base);
+            let batch = Self::move_assets_one_batch(count).saturating_sub(base);
             weight = weight.saturating_add(batch);
         }
         weight
@@ -517,6 +519,9 @@ pub mod pallet {
 
         /// Maximum number of move funds.
         type MaxMoveFunds: GetExtra<u32>;
+
+        /// Batch host threads.
+        type BatchHostThreads: GetExtra<u32>;
     }
 
     #[pallet::event]

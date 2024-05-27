@@ -165,6 +165,8 @@ type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
 
+type ConfidentialAssetBatchHostThreads = ConstSize<8>;
+
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
 
@@ -235,6 +237,7 @@ impl pallet_confidential_asset::Config for Runtime {
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
     type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
     type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
+    type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
 macro_rules! committee_config {

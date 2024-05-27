@@ -13,8 +13,8 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use confidential_assets::{
     burn::ConfidentialBurnProof, transaction::ConfidentialTransferProof,
-    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey,
-    ElgamalKeys, ElgamalPublicKey,
+    Balance as ConfidentialBalance, CipherText, CompressedElgamalPublicKey, ElgamalKeys,
+    ElgamalPublicKey,
 };
 
 use crate::*;

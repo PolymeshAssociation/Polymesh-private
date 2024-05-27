@@ -170,9 +170,11 @@ type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
 type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
-type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
+type ConfidentialAssetMaxMoveFunds = ConstSize<1000>;
+
+type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -318,6 +320,7 @@ impl pallet_confidential_asset::Config for Runtime {
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
     type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
     type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
+    type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.

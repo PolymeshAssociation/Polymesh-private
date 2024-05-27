@@ -347,6 +347,85 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     (asset_id, owner, balance, auditors)
 }
 
+pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+    count: usize,
+    rng: &mut StdRng,
+) -> Vec<VerifyConfidentialTransferRequest> {
+    // Generate confidential assets.
+    let total_supply = 4_000_000_000 as ConfidentialBalance;
+    let max_auditors = T::MaxAssetAuditors::get();
+    let max_mediators = T::MaxAssetMediators::get();
+    let mut assets = Vec::with_capacity(count);
+    for idx in 0..count {
+        let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
+            "issuer",
+            total_supply,
+            idx as u32,
+            max_auditors,
+            max_mediators,
+            rng,
+        );
+        assets.push((asset, auditors));
+    }
+
+    // Generate all confidential accounts using the same on-chain user.
+    let signer = ConfidentialUser::<T>::new("one", rng);
+    let amount = 10;
+    // Prepare to to generate the proofs.
+    let mut details = Vec::with_capacity(count);
+    let mut batch = BatchVerify::create();
+    for (asset, auditors) in assets {
+        // Generate all confidential accounts using the same on-chain user.
+        let from = signer.new_account(rng);
+        let to = signer.new_account(rng);
+        // fund both from/to accounts so they have balances for this asset.
+        let init_balance = amount * 10;
+        let from_enc_balance = from.fund_account(asset, init_balance, rng);
+        to.fund_account(asset, 1, rng);
+
+        let auditor_keys = auditors.build_auditor_set();
+        details.push((
+            from.pub_key(),
+            to.pub_key(),
+            from_enc_balance,
+            auditor_keys.iter().map(|a| a.into()).collect(),
+        ));
+
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
+        let req = GenerateTransferProofRequest::new(
+            from.sec.clone(),
+            from_enc_balance,
+            init_balance,
+            to.pub_key(),
+            auditor_keys,
+            amount as u64,
+            seed,
+        );
+        batch
+            .generate_transfer_proof(req)
+            .expect("Batched generate transfer proof");
+    }
+    let proofs = batch.get_proofs().expect("batch get proofs");
+    let mut requests = Vec::with_capacity(count);
+    for (details, proof) in details.into_iter().zip(proofs.into_iter()) {
+        let (from, to, from_init_balance, auditors) = details;
+        let proof = proof.transfer_proof().expect("Transfer proof");
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
+        let req = VerifyConfidentialTransferRequest {
+            sender: from.into(),
+            sender_balance: from_init_balance.into(),
+            receiver: to.into(),
+            auditors,
+            proof: proof.encode(),
+            seed,
+        };
+        requests.push(req);
+    }
+    requests
+}
+
 pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     m: usize,
     a: usize,
