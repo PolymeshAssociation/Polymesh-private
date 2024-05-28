@@ -489,7 +489,9 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
         moves.try_push(funds).expect("Shouldn't go over limit");
     }
     let proofs = batch.get_proofs().expect("batch get proofs");
-    let mut asset_proof = proofs.into_iter().zip(assets.into_iter().map(|(asset, _)| asset));
+    let mut asset_proof = proofs
+        .into_iter()
+        .zip(assets.into_iter().map(|(asset, _)| asset));
     for m_idx in 0..m {
         let funds = &mut moves[m_idx];
         for _ in 0..a {
