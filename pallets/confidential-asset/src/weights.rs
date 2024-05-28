@@ -454,9 +454,12 @@ impl crate::WeightInfo for SubstrateWeight {
             // Standard Error: 629_008
             .saturating_add(Weight::from_ref_time(298_211_635).saturating_mul(a.into()))
     }
-    fn verify_one_sender_proof() -> Weight {
-        // Minimum execution time: 2_475_602 nanoseconds.
-        Weight::from_ref_time(2_721_781_000)
+    /// The range of component `a` is `[0, 8]`.
+    fn verify_one_sender_proof(a: u32) -> Weight {
+        // Minimum execution time: 2_266_820 nanoseconds.
+        Weight::from_ref_time(2_258_066_023)
+            // Standard Error: 199_437
+            .saturating_add(Weight::from_ref_time(47_696_075).saturating_mul(a.into()))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)

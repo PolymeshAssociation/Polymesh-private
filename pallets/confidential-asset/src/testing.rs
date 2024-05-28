@@ -349,20 +349,20 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 
 pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     count: usize,
+    auditor_count: Option<u32>,
+    mediator_count: Option<u32>,
     rng: &mut StdRng,
 ) -> Vec<VerifyConfidentialTransferRequest> {
     // Generate confidential assets.
     let total_supply = 4_000_000_000 as ConfidentialBalance;
-    let max_auditors = T::MaxAssetAuditors::get();
-    let max_mediators = T::MaxAssetMediators::get();
     let mut assets = Vec::with_capacity(count);
     for idx in 0..count {
         let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
             "issuer",
             total_supply,
             idx as u32,
-            max_auditors,
-            max_mediators,
+            auditor_count.unwrap_or(T::MaxAssetAuditors::get()),
+            mediator_count.unwrap_or(T::MaxAssetMediators::get()),
             rng,
         );
         assets.push((asset, auditors));

@@ -198,6 +198,9 @@ benchmarks! {
 
         let affirms = tx.affirms(&[tx.sender_proof(0, &mut rng)]);
         let leg = tx.leg(0);
+        // Skip verifying proofs to isolate the runtime costs from the proof
+        // verification.
+        BatchVerify::set_skip_verify(true);
     }: affirm_transactions(leg.issuer.raw_origin(), affirms)
 
     sender_affirm_transaction_batch {
@@ -316,7 +319,7 @@ benchmarks! {
         let a = (a * T::BatchHostThreads::get()) as usize;
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.
-        let requests = generate_proof_verify_requests::<T>(a, &mut rng);
+        let requests = generate_proof_verify_requests::<T>(a as _, None, None, &mut rng);
     }: {
         verify_requests(requests);
     }
@@ -327,17 +330,21 @@ benchmarks! {
 
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.
-        let requests = generate_proof_verify_requests::<T>(a as usize, &mut rng);
+        let requests = generate_proof_verify_requests::<T>(a as _, None, None, &mut rng);
     }: {
         verify_requests(requests);
     }
 
     verify_one_sender_proof {
+        // Number of auditors in the sender proof.
+        let a in 0 .. (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
+
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.
-        let requests = generate_proof_verify_requests::<T>(1, &mut rng);
+        let requests = generate_proof_verify_requests::<T>(1, Some(a), Some(a), &mut rng);
     }: {
-        verify_requests(requests);
+        let valid = requests[0].verify().expect("vaild");
+        assert!(valid);
     }
 
     move_assets_no_assets {
@@ -356,7 +363,8 @@ benchmarks! {
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential assets and move funds.
         let (signer, moves) = create_move_funds::<T>(1, a as _, &mut rng);
-        // Skip verifying proofs.
+        // Skip verifying proofs to isolate the runtime costs from the proof
+        // verification.
         BatchVerify::set_skip_verify(true);
     }: move_assets(signer.raw_origin(), moves)
 
