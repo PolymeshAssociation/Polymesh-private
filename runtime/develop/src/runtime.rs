@@ -170,9 +170,9 @@ type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
 type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
-type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<1000>;
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 #[cfg(not(feature = "runtime-benchmarks"))]
-type ConfidentialAssetMaxMoveFunds = ConstSize<1000>;
+type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 

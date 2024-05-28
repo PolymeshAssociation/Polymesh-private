@@ -313,31 +313,28 @@ benchmarks! {
     }: _(mediator.raw_origin(), tx.id, l)
 
     batch_verify_sender_proofs {
-        // Number of proofs to verify.
-        let a in 0 .. (512 / T::BatchHostThreads::get());
-
-        let a = (a * T::BatchHostThreads::get()) as usize;
+        let p = T::BatchHostThreads::get() as usize;
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.
-        let requests = generate_proof_verify_requests::<T>(a as _, None, None, &mut rng);
+        let requests = generate_proof_verify_requests::<T>(p as _, None, None, &mut rng);
     }: {
         verify_requests(requests);
     }
 
     verify_sender_proofs {
         // Number of proofs to verify.
-        let a in 0 .. 256;
+        let p in 0 .. 256;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.
-        let requests = generate_proof_verify_requests::<T>(a as _, None, None, &mut rng);
+        let requests = generate_proof_verify_requests::<T>(p as _, None, None, &mut rng);
     }: {
         verify_requests(requests);
     }
 
     verify_one_sender_proof {
         // Number of auditors in the sender proof.
-        let a in 0 .. (T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get());
+        let a in 0 .. 100;
 
         let mut rng = StdRng::from_seed([10u8; 32]);
         // Generate confidential transfer proofs to verify.

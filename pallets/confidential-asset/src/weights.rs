@@ -297,11 +297,11 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegStates (r:0 w:1)
     // Proof Skipped: ConfidentialAsset TxLegStates (max_values: None, max_size: None, mode: Measured)
     /// The range of component `a` is `[0, 8]`.
-    fn sender_affirm_transaction(a: u32) -> Weight {
-        // Minimum execution time: 2_437_905 nanoseconds.
-        Weight::from_ref_time(2_743_866_671)
-            // Standard Error: 1_826_610
-            .saturating_add(Weight::from_ref_time(63_364_439).saturating_mul(a.into()))
+    fn sender_affirm_transaction(a: u32, ) -> Weight {
+        // Minimum execution time: 280_716 nanoseconds.
+        Weight::from_ref_time(265_365_165)
+            // Standard Error: 273_443
+            .saturating_add(Weight::from_ref_time(33_778_965).saturating_mul(a.into()))
             .saturating_add(DbWeight::get().reads(9))
             .saturating_add(DbWeight::get().writes(5))
     }
@@ -440,12 +440,9 @@ impl crate::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().writes(5))
             .saturating_add(DbWeight::get().writes((23_u64).saturating_mul(l.into())))
     }
-    /// The range of component `a` is `[0, 64]`.
-    fn batch_verify_sender_proofs(a: u32) -> Weight {
-        // Minimum execution time: 591 nanoseconds.
-        Weight::from_ref_time(619_758_174)
-            // Standard Error: 1_861_142
-            .saturating_add(Weight::from_ref_time(2_411_857_934).saturating_mul(a.into()))
+    fn batch_verify_sender_proofs() -> Weight {
+        // Minimum execution time: 2_813_150 nanoseconds.
+        Weight::from_ref_time(2_931_931_000)
     }
     /// The range of component `a` is `[0, 256]`.
     fn verify_sender_proofs(a: u32) -> Weight {

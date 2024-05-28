@@ -119,7 +119,7 @@ pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 #[cfg(not(feature = "runtime-benchmarks"))]
-pub type ConfidentialAssetMaxMoveFunds = ConstSize<100>;
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 pub type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 

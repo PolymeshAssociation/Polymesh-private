@@ -75,34 +75,45 @@ pub trait WeightInfo {
     fn move_assets_no_assets(m: u32) -> Weight;
     fn move_assets_one_batch(a: u32) -> Weight;
 
-    fn batch_verify_sender_proofs(a: u32) -> Weight;
-    fn verify_sender_proofs(a: u32) -> Weight;
-    fn verify_one_sender_proof() -> Weight;
+    fn batch_verify_sender_proofs() -> Weight;
+    fn verify_sender_proofs(p: u32) -> Weight;
+    fn verify_one_sender_proof(a: u32) -> Weight;
     fn elgamal_wasm() -> Weight;
     fn elgamal_host() -> Weight;
 
-    fn move_assets_vec<T: Config>(moves: &[ConfidentialMoveFunds<T>]) -> Weight {
+    fn batch_verify_time<T: Config>(proofs: u32) -> Weight {
+        // Round proof count to a multiple of `BatchHostThreads`.
         let host_threads = T::BatchHostThreads::get();
+        let count = (proofs + host_threads - 1) / host_threads;
+        // Calculate the maximum proof verification time.
+        Self::batch_verify_sender_proofs().saturating_mul(count as u64)
+    }
+
+    fn move_assets_vec<T: Config>(moves: &[ConfidentialMoveFunds<T>]) -> Weight {
         // Base extrinsic overhead (check call permissions).
         let base = Self::move_assets_no_assets(0);
         let mut weight = base;
+        let mut count_proofs = 0u32;
         for funds in moves {
-            // Round proof count to a multiple of `BatchHostThreads`.
-            let count = ((funds.proofs.len() as u32) + host_threads - 1) / host_threads;
+            let count = funds.proofs.len() as u32;
+            count_proofs = count_proofs.saturating_add(count);
             // Calculate the cost of this batch (substrate the extrinsic overhead).
             let batch = Self::move_assets_one_batch(count).saturating_sub(base);
             weight = weight.saturating_add(batch);
         }
-        weight
+        // Use the maximum ref_time of either runtime/host compute time.
+        weight.max(Self::batch_verify_time::<T>(count_proofs))
     }
 
     fn affirm_transactions<T: Config>(transactions: &[AffirmTransaction<T>]) -> Weight {
         if transactions.len() > 0 {
             let mut sum = Weight::zero();
+            let mut count_proofs = 0;
             for tx in transactions {
                 match &tx.leg.party {
                     AffirmParty::Sender(transfers) => {
                         for (_, proof) in &transfers.proofs {
+                            count_proofs += 1;
                             sum += match proof.auditor_count() {
                                 Ok(count) => Self::sender_affirm_transaction(count as u32),
                                 _ => Weight::MAX,
@@ -117,7 +128,8 @@ pub trait WeightInfo {
                     }
                 }
             }
-            sum
+            // Use the maximum ref_time of either runtime/host compute time.
+            sum.max(Self::batch_verify_time::<T>(count_proofs))
         } else {
             // If no transaction to affirm, use the weight of a single mediator affirm.
             Self::mediator_affirm_transaction()
