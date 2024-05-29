@@ -298,10 +298,10 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset TxLegStates (max_values: None, max_size: None, mode: Measured)
     /// The range of component `a` is `[0, 8]`.
     fn sender_affirm_transaction(a: u32) -> Weight {
-        // Minimum execution time: 280_716 nanoseconds.
-        Weight::from_ref_time(265_365_165)
-            // Standard Error: 273_443
-            .saturating_add(Weight::from_ref_time(33_778_965).saturating_mul(a.into()))
+        // Minimum execution time: 216_474 nanoseconds.
+        Weight::from_ref_time(199_689_697)
+            // Standard Error: 617_784
+            .saturating_add(Weight::from_ref_time(33_780_827).saturating_mul(a.into()))
             .saturating_add(DbWeight::get().reads(9))
             .saturating_add(DbWeight::get().writes(5))
     }
@@ -398,10 +398,10 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset TransactionStatuses (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[1, 1000]`.
     fn execute_transaction(l: u32) -> Weight {
-        // Minimum execution time: 372_434 nanoseconds.
-        Weight::from_ref_time(375_851_000)
-            // Standard Error: 287_923
-            .saturating_add(Weight::from_ref_time(352_389_432).saturating_mul(l.into()))
+        // Minimum execution time: 268_202 nanoseconds.
+        Weight::from_ref_time(272_490_000)
+            // Standard Error: 3_477_174
+            .saturating_add(Weight::from_ref_time(264_933_245).saturating_mul(l.into()))
             .saturating_add(DbWeight::get().reads(6))
             .saturating_add(DbWeight::get().reads((27_u64).saturating_mul(l.into())))
             .saturating_add(DbWeight::get().writes(5))
@@ -473,6 +473,12 @@ impl crate::WeightInfo for SubstrateWeight {
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
+    // Storage: ConfidentialAsset RngNonce (r:1 w:1)
+    // Proof Skipped: ConfidentialAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: Babe NextRandomness (r:1 w:0)
+    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+    // Storage: Babe EpochStart (r:1 w:0)
+    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
     // Storage: ConfidentialAsset AccountDid (r:2 w:0)
     // Proof Skipped: ConfidentialAsset AccountDid (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AssetFrozen (r:2000 w:0)
@@ -483,18 +489,12 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: ConfidentialAsset AccountAssetFrozen (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountBalance (r:4000 w:4000)
     // Proof Skipped: ConfidentialAsset AccountBalance (max_values: None, max_size: None, mode: Measured)
-    // Storage: ConfidentialAsset RngNonce (r:1 w:1)
-    // Proof Skipped: ConfidentialAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
-    // Storage: Babe NextRandomness (r:1 w:0)
-    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
-    // Storage: Babe EpochStart (r:1 w:0)
-    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
     /// The range of component `a` is `[0, 2000]`.
     fn move_assets_one_batch(a: u32) -> Weight {
-        // Minimum execution time: 53_039 nanoseconds.
-        Weight::from_ref_time(53_460_000)
-            // Standard Error: 110_021
-            .saturating_add(Weight::from_ref_time(379_408_769).saturating_mul(a.into()))
+        // Minimum execution time: 62_146 nanoseconds.
+        Weight::from_ref_time(62_146_000)
+            // Standard Error: 190_360
+            .saturating_add(Weight::from_ref_time(278_353_071).saturating_mul(a.into()))
             .saturating_add(DbWeight::get().reads(6))
             .saturating_add(DbWeight::get().reads((5_u64).saturating_mul(a.into())))
             .saturating_add(DbWeight::get().writes(1))
