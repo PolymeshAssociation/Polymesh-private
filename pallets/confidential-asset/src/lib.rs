@@ -2011,8 +2011,9 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResultWithPostInfo {
         let mut asset_auditors = BTreeMap::new();
         let mut batch = BatchVerify::create();
+        let seed = Self::get_seed(true);
         for funds in moves {
-            Self::base_move_funds(caller_did, funds, &mut asset_auditors, &mut batch)?;
+            Self::base_move_funds(caller_did, funds, seed, &mut asset_auditors, &mut batch)?;
         }
         // Verify that all proofs are valid.
         let valid = batch
@@ -2025,6 +2026,7 @@ impl<T: Config> Pallet<T> {
     fn base_move_funds(
         caller_did: IdentityId,
         funds: ConfidentialMoveFunds<T>,
+        seed: [u8; 32],
         asset_auditors: &mut BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
         batch: &mut BatchVerify,
     ) -> DispatchResult {
@@ -2077,7 +2079,7 @@ impl<T: Config> Pallet<T> {
                 receiver: to.0,
                 auditors: auditors.iter().map(|account| account.0).collect(),
                 proof: proof.clone(),
-                seed: Self::get_seed(true),
+                seed,
             };
 
             // Submit proof to the batch for verification.

@@ -297,7 +297,7 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: ConfidentialAsset TxLegStates (r:0 w:1)
     // Proof Skipped: ConfidentialAsset TxLegStates (max_values: None, max_size: None, mode: Measured)
     /// The range of component `a` is `[0, 8]`.
-    fn sender_affirm_transaction(a: u32, ) -> Weight {
+    fn sender_affirm_transaction(a: u32) -> Weight {
         // Minimum execution time: 280_716 nanoseconds.
         Weight::from_ref_time(265_365_165)
             // Standard Error: 273_443
