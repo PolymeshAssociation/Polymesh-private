@@ -48,7 +48,7 @@ impl VerifyConfidentialTransferRequest {
             .collect()
     }
 
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         let sender_balance = self.sender_balance.0.decompress();
         let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
         let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
@@ -66,13 +66,13 @@ impl VerifyConfidentialTransferRequest {
             )
             .map_err(|_| Error::VerifyFailed)?;
 
-        Ok(true)
+        Ok(())
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialTransferRequest {
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         native_confidential_assets::verify_sender_proof(self)
     }
 }
@@ -89,7 +89,7 @@ pub struct VerifyConfidentialBurnRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         let issuer_balance = self.issuer_balance.0.decompress();
         let issuer_account = self.issuer.into_public_key().ok_or(Error::VerifyFailed)?;
 
@@ -99,29 +99,14 @@ impl VerifyConfidentialBurnRequest {
             .verify(&issuer_account, &issuer_balance, self.amount, &mut rng)
             .map_err(|_| Error::VerifyFailed)?;
 
-        Ok(true)
+        Ok(())
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<bool, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         native_confidential_assets::verify_burn_proof(self)
-    }
-}
-
-/// Confidential asset proof response.
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub enum VerifyConfidentialProofResponse {
-    TransferProof(bool),
-    BurnProof(bool),
-}
-
-impl VerifyConfidentialProofResponse {
-    pub fn is_valid(&self) -> bool {
-        match self {
-            Self::TransferProof(valid) | Self::BurnProof(valid) => *valid,
-        }
     }
 }
 
@@ -134,23 +119,17 @@ pub enum VerifyConfidentialProofRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         match self {
-            Self::TransferProof(req) => {
-                let resp = req.verify()?;
-                Ok(VerifyConfidentialProofResponse::TransferProof(resp))
-            }
-            Self::BurnProof(req) => {
-                let resp = req.verify()?;
-                Ok(VerifyConfidentialProofResponse::BurnProof(resp))
-            }
+            Self::TransferProof(req) => req.verify(),
+            Self::BurnProof(req) => req.verify(),
         }
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<VerifyConfidentialProofResponse, Error> {
+    pub fn verify(&self) -> Result<(), Error> {
         native_confidential_assets::verify_proof(self)
     }
 }
@@ -278,7 +257,7 @@ impl BatchVerify {
         self.submit(VerifyConfidentialProofRequest::TransferProof(req))
     }
 
-    pub fn finalize(&mut self) -> Result<bool, Error> {
+    pub fn finalize(&mut self) -> Result<(), Error> {
         let id = self.id.take().ok_or(Error::BatchClosed)?;
         native_confidential_assets::batch_finish(id)
     }

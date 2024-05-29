@@ -29,17 +29,15 @@ pub enum Error {
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
-    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<bool, Error> {
+    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<(), Error> {
         req.verify()
     }
 
-    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<bool, Error> {
+    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<(), Error> {
         req.verify()
     }
 
-    fn verify_proof(
-        req: &VerifyConfidentialProofRequest,
-    ) -> Result<VerifyConfidentialProofResponse, Error> {
+    fn verify_proof(req: &VerifyConfidentialProofRequest) -> Result<(), Error> {
         req.verify()
     }
 
@@ -59,7 +57,7 @@ pub trait NativeConfidentialAssets {
         batch::BatchVerifiers::batch_submit(id, req)
     }
 
-    fn batch_finish(id: BatchId) -> Result<bool, Error> {
+    fn batch_finish(id: BatchId) -> Result<(), Error> {
         let batch = batch::BatchVerifiers::batch_finish(id).ok_or(Error::VerifyFailed)?;
         batch.finalize()
     }

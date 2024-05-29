@@ -33,8 +33,7 @@ fn verify_requests(requests: Vec<VerifyConfidentialTransferRequest>) {
             .expect("Submit verify request");
     }
     // Verify that all proofs are valid.
-    let valid = batch.finalize().expect("Batch finalized");
-    assert!(valid);
+    batch.finalize().expect("Batch finalized");
 }
 
 benchmarks! {
@@ -340,8 +339,7 @@ benchmarks! {
         // Generate confidential transfer proofs to verify.
         let requests = generate_proof_verify_requests::<T>(1, Some(a), Some(a), &mut rng);
     }: {
-        let valid = requests[0].verify().expect("vaild");
-        assert!(valid);
+        requests[0].verify().expect("vaild");
     }
 
     move_assets_no_assets {

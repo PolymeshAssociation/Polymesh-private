@@ -70,7 +70,7 @@ impl InnerBatchVerifiers {
             if self.skip_verify {
                 let _ = tx.send(BatchResult {
                     id: req_id,
-                    result: Ok(VerifyConfidentialProofResponse::TransferProof(true)),
+                    result: Ok(()),
                     proof: Err(Error::VerifyFailed),
                     key: None,
                 });
@@ -197,7 +197,7 @@ impl BatchVerifiers {
 #[derive(Debug)]
 pub struct BatchResult {
     pub id: BatchReqId,
-    pub result: Result<VerifyConfidentialProofResponse, Error>,
+    pub result: Result<(), Error>,
     pub proof: Result<GenerateProofResponse, Error>,
     pub key: Option<Hash>,
 }
@@ -221,7 +221,7 @@ impl BatchVerifier {
         (id, self.tx.clone())
     }
 
-    pub fn finalize(self) -> Result<bool, Error> {
+    pub fn finalize(self) -> Result<(), Error> {
         let Self { count, rx, tx } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
@@ -230,15 +230,14 @@ impl BatchVerifier {
                 log::warn!("Failed to recv Proof response: {err:?}");
                 Error::VerifyFailed
             })?;
-            let valid = res.result?.is_valid();
-            if !valid {
+            if res.result.is_err() {
                 // Invalid proof.
                 return Err(Error::VerifyFailed);
             }
-            resps.insert(res.id, valid);
+            resps.insert(res.id, true);
         }
         if resps.len() == count as usize {
-            Ok(true)
+            Ok(())
         } else {
             // Wrong number of responses.
             Err(Error::VerifyFailed)

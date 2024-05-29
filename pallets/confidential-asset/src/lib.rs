@@ -1496,11 +1496,10 @@ impl<T: Config> Pallet<T> {
         };
 
         // Verify the issuer's proof.
+        req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
         let enc_amount = CipherText::value(amount.into());
-        let res = req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
-        ensure!(res, Error::<T>::InvalidSenderProof);
         // Withdraw the minted assets from the issuer's confidential account.
-        Self::account_withdraw_amount(account, asset_id, enc_amount.into())?;
+        Self::account_withdraw_amount(account, asset_id, issuer_balance, enc_amount.into())?;
 
         // Emit Burned event with new `total_supply`.
         Self::deposit_event(Event::<T>::Burned {
@@ -1880,10 +1879,9 @@ impl<T: Config> Pallet<T> {
             Self::base_affirm_transaction(caller_did, tx.id, tx.leg, &mut batch)?;
         }
         if let Some(mut batch) = batch {
-            let valid = batch
+            batch
                 .finalize()
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
-            ensure!(valid, Error::<T>::InvalidSenderProof);
         }
         Ok(().into())
     }
@@ -1930,8 +1928,6 @@ impl<T: Config> Pallet<T> {
                     let sender_init_balance = Self::account_balance(&sender, asset_id)
                         .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-                    let sender_amount = proof.sender_amount_compressed();
-                    let receiver_amount = proof.receiver_amount_compressed();
                     let req = VerifyConfidentialTransferRequest {
                         sender: sender.0,
                         sender_balance: sender_init_balance,
@@ -1947,9 +1943,16 @@ impl<T: Config> Pallet<T> {
                     batch
                         .submit_transfer_request(req)
                         .map_err(|_| Error::<T>::InvalidSenderProof)?;
+                    let sender_amount = proof.sender_amount_compressed();
+                    let receiver_amount = proof.receiver_amount_compressed();
 
                     // Withdraw the transaction amount when the sender affirms.
-                    Self::account_withdraw_amount(sender, asset_id, sender_amount.into())?;
+                    Self::account_withdraw_amount(
+                        sender,
+                        asset_id,
+                        sender_init_balance,
+                        sender_amount.into(),
+                    )?;
 
                     // Store the pending state for this transaction leg.
                     leg_state.asset_state.insert(
@@ -2016,10 +2019,9 @@ impl<T: Config> Pallet<T> {
             Self::base_move_funds(caller_did, funds, seed, &mut asset_auditors, &mut batch)?;
         }
         // Verify that all proofs are valid.
-        let valid = batch
+        batch
             .finalize()
             .map_err(|_| Error::<T>::InvalidSenderProof)?;
-        ensure!(valid, Error::<T>::InvalidSenderProof);
         Ok(().into())
     }
 
@@ -2071,8 +2073,6 @@ impl<T: Config> Pallet<T> {
             let from_init_balance = Self::account_balance(&from, asset_id)
                 .ok_or(Error::<T>::ConfidentialAccountMissing)?;
 
-            let from_amount = proof.sender_amount_compressed();
-            let to_amount = proof.receiver_amount_compressed();
             let req = VerifyConfidentialTransferRequest {
                 sender: from.0,
                 sender_balance: from_init_balance,
@@ -2086,9 +2086,11 @@ impl<T: Config> Pallet<T> {
             batch
                 .submit_transfer_request(req)
                 .map_err(|_| Error::<T>::InvalidSenderProof)?;
+            let from_amount = proof.sender_amount_compressed();
+            let to_amount = proof.receiver_amount_compressed();
 
             // Withdraw the amount from the `from` account.
-            Self::account_withdraw_amount(from, *asset_id, from_amount.into())?;
+            Self::account_withdraw_amount(from, *asset_id, from_init_balance, from_amount.into())?;
             // Deposit the amount into the `to` account.
             Self::account_deposit_amount(to, *asset_id, to_amount.into());
         }
@@ -2312,29 +2314,23 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Subtract the `amount` from the confidential account balance.
+    /// Update the sender's balance using the `new_balance` value.
+    ///
+    /// We have already read the sender balance to verify the proof, so we
+    /// can avoid reading it a second time.
     fn account_withdraw_amount(
         account: ConfidentialAccount,
         asset_id: AssetId,
+        init_balance: HostCipherText,
         amount: HostCipherText,
     ) -> DispatchResult {
-        let balance = AccountBalance::<T>::try_mutate(
-            account,
-            asset_id,
-            |balance| -> Result<HostCipherText, DispatchError> {
-                if let Some(ref mut balance) = balance {
-                    *balance -= amount;
-                    Ok(*balance)
-                } else {
-                    Err(Error::<T>::ConfidentialAccountMissing.into())
-                }
-            },
-        )?;
+        let new_balance = init_balance - amount;
+        AccountBalance::<T>::insert(account, asset_id, new_balance);
         Self::deposit_event(Event::<T>::AccountWithdraw {
             account,
             asset_id,
             amount,
-            balance,
+            balance: new_balance,
         });
         Ok(())
     }
