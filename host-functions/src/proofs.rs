@@ -49,7 +49,7 @@ impl VerifyConfidentialTransferRequest {
     }
 
     pub fn verify(&self) -> Result<(), Error> {
-        let sender_balance = self.sender_balance.0.decompress();
+        let sender_balance = self.sender_balance.decompress();
         let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
         let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
         let auditors = self.build_auditor_set().ok_or(Error::VerifyFailed)?;
@@ -90,7 +90,7 @@ pub struct VerifyConfidentialBurnRequest {
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
     pub fn verify(&self) -> Result<(), Error> {
-        let issuer_balance = self.issuer_balance.0.decompress();
+        let issuer_balance = self.issuer_balance.decompress();
         let issuer_account = self.issuer.into_public_key().ok_or(Error::VerifyFailed)?;
 
         // Verify the issuer's proof.

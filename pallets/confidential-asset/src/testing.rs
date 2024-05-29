@@ -238,7 +238,6 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     pub fn enc_balance(&self, asset: AssetId) -> CipherText {
         Pallet::<T>::account_balance(self.account(), asset)
             .unwrap_or_default()
-            .0
             .decompress()
     }
 
