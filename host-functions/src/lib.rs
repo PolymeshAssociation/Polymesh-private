@@ -18,6 +18,8 @@ pub use elgamal::*;
 
 pub type BatchId = u32;
 
+pub type BatchSeed = [u8; 32];
+
 pub type BatchReqId = u32;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
@@ -29,16 +31,22 @@ pub enum Error {
 /// Native interface for runtime module for Confidential Assets.
 #[runtime_interface]
 pub trait NativeConfidentialAssets {
-    fn verify_sender_proof(req: &VerifyConfidentialTransferRequest) -> Result<(), Error> {
-        req.verify()
+    fn verify_sender_proof(
+        req: &VerifyConfidentialTransferRequest,
+        seed: BatchSeed,
+    ) -> Result<(), Error> {
+        req.verify(seed)
     }
 
-    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<(), Error> {
-        req.verify()
+    fn verify_burn_proof(
+        req: &VerifyConfidentialBurnRequest,
+        seed: BatchSeed,
+    ) -> Result<(), Error> {
+        req.verify(seed)
     }
 
-    fn verify_proof(req: &VerifyConfidentialProofRequest) -> Result<(), Error> {
-        req.verify()
+    fn verify_proof(req: &VerifyConfidentialProofRequest, seed: BatchSeed) -> Result<(), Error> {
+        req.verify(seed)
     }
 
     fn cipher_add(val1: HostCipherText, val2: HostCipherText) -> HostCipherText {
@@ -49,8 +57,8 @@ pub trait NativeConfidentialAssets {
         val1 - val2
     }
 
-    fn create_batch() -> BatchId {
-        batch::BatchVerifiers::create_batch()
+    fn create_batch(seed: BatchSeed) -> BatchId {
+        batch::BatchVerifiers::create_batch(seed)
     }
 
     fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), Error> {

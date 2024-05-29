@@ -50,10 +50,10 @@ impl InnerBatchVerifiers {
         }
     }
 
-    pub fn create_batch(&mut self) -> BatchId {
+    pub fn create_batch(&mut self, seed: BatchSeed) -> BatchId {
         let id = self.next_id;
         self.next_id = id + 1;
-        self.batches.insert(id, BatchVerifier::new());
+        self.batches.insert(id, BatchVerifier::new(seed));
         id
     }
 
@@ -76,8 +76,9 @@ impl InnerBatchVerifiers {
                 });
                 return Ok(());
             }
+            let seed = batch.seed;
             self.pool.spawn(move || {
-                let result = req.verify();
+                let result = req.verify(seed);
                 let _ = tx.send(BatchResult {
                     id: req_id,
                     result,
@@ -135,8 +136,9 @@ impl InnerBatchVerifiers {
                     return Ok(());
                 }
             }
+            let seed = batch.seed;
             self.pool.spawn(move || {
-                let proof = req.generate();
+                let proof = req.generate(seed);
                 let _ = tx.send(BatchResult {
                     id: req_id,
                     result: Err(Error::VerifyFailed),
@@ -159,9 +161,9 @@ impl BatchVerifiers {
         Self(Arc::new(RwLock::new(InnerBatchVerifiers::new(threads))))
     }
 
-    pub fn create_batch() -> BatchId {
+    pub fn create_batch(seed: BatchSeed) -> BatchId {
         let mut inner = BATCH_VERIFIERS.0.write().unwrap();
-        inner.create_batch()
+        inner.create_batch(seed)
     }
 
     pub fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), Error> {
@@ -205,14 +207,20 @@ pub struct BatchResult {
 #[derive(Debug)]
 pub struct BatchVerifier {
     pub count: BatchReqId,
+    pub seed: BatchSeed,
     pub tx: Sender<BatchResult>,
     pub rx: Receiver<BatchResult>,
 }
 
 impl BatchVerifier {
-    pub fn new() -> Self {
+    pub fn new(seed: BatchSeed) -> Self {
         let (tx, rx) = unbounded();
-        Self { count: 0, tx, rx }
+        Self {
+            count: 0,
+            seed,
+            tx,
+            rx,
+        }
     }
 
     pub fn next_req(&mut self) -> (BatchReqId, Sender<BatchResult>) {
@@ -222,7 +230,7 @@ impl BatchVerifier {
     }
 
     pub fn finalize(self) -> Result<(), Error> {
-        let Self { count, rx, tx } = self;
+        let Self { count, rx, tx, .. } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
         for _x in 0..count {
@@ -246,7 +254,7 @@ impl BatchVerifier {
 
     #[cfg(feature = "runtime-benchmarks")]
     pub fn get_proofs(self) -> Result<Vec<GenerateProofResponse>, Error> {
-        let Self { count, rx, tx } = self;
+        let Self { count, rx, tx, .. } = self;
         drop(tx);
         let mut resps = BTreeMap::new();
         let mut cache = CACHE_PROOFS.write().unwrap();

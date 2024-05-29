@@ -7,7 +7,9 @@ use frame_support::assert_ok;
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::{RngCore, SeedableRng};
 
-use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest, HostCipherText};
+use polymesh_host_functions::{
+    BatchSeed, BatchVerify, GenerateTransferProofRequest, HostCipherText,
+};
 
 use codec::{Decode, Encode};
 
@@ -24,8 +26,8 @@ use crate::*;
 pub const MAX_LEGS: u32 = 100;
 pub const MAX_MEDIATORS: u32 = MAX_LEGS * 8;
 
-fn verify_requests(requests: Vec<VerifyConfidentialTransferRequest>) {
-    let mut batch = BatchVerify::create();
+fn verify_requests(seed: BatchSeed, requests: Vec<VerifyConfidentialTransferRequest>) {
+    let mut batch = BatchVerify::create(seed);
     for req in requests {
         // Submit proof to the batch for verification.
         batch
@@ -227,7 +229,7 @@ benchmarks! {
         let mut witness_rng = StdRng::from_seed(seed);
         let witness = CommitmentWitness::new(amount.into(), Scalar::random(&mut witness_rng));
         let sender_amount = issuer.sec.public.encrypt(&witness);
-        let mut batch = BatchVerify::create();
+        let mut batch = BatchVerify::create(seed);
         // Make sure to start with an empty list of legs.
         tx.legs = Vec::with_capacity(l as usize);
         for id in 0..l {
@@ -241,7 +243,6 @@ benchmarks! {
               investor_pub_account,
               auditor_keys.clone(),
               amount,
-              seed,
           );
           batch.generate_transfer_proof(req).expect("Batched generate transfer proof");
           issuer_balance -= amount;
@@ -313,33 +314,36 @@ benchmarks! {
 
     batch_verify_sender_proofs {
         let p = T::BatchHostThreads::get() as usize;
-        let mut rng = StdRng::from_seed([10u8; 32]);
+        let seed = [10u8; 32];
+        let mut rng = StdRng::from_seed(seed);
         // Generate confidential transfer proofs to verify.
         let requests = generate_proof_verify_requests::<T>(p as _, None, None, &mut rng);
     }: {
-        verify_requests(requests);
+        verify_requests(seed, requests);
     }
 
     verify_sender_proofs {
         // Number of proofs to verify.
         let p in 0 .. 256;
 
-        let mut rng = StdRng::from_seed([10u8; 32]);
+        let seed = [10u8; 32];
+        let mut rng = StdRng::from_seed(seed);
         // Generate confidential transfer proofs to verify.
         let requests = generate_proof_verify_requests::<T>(p as _, None, None, &mut rng);
     }: {
-        verify_requests(requests);
+        verify_requests(seed, requests);
     }
 
     verify_one_sender_proof {
         // Number of auditors in the sender proof.
         let a in 0 .. 100;
 
-        let mut rng = StdRng::from_seed([10u8; 32]);
+        let seed = [10u8; 32];
+        let mut rng = StdRng::from_seed(seed);
         // Generate confidential transfer proofs to verify.
         let requests = generate_proof_verify_requests::<T>(1, Some(a), Some(a), &mut rng);
     }: {
-        requests[0].verify().expect("vaild");
+        requests[0].verify(seed).expect("vaild");
     }
 
     move_assets_no_assets {

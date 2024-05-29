@@ -1492,11 +1492,11 @@ impl<T: Config> Pallet<T> {
             issuer_balance,
             amount,
             proof: proof,
-            seed: Self::get_seed(true),
         };
 
         // Verify the issuer's proof.
-        req.verify().map_err(|_| Error::<T>::InvalidSenderProof)?;
+        req.verify(Self::get_seed(true))
+            .map_err(|_| Error::<T>::InvalidSenderProof)?;
         let enc_amount = CipherText::value(amount.into());
         // Withdraw the minted assets from the issuer's confidential account.
         Self::account_withdraw_amount(account, asset_id, issuer_balance, enc_amount.into())?;
@@ -1934,11 +1934,11 @@ impl<T: Config> Pallet<T> {
                         receiver: receiver.0,
                         auditors: auditors.iter().map(|account| account.0).collect(),
                         proof: proof.clone(),
-                        seed: Self::get_seed(true),
                     };
 
                     // Create a batch if this is the first proof.
-                    let batch = batch.get_or_insert_with(|| BatchVerify::create());
+                    let batch =
+                        batch.get_or_insert_with(|| BatchVerify::create(Self::get_seed(true)));
                     // Submit proof to the batch for verification.
                     batch
                         .submit_transfer_request(req)
@@ -2013,10 +2013,9 @@ impl<T: Config> Pallet<T> {
         moves: BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
     ) -> DispatchResultWithPostInfo {
         let mut asset_auditors = BTreeMap::new();
-        let mut batch = BatchVerify::create();
-        let seed = Self::get_seed(true);
+        let mut batch = BatchVerify::create(Self::get_seed(true));
         for funds in moves {
-            Self::base_move_funds(caller_did, funds, seed, &mut asset_auditors, &mut batch)?;
+            Self::base_move_funds(caller_did, funds, &mut asset_auditors, &mut batch)?;
         }
         // Verify that all proofs are valid.
         batch
@@ -2028,7 +2027,6 @@ impl<T: Config> Pallet<T> {
     fn base_move_funds(
         caller_did: IdentityId,
         funds: ConfidentialMoveFunds<T>,
-        seed: [u8; 32],
         asset_auditors: &mut BTreeMap<AssetId, BTreeSet<AuditorAccount>>,
         batch: &mut BatchVerify,
     ) -> DispatchResult {
@@ -2079,7 +2077,6 @@ impl<T: Config> Pallet<T> {
                 receiver: to.0,
                 auditors: auditors.iter().map(|account| account.0).collect(),
                 proof: proof.clone(),
-                seed,
             };
 
             // Submit proof to the batch for verification.

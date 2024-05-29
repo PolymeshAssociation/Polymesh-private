@@ -27,7 +27,6 @@ pub struct VerifyConfidentialTransferRequest {
     pub receiver: CompressedElgamalPublicKey,
     pub auditors: Vec<CompressedElgamalPublicKey>,
     pub proof: ConfidentialTransferProof,
-    pub seed: [u8; 32],
 }
 
 #[cfg(feature = "std")]
@@ -48,14 +47,14 @@ impl VerifyConfidentialTransferRequest {
             .collect()
     }
 
-    pub fn verify(&self) -> Result<(), Error> {
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
         let sender_balance = self.sender_balance.decompress();
         let sender_account = self.sender_account().ok_or(Error::VerifyFailed)?;
         let receiver_account = self.receiver_account().ok_or(Error::VerifyFailed)?;
         let auditors = self.build_auditor_set().ok_or(Error::VerifyFailed)?;
 
         // Verify the sender's proof.
-        let mut rng = Rng::from_seed(self.seed);
+        let mut rng = Rng::from_seed(seed);
         self.proof
             .verify(
                 &sender_account,
@@ -72,8 +71,8 @@ impl VerifyConfidentialTransferRequest {
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialTransferRequest {
-    pub fn verify(&self) -> Result<(), Error> {
-        native_confidential_assets::verify_sender_proof(self)
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
+        native_confidential_assets::verify_sender_proof(self, seed)
     }
 }
 
@@ -84,17 +83,16 @@ pub struct VerifyConfidentialBurnRequest {
     pub issuer_balance: HostCipherText,
     pub amount: ConfidentialBalance,
     pub proof: ConfidentialBurnProof,
-    pub seed: [u8; 32],
 }
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<(), Error> {
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
         let issuer_balance = self.issuer_balance.decompress();
         let issuer_account = self.issuer.into_public_key().ok_or(Error::VerifyFailed)?;
 
         // Verify the issuer's proof.
-        let mut rng = Rng::from_seed(self.seed);
+        let mut rng = Rng::from_seed(seed);
         self.proof
             .verify(&issuer_account, &issuer_balance, self.amount, &mut rng)
             .map_err(|_| Error::VerifyFailed)?;
@@ -105,8 +103,8 @@ impl VerifyConfidentialBurnRequest {
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<(), Error> {
-        native_confidential_assets::verify_burn_proof(self)
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
+        native_confidential_assets::verify_burn_proof(self, seed)
     }
 }
 
@@ -119,18 +117,18 @@ pub enum VerifyConfidentialProofRequest {
 
 #[cfg(feature = "std")]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<(), Error> {
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
         match self {
-            Self::TransferProof(req) => req.verify(),
-            Self::BurnProof(req) => req.verify(),
+            Self::TransferProof(req) => req.verify(seed),
+            Self::BurnProof(req) => req.verify(seed),
         }
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyConfidentialProofRequest {
-    pub fn verify(&self) -> Result<(), Error> {
-        native_confidential_assets::verify_proof(self)
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
+        native_confidential_assets::verify_proof(self, seed)
     }
 }
 
@@ -143,7 +141,6 @@ pub struct GenerateTransferProofRequest {
     pub receiver_key: ElgamalPublicKey,
     pub auditors_keys: BTreeSet<ElgamalPublicKey>,
     pub amount: ConfidentialBalance,
-    pub seed: [u8; 32],
 }
 
 impl GenerateTransferProofRequest {
@@ -155,7 +152,6 @@ impl GenerateTransferProofRequest {
         receiver_key: ElgamalPublicKey,
         auditors_keys: BTreeSet<ElgamalPublicKey>,
         amount: ConfidentialBalance,
-        seed: [u8; 32],
     ) -> Self {
         Self {
             sender_account,
@@ -164,13 +160,12 @@ impl GenerateTransferProofRequest {
             receiver_key,
             auditors_keys,
             amount,
-            seed,
         }
     }
 
     #[cfg(feature = "std")]
-    pub fn generate(&self) -> Result<GenerateProofResponse, Error> {
-        let mut rng = Rng::from_seed(self.seed);
+    pub fn generate(&self, seed: BatchSeed) -> Result<GenerateProofResponse, Error> {
+        let mut rng = Rng::from_seed(seed);
         let proof = ConfidentialTransferProof::new(
             &self.sender_account,
             &self.sender_init_balance,
@@ -193,9 +188,9 @@ pub enum GenerateProofRequest {
 
 #[cfg(feature = "std")]
 impl GenerateProofRequest {
-    pub fn generate(&self) -> Result<GenerateProofResponse, Error> {
+    pub fn generate(&self, seed: BatchSeed) -> Result<GenerateProofResponse, Error> {
         match self {
-            Self::TransferProof(req) => req.generate(),
+            Self::TransferProof(req) => req.generate(seed),
         }
     }
 }
@@ -236,8 +231,8 @@ impl BatchVerify {
         native_confidential_assets::set_skip_verify(skip);
     }
 
-    pub fn create() -> Self {
-        let id = native_confidential_assets::create_batch();
+    pub fn create(seed: BatchSeed) -> Self {
+        let id = native_confidential_assets::create_batch(seed);
         Self { id: Some(id) }
     }
 

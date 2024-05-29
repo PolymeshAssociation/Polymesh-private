@@ -372,7 +372,9 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let amount = 10;
     // Prepare to to generate the proofs.
     let mut details = Vec::with_capacity(count);
-    let mut batch = BatchVerify::create();
+    let mut seed = [0; 32];
+    rng.fill_bytes(&mut seed);
+    let mut batch = BatchVerify::create(seed);
     for (asset, auditors) in assets {
         // Generate all confidential accounts using the same on-chain user.
         let from = signer.new_account(rng);
@@ -390,8 +392,6 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
             auditor_keys.iter().map(|a| a.into()).collect(),
         ));
 
-        let mut seed = [0; 32];
-        rng.fill_bytes(&mut seed);
         let req = GenerateTransferProofRequest::new(
             from.sec.clone(),
             from_enc_balance,
@@ -399,7 +399,6 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
             to.pub_key(),
             auditor_keys,
             amount as u64,
-            seed,
         );
         batch
             .generate_transfer_proof(req)
@@ -410,15 +409,12 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     for (details, proof) in details.into_iter().zip(proofs.into_iter()) {
         let (from, to, from_init_balance, auditors) = details;
         let proof = proof.transfer_proof().expect("Transfer proof");
-        let mut seed = [0; 32];
-        rng.fill_bytes(&mut seed);
         let req = VerifyConfidentialTransferRequest {
             sender: from.into(),
             sender_balance: from_init_balance.into(),
             receiver: to.into(),
             auditors,
             proof,
-            seed,
         };
         requests.push(req);
     }
@@ -455,7 +451,9 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     let amount = 10;
     // Create the confidential move funds.
     let mut moves = BoundedVec::default();
-    let mut batch = BatchVerify::create();
+    let mut seed = [0; 32];
+    rng.fill_bytes(&mut seed);
+    let mut batch = BatchVerify::create(seed);
     for m_idx in 0..m {
         // Generate all confidential accounts using the same on-chain user.
         let from = signer.new_account(rng);
@@ -470,8 +468,6 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
             to.fund_account(*asset, 1, rng);
 
             let auditor_keys = auditors.build_auditor_set();
-            let mut seed = [0; 32];
-            rng.fill_bytes(&mut seed);
             let req = GenerateTransferProofRequest::new(
                 from.sec.clone(),
                 from_enc_balance,
@@ -479,7 +475,6 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
                 to.pub_key(),
                 auditor_keys,
                 amount as u64,
-                seed,
             );
             batch
                 .generate_transfer_proof(req)
@@ -567,12 +562,10 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         }
     }
 
-    pub fn batch_sender_proof(&self, batch: &BatchVerify, rng: &mut StdRng) {
+    pub fn batch_sender_proof(&self, batch: &BatchVerify) {
         let investor_pub_account = self.investor.pub_key();
         let issuer_enc_balance = self.issuer.enc_balance(self.asset_id);
         let auditor_keys = self.auditors.build_auditor_set();
-        let mut seed = [0; 32];
-        rng.fill_bytes(&mut seed);
         let req = GenerateTransferProofRequest::new(
             self.issuer.sec.clone(),
             issuer_enc_balance,
@@ -580,7 +573,6 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
             investor_pub_account,
             auditor_keys,
             self.amount,
-            seed,
         );
         batch
             .generate_transfer_proof(req)
@@ -753,10 +745,12 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
     }
 
     pub fn affirm_legs(&self, rng: &mut StdRng) {
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
         // Use batch to generate sender proofs.
-        let mut batch = BatchVerify::create();
+        let mut batch = BatchVerify::create(seed);
         for idx in 0..self.legs.len() {
-            self.leg(idx as _).batch_sender_proof(&batch, rng);
+            self.leg(idx as _).batch_sender_proof(&batch);
         }
         let proofs = batch.get_proofs().expect("batch get proofs");
         for (idx, proof) in proofs.into_iter().enumerate() {
