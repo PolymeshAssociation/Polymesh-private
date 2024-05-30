@@ -1013,7 +1013,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=compressed_ciphertext#283574e5411cd15ad824affc8405e31001120b0d"
+source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=main#09f12ded3a06e971dffb76dc5bb366a17164e737"
 dependencies = [
  "bulletproofs",
  "byteorder",
