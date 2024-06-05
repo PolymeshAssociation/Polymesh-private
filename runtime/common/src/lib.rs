@@ -73,8 +73,8 @@ parameter_types! {
     ///
     /// If this is updated, `PipsEnactSnapshotMaximumWeight` needs to be updated accordingly.
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(95);
-    /// Blocks can be of upto 30 MB in size.
-    pub const MaximumBlockLength: u32 = 30 * 1024 * 1024;
+    /// Blocks can be of upto 10 MB in size.
+    pub const MaximumBlockLength: u32 = 10 * 1024 * 1024;
     /// 0.5 ms is needed to create a block.
     pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(250));
     /// 0.128 ms is needed to process an empty extrinsic.
@@ -110,7 +110,7 @@ parameter_types! {
     pub const ContractsMaxCodeSize: u32 = 100 * 1024;
 
     pub RuntimeBlockLength: BlockLength =
-        BlockLength::max_with_normal_ratio(30 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+        BlockLength::max_with_normal_ratio(10 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
 
     pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
         .base_block(BlockExecutionWeight::get())

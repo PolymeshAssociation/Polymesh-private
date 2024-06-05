@@ -448,7 +448,7 @@ where
             prometheus_registry.as_ref(),
             telemetry.as_ref().map(|x| x.handle()),
         );
-        proposer.set_default_block_size_limit(30 * 1024 * 1024);
+        proposer.set_default_block_size_limit(10 * 1024 * 1024);
 
         let client_clone = client.clone();
         let slot_duration = babe_link.config().slot_duration();
