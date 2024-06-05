@@ -7,7 +7,7 @@ pub mod time {
     #[cfg(feature = "ci-runtime")]
     pub const MILLISECS_PER_BLOCK: Moment = 2_000;
     #[cfg(not(feature = "ci-runtime"))]
-    pub const MILLISECS_PER_BLOCK: Moment = 2_000;
+    pub const MILLISECS_PER_BLOCK: Moment = 6_000;
     pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
     pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 30 * MINUTES;
     pub const EPOCH_DURATION_IN_SLOTS: u64 = {
