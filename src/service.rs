@@ -351,6 +351,11 @@ where
     R::RuntimeApi: RuntimeApiCollection<StateBackend = FullStateBackend>,
     D: NativeExecutionDispatch + 'static,
 {
+    let a_lot = 2_000_000_000;
+    config.transaction_pool.ready.count = a_lot;
+    config.transaction_pool.ready.total_bytes = a_lot;
+    config.transaction_pool.future.count = a_lot;
+    config.transaction_pool.future.total_bytes = a_lot;
     let sc_service::PartialComponents {
         client,
         backend,
