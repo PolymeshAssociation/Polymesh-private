@@ -170,19 +170,32 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
         Self::new_from_seed(name, asset * TICKER_SEED + auditor * AUDITOR_SEED, rng)
     }
 
-    fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
-        let user = user::<T>(name, seed);
+    fn gen_keys(rng: &mut StdRng) -> ElgamalKeys {
         // These are the encryptions keys used by `confidential_assets` and are different from
         // the signing keys that Polymesh uses for singing transactions.
         let elg_secret = ElgamalSecretKey::new(Scalar::random(rng));
 
+        ElgamalKeys {
+            public: elg_secret.get_public_key(),
+            secret: elg_secret,
+        }
+    }
+
+    fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
+        let user = user::<T>(name, seed);
         Self {
             user,
-            sec: ElgamalKeys {
-                public: elg_secret.get_public_key(),
-                secret: elg_secret,
-            },
+            sec: Self::gen_keys(rng),
         }
+    }
+
+    pub fn new_account(&self, rng: &mut StdRng) -> Self {
+        let user = Self {
+            user: self.user.clone(),
+            sec: Self::gen_keys(rng),
+        };
+        user.create_account();
+        user
     }
 
     pub fn pub_key(&self) -> ElgamalPublicKey {
@@ -215,15 +228,17 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
     }
 
     pub fn set_balance(&self, asset: AssetId, balance: CipherText) {
-        AccountBalance::<T>::insert(self.account(), asset, balance)
+        AccountBalance::<T>::insert(self.account(), asset, balance.compress())
     }
 
     pub fn set_incoming_balance(&self, asset: AssetId, balance: CipherText) {
-        IncomingBalance::<T>::insert(self.account(), asset, balance)
+        IncomingBalance::<T>::insert(self.account(), asset, balance.compress())
     }
 
     pub fn enc_balance(&self, asset: AssetId) -> CipherText {
-        Pallet::<T>::account_balance(self.account(), asset).unwrap_or_default()
+        Pallet::<T>::account_balance(self.account(), asset)
+            .unwrap_or_default()
+            .decompress()
     }
 
     pub fn ensure_balance(&self, asset: AssetId, balance: ConfidentialBalance) {
@@ -232,6 +247,18 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
             .secret
             .verify(&enc_balance, &balance.into())
             .expect("verify confidential balance")
+    }
+
+    pub fn fund_account(
+        &self,
+        asset: AssetId,
+        amount: ConfidentialBalance,
+        rng: &mut StdRng,
+    ) -> CipherText {
+        let key = self.pub_key();
+        let (_, balance) = key.encrypt_value(amount.into(), rng);
+        self.set_balance(asset, balance);
+        balance
     }
 
     pub fn burn_proof(
@@ -247,12 +274,60 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
                 .unwrap();
         proof
     }
+
+    pub fn create_asset(
+        &self,
+        idx: u32,
+        total_supply: ConfidentialBalance,
+        auditors: u32,
+        mediators: u32,
+        rng: &mut StdRng,
+    ) -> (AssetId, ConfidentialBalance, AuditorState<T>) {
+        let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
+        let asset_id = next_asset_id::<T>(self.did());
+        assert_ok!(Pallet::<T>::create_asset(
+            self.origin(),
+            Default::default(),
+            auditors.get_asset_auditors(),
+        ));
+
+        // In the initial call, the total_supply must be zero.
+        assert_eq!(
+            Pallet::<T>::confidential_asset_details(asset_id)
+                .expect("Asset details")
+                .total_supply,
+            Zero::zero()
+        );
+
+        // Wallet submits the transaction to the chain for verification.
+        assert_ok!(Pallet::<T>::mint(
+            self.origin(),
+            asset_id,
+            total_supply.into(), // convert to u128
+            self.account(),
+        ));
+
+        // ------------------------- Ensuring that the asset details are set correctly
+
+        // A correct entry is added.
+        assert_eq!(
+            Pallet::<T>::confidential_asset_details(asset_id)
+                .expect("Asset details")
+                .owner_did,
+            self.did()
+        );
+
+        // -------------------------- Ensure the encrypted balance matches the minted amount.
+        self.ensure_balance(asset_id, total_supply);
+
+        (asset_id, total_supply, auditors)
+    }
 }
 
 /// Create issuer's confidential account, create asset and mint.
 pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     name: &'static str,
-    total_supply: u128,
+    total_supply: ConfidentialBalance,
     idx: u32,
     auditors: u32,
     mediators: u32,
@@ -264,52 +339,162 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     AuditorState<T>,
 ) {
     let owner = ConfidentialUser::asset_user(name, idx, rng);
-
-    let auditors = AuditorState::new_full(idx, auditors, mediators, rng);
-    let asset_id = next_asset_id::<T>(owner.did());
-    assert_ok!(Pallet::<T>::create_asset(
-        owner.origin(),
-        Default::default(),
-        auditors.get_asset_auditors(),
-    ));
-
-    // In the initial call, the total_supply must be zero.
-    assert_eq!(
-        Pallet::<T>::confidential_asset_details(asset_id)
-            .expect("Asset details")
-            .total_supply,
-        Zero::zero()
-    );
-
-    // ---------------- prepare for minting the asset
-
     owner.create_account();
 
-    // ------------- Computations that will happen in owner's Wallet ----------
-    let amount: ConfidentialBalance = total_supply.try_into().unwrap(); // confidential amounts are 64 bit integers.
+    let (asset_id, balance, auditors) =
+        owner.create_asset(idx, total_supply, auditors, mediators, rng);
+    (asset_id, owner, balance, auditors)
+}
 
-    // Wallet submits the transaction to the chain for verification.
-    assert_ok!(Pallet::<T>::mint(
-        owner.origin(),
-        asset_id,
-        amount.into(), // convert to u128
-        owner.account(),
-    ));
+pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+    count: usize,
+    auditor_count: Option<u32>,
+    mediator_count: Option<u32>,
+    rng: &mut StdRng,
+) -> Vec<VerifyConfidentialTransferRequest> {
+    // Generate confidential assets.
+    let total_supply = 4_000_000_000 as ConfidentialBalance;
+    let mut assets = Vec::with_capacity(count);
+    for idx in 0..count {
+        let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
+            "issuer",
+            total_supply,
+            idx as u32,
+            auditor_count.unwrap_or(T::MaxAssetAuditors::get()),
+            mediator_count.unwrap_or(T::MaxAssetMediators::get()),
+            rng,
+        );
+        assets.push((asset, auditors));
+    }
 
-    // ------------------------- Ensuring that the asset details are set correctly
+    // Generate all confidential accounts using the same on-chain user.
+    let signer = ConfidentialUser::<T>::new("one", rng);
+    let amount = 10;
+    // Prepare to to generate the proofs.
+    let mut details = Vec::with_capacity(count);
+    let mut seed = [0; 32];
+    rng.fill_bytes(&mut seed);
+    let mut batch = BatchVerify::create(seed);
+    for (asset, auditors) in assets {
+        // Generate all confidential accounts using the same on-chain user.
+        let from = signer.new_account(rng);
+        let to = signer.new_account(rng);
+        // fund both from/to accounts so they have balances for this asset.
+        let init_balance = amount * 10;
+        let from_enc_balance = from.fund_account(asset, init_balance, rng);
+        to.fund_account(asset, 1, rng);
 
-    // A correct entry is added.
-    assert_eq!(
-        Pallet::<T>::confidential_asset_details(asset_id)
-            .expect("Asset details")
-            .owner_did,
-        owner.did()
-    );
+        let auditor_keys = auditors.build_auditor_set();
+        details.push((
+            from.pub_key(),
+            to.pub_key(),
+            from_enc_balance,
+            auditor_keys.iter().map(|a| a.into()).collect(),
+        ));
 
-    // -------------------------- Ensure the encrypted balance matches the minted amount.
-    owner.ensure_balance(asset_id, amount);
+        let req = GenerateTransferProofRequest::new(
+            from.sec.clone(),
+            from_enc_balance,
+            init_balance,
+            to.pub_key(),
+            auditor_keys,
+            amount as u64,
+        );
+        batch
+            .generate_transfer_proof(req)
+            .expect("Batched generate transfer proof");
+    }
+    let proofs = batch.get_proofs().expect("batch get proofs");
+    let mut requests = Vec::with_capacity(count);
+    for (details, proof) in details.into_iter().zip(proofs.into_iter()) {
+        let (from, to, from_init_balance, auditors) = details;
+        let proof = proof.transfer_proof().expect("Transfer proof");
+        let req = VerifyConfidentialTransferRequest {
+            sender: from.into(),
+            sender_balance: from_init_balance.into(),
+            receiver: to.into(),
+            auditors,
+            proof,
+        };
+        requests.push(req);
+    }
+    requests
+}
 
-    (asset_id, owner, amount, auditors)
+pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+    m: usize,
+    a: usize,
+    rng: &mut StdRng,
+) -> (
+    ConfidentialUser<T>,
+    BoundedVec<ConfidentialMoveFunds<T>, T::MaxMoveFunds>,
+) {
+    // Generate confidential assets.
+    let total_supply = 4_000_000_000 as ConfidentialBalance;
+    let max_auditors = T::MaxAssetAuditors::get();
+    let max_mediators = T::MaxAssetMediators::get();
+    let mut assets = Vec::with_capacity(a);
+    for idx in 0..(m * a) {
+        let (asset, _, _, auditors) = create_account_and_mint_token::<T>(
+            "issuer",
+            total_supply,
+            idx as u32,
+            max_auditors,
+            max_mediators,
+            rng,
+        );
+        assets.push((asset, auditors));
+    }
+
+    // Generate all confidential accounts using the same on-chain user.
+    let signer = ConfidentialUser::<T>::new("one", rng);
+    let amount = 10;
+    // Create the confidential move funds.
+    let mut moves = BoundedVec::default();
+    let mut seed = [0; 32];
+    rng.fill_bytes(&mut seed);
+    let mut batch = BatchVerify::create(seed);
+    for m_idx in 0..m {
+        // Generate all confidential accounts using the same on-chain user.
+        let from = signer.new_account(rng);
+        let to = signer.new_account(rng);
+        let funds = ConfidentialMoveFunds::new(from.account(), to.account());
+        for a_idx in 0..a {
+            let idx = (m_idx * a) + a_idx;
+            let (asset, auditors) = &assets[idx];
+            // fund both from/to accounts so they have balances for this asset.
+            let init_balance = amount * 10;
+            let from_enc_balance = from.fund_account(*asset, init_balance, rng);
+            to.fund_account(*asset, 1, rng);
+
+            let auditor_keys = auditors.build_auditor_set();
+            let req = GenerateTransferProofRequest::new(
+                from.sec.clone(),
+                from_enc_balance,
+                init_balance,
+                to.pub_key(),
+                auditor_keys,
+                amount as u64,
+            );
+            batch
+                .generate_transfer_proof(req)
+                .expect("Batched generate transfer proof");
+        }
+        moves.try_push(funds).expect("Shouldn't go over limit");
+    }
+    let proofs = batch.get_proofs().expect("batch get proofs");
+    let mut asset_proof = proofs
+        .into_iter()
+        .zip(assets.into_iter().map(|(asset, _)| asset));
+    for m_idx in 0..m {
+        let funds = &mut moves[m_idx];
+        for _ in 0..a {
+            let (proof, asset) = asset_proof.next().expect("next asset/proof pair");
+            let proof = proof.transfer_proof().expect("Transfer proof");
+            assert!(funds.insert(asset, proof));
+        }
+    }
+    (signer, moves)
 }
 
 #[derive(Clone)]
@@ -338,7 +523,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         // Setup confidential asset.
         let (asset_id, issuer, issuer_balance, auditors) = create_account_and_mint_token::<T>(
             "issuer",
-            total_supply as u128,
+            total_supply,
             leg_id,
             auditors,
             mediators,
@@ -377,12 +562,10 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
         }
     }
 
-    pub fn batch_sender_proof(&self, batch: &BatchVerify, rng: &mut StdRng) {
+    pub fn batch_sender_proof(&self, batch: &BatchVerify) {
         let investor_pub_account = self.investor.pub_key();
         let issuer_enc_balance = self.issuer.enc_balance(self.asset_id);
         let auditor_keys = self.auditors.build_auditor_set();
-        let mut seed = [0; 32];
-        rng.fill_bytes(&mut seed);
         let req = GenerateTransferProofRequest::new(
             self.issuer.sec.clone(),
             issuer_enc_balance,
@@ -390,7 +573,6 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
             investor_pub_account,
             auditor_keys,
             self.amount,
-            seed,
         );
         batch
             .generate_transfer_proof(req)
@@ -563,14 +745,16 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
     }
 
     pub fn affirm_legs(&self, rng: &mut StdRng) {
+        let mut seed = [0; 32];
+        rng.fill_bytes(&mut seed);
         // Use batch to generate sender proofs.
-        let batch = BatchVerify::create();
+        let mut batch = BatchVerify::create(seed);
         for idx in 0..self.legs.len() {
-            self.leg(idx as _).batch_sender_proof(&batch, rng);
+            self.leg(idx as _).batch_sender_proof(&batch);
         }
         let proofs = batch.get_proofs().expect("batch get proofs");
-        for idx in 0..self.legs.len() {
-            let proof = proofs[idx].transfer_proof().expect("Transfer proof");
+        for (idx, proof) in proofs.into_iter().enumerate() {
+            let proof = proof.transfer_proof().expect("Transfer proof");
             self.leg(idx as _).batch_sender_affirm(self.id, proof);
         }
 

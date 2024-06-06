@@ -77,13 +77,13 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 10 * 1024 * 1024;
     /// 0.5 ms is needed to create a block.
     pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(500));
-    /// 0.30 ms is needed to process an empty extrinsic.
-    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(300));
-    /// When the read/writes are cached/buffered, they take 25/100 microseconds on NVMe disks.
+    /// 0.128 ms is needed to process an empty extrinsic.
+    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(128));
+    /// When the read/writes are cached/buffered, they take 21/85 microseconds on NVMe disks.
     /// When they are uncached, they take 250/450 microseconds on NVMe disks.
     pub const RocksDbWeight: RuntimeDbWeight = RuntimeDbWeight {
-        read: 25 * WEIGHT_REF_TIME_PER_MICROS,   // ~25 µs
-        write: 100 * WEIGHT_REF_TIME_PER_MICROS, // ~100 µs
+        read: 21 * WEIGHT_REF_TIME_PER_MICROS,   // ~21 µs
+        write: 85 * WEIGHT_REF_TIME_PER_MICROS, // ~85 µs
     };
     /// This implies a 100 POLYX fee per MB of transaction length
     pub const TransactionByteFee: Balance = 10 * MILLICENTS;

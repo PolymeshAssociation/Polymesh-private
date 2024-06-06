@@ -341,6 +341,7 @@ frame-benchmarking = "4.0.0-dev"
 frame-benchmarking-cli = "4.0.0-dev"
 
 curve25519-dalek = { package = "curve25519-dalek-ng", version = "4", default-features = false, features = ["alloc"] }
+
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0" }
 

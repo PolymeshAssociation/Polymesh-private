@@ -19,8 +19,10 @@ rayon = "1.8"
 log = "0.4"
 
 # Substrate
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
 sp-runtime-interface = { workspace = true, default-features = false }
 
 [features]
@@ -38,6 +40,7 @@ std = [
     "confidential_assets/std",
     "codec/std",
     "sp-std/std",
+    "sp-core/std",
     "sp-runtime-interface/std",
 ]
 runtime-benchmarks = []

@@ -111,6 +111,18 @@ pub type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 pub type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
+#[cfg(feature = "runtime-benchmarks")]
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+pub type ConfidentialAssetBatchHostThreads = ConstSize<8>;
+
 /// NB It is needed by benchmarks, in order to use `UserBuilder`.
 impl TestUtilsFn<AccountId> for Runtime {
     fn register_did(
@@ -292,6 +304,9 @@ impl pallet_confidential_asset::Config for TestRuntime {
     type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
     type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
+    type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
+    type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
+    type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
 impl group::Config<group::Instance1> for TestRuntime {
