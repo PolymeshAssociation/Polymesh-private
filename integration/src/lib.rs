@@ -149,13 +149,9 @@ impl ConfidentialUser {
         Ok(enc_balance)
     }
 
-    pub fn ensure_balance(
-        &self,
-        enc_balance: &CipherText,
-        verify: Balance,
-    ) -> Result<()> {
-      self.decrypt_balance(enc_balance, Some(verify))?;
-      Ok(())
+    pub fn ensure_balance(&self, enc_balance: &CipherText, verify: Balance) -> Result<()> {
+        self.decrypt_balance(enc_balance, Some(verify))?;
+        Ok(())
     }
 
     pub fn decrypt_balance(
