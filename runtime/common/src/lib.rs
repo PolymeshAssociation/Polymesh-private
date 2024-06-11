@@ -55,12 +55,13 @@ pub const fn deposit(items: u32, bytes: u32) -> Balance {
 /// We assume that ~10% of the block weight is consumed by `on_initalize` handlers.
 /// This is used to limit the maximal weight of a single extrinsic.
 pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
-/// We allow `Normal` extrinsics to fill up the block up to 85%, the rest can be used
+/// We allow `Normal` extrinsics to fill up the block up to 95%, the rest can be used
 /// by  Operational  extrinsics.
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(85);
-/// We allow for 2 seconds of compute with a 6 second average block time.
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(95);
+/// We allow for 2.7 seconds of compute with a 6 second average block time.
 const MAXIMUM_BLOCK_WEIGHT: Weight =
-    Weight::from_ref_time(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2)).set_proof_size(u64::MAX);
+    Weight::from_ref_time(WEIGHT_REF_TIME_PER_MILLIS.saturating_mul(2_700))
+        .set_proof_size(u64::MAX);
 
 // TODO (miguel) Remove unused constants.
 parameter_types! {
@@ -72,13 +73,13 @@ parameter_types! {
     /// Portion of the block available to normal class of dispatches.
     ///
     /// If this is updated, `PipsEnactSnapshotMaximumWeight` needs to be updated accordingly.
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(85);
+    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(95);
     /// Blocks can be of upto 10 MB in size.
     pub const MaximumBlockLength: u32 = 10 * 1024 * 1024;
     /// 0.5 ms is needed to create a block.
-    pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(500));
+    pub const BlockExecutionWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(250));
     /// 0.128 ms is needed to process an empty extrinsic.
-    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(128));
+    pub const ExtrinsicBaseWeight: Weight = Weight::from_ref_time(WEIGHT_REF_TIME_PER_MICROS.saturating_mul(100));
     /// When the read/writes are cached/buffered, they take 21/85 microseconds on NVMe disks.
     /// When they are uncached, they take 250/450 microseconds on NVMe disks.
     pub const RocksDbWeight: RuntimeDbWeight = RuntimeDbWeight {
@@ -93,7 +94,7 @@ parameter_types! {
     pub const MultiSigBalanceLimit: Balance = POLY;
     /// The maximum weight of the pips extrinsic `enact_snapshot_results` which equals to
     /// `MaximumBlockWeight * AvailableBlockRatio`.
-    pub const PipsEnactSnapshotMaximumWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_mul(85).saturating_div(100);
+    pub const PipsEnactSnapshotMaximumWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_mul(95).saturating_div(100);
     /// Number of block delay an extrinsic claim surcharge has.
     pub const SignedClaimHandicap: u32 = 2;
     /// The balance every contract needs to deposit to stay alive indefinitely.
