@@ -49,7 +49,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     authoring_version: 1,
     // `spec_version: aaa_bbb_ccd` should match node version v`aaa.bbb.cc`
     // N.B. `d` is unpinned from the binary version
-    spec_version: 1_000_030,
+    spec_version: 1_001_000,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -155,6 +155,18 @@ type ConfidentialAssetMaxAssetAuditors = ConstSize<4>;
 type ConfidentialAssetMaxAssetMediators = ConstSize<4>;
 type ConfidentialAssetMaxAssetDataLength = ConstSize<8192>;
 
+#[cfg(feature = "runtime-benchmarks")]
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<2000>;
+#[cfg(feature = "runtime-benchmarks")]
+type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
+
+type ConfidentialAssetBatchHostThreads = ConstSize<8>;
+
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
 
@@ -223,6 +235,9 @@ impl pallet_confidential_asset::Config for Runtime {
     type MaxVenueMediators = ConfidentialAssetMaxVenueMediators;
     type MaxAssetAuditors = ConfidentialAssetMaxAssetAuditors;
     type MaxAssetMediators = ConfidentialAssetMaxAssetMediators;
+    type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
+    type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
+    type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
 macro_rules! committee_config {

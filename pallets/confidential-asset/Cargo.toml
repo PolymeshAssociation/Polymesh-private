@@ -16,6 +16,7 @@ pallet-balances = { workspace = true, default-features = false  }
 pallet-identity = { workspace = true, default-features = false }
 pallet-portfolio = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
+pallet-committee = { workspace = true, default-features = false }
 
 # Crypto
 rand_core = { workspace = true, default-features = false }
@@ -39,20 +40,22 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 equalize = []
 default = ["std", "equalize", "u64_backend"]
 
-testing = []
+testing = [
+  "polymesh-host-functions/runtime-benchmarks",
+]
 
 # Backends
 u64_backend = [
-	"confidential_assets/u64_backend",
-	"polymesh-host-functions/u64_backend",
+  "confidential_assets/u64_backend",
+  "polymesh-host-functions/u64_backend",
 ]
 simd_backend = [
-	"confidential_assets/simd_backend",
-	"polymesh-host-functions/simd_backend",
+  "confidential_assets/simd_backend",
+  "polymesh-host-functions/simd_backend",
 ]
 avx2_backend = [
-	"confidential_assets/avx2_backend",
-	"polymesh-host-functions/avx2_backend",
+  "confidential_assets/avx2_backend",
+  "polymesh-host-functions/avx2_backend",
 ]
 
 no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std", "u64_backend"]
@@ -62,11 +65,13 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking?/std",
     "confidential_assets/std",
     "pallet-balances/std",
     "pallet-identity/std",
     "pallet-portfolio/std",
     "pallet-statistics/std",
+    "pallet-committee/std",
     "polymesh-common-utilities/std",
     "polymesh-runtime-common/std",
     "polymesh-primitives/std",
@@ -76,7 +81,11 @@ std = [
     "sp-io/std",
 ]
 runtime-benchmarks = [
-		"testing",
-    "frame-benchmarking",
+    "testing",
+    "frame-benchmarking/runtime-benchmarks",
+    "pallet-committee/runtime-benchmarks",
     "polymesh-common-utilities/runtime-benchmarks",
+    "polymesh-primitives/runtime-benchmarks",
+    "polymesh-host-functions/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
 ]

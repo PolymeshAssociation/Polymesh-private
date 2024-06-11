@@ -1,6 +1,6 @@
 [package]
 name = "polymesh-private"
-version = "1.0.3"
+version = "1.1.0"
 authors = ["PolymeshAssociation"]
 build = "build.rs"
 edition = "2021"
@@ -341,6 +341,7 @@ frame-benchmarking = "4.0.0-dev"
 frame-benchmarking-cli = "4.0.0-dev"
 
 curve25519-dalek = { package = "curve25519-dalek-ng", version = "4", default-features = false, features = ["alloc"] }
+
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0" }
 
@@ -369,6 +370,7 @@ default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "polymesh-private-runtime-develop/runtime-benchmarks",
+  "polymesh-host-functions/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.

@@ -4,128 +4,28 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use sp_runtime_interface::{pass_by::PassByCodec, runtime_interface};
+use sp_runtime_interface::runtime_interface;
 use sp_std::prelude::Vec;
 
 #[cfg(feature = "std")]
-use rand_chacha::ChaCha20Rng as Rng;
-#[cfg(feature = "std")]
-use rand_core::SeedableRng;
-#[cfg(feature = "std")]
-use sp_std::collections::btree_set::BTreeSet;
+mod batch;
 
-use confidential_assets::{
-    burn::ConfidentialBurnProof, Balance as ConfidentialBalance, CipherText,
-    CompressedElgamalPublicKey, Result,
-};
-#[cfg(feature = "std")]
-use confidential_assets::{transaction::ConfidentialTransferProof, ElgamalPublicKey};
+mod proofs;
+pub use proofs::*;
 
-/// Verify confidential asset transfer request.
-#[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct VerifyConfidentialTransferRequest {
-    pub sender: CompressedElgamalPublicKey,
-    pub sender_balance: CipherText,
-    pub receiver: CompressedElgamalPublicKey,
-    pub auditors: Vec<CompressedElgamalPublicKey>,
-    pub proof: Vec<u8>,
-    pub seed: [u8; 32],
-}
+mod elgamal;
+pub use elgamal::*;
 
-#[cfg(feature = "std")]
-impl VerifyConfidentialTransferRequest {
-    fn sender_account(&self) -> Option<ElgamalPublicKey> {
-        self.sender.into_public_key()
-    }
+pub type BatchId = u32;
 
-    fn receiver_account(&self) -> Option<ElgamalPublicKey> {
-        self.receiver.into_public_key()
-    }
+pub type BatchSeed = [u8; 32];
 
-    /// Auditors are order by there compressed Elgamal public key (`MediatorAccount`).
-    fn build_auditor_set(&self) -> Option<BTreeSet<ElgamalPublicKey>> {
-        self.auditors
-            .iter()
-            .map(|account| account.into_public_key())
-            .collect()
-    }
+pub type BatchReqId = u32;
 
-    fn into_tx(&self) -> Option<ConfidentialTransferProof> {
-        ConfidentialTransferProof::decode(&mut self.proof.as_slice()).ok()
-    }
-
-    pub fn verify(&self) -> Result<ConfidentialTransferInfo, ()> {
-        let init_tx = self.into_tx().ok_or(())?;
-        let sender_account = self.sender_account().ok_or(())?;
-        let receiver_account = self.receiver_account().ok_or(())?;
-        let auditors = self.build_auditor_set().ok_or(())?;
-
-        // Verify the sender's proof.
-        let mut rng = Rng::from_seed(self.seed);
-        init_tx
-            .verify(
-                &sender_account,
-                &self.sender_balance,
-                &receiver_account,
-                &auditors,
-                &mut rng,
-            )
-            .map_err(|_| ())?;
-
-        Ok(ConfidentialTransferInfo {
-            sender_amount: init_tx.sender_amount(),
-            receiver_amount: init_tx.receiver_amount(),
-        })
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl VerifyConfidentialTransferRequest {
-    pub fn verify(&self) -> Result<ConfidentialTransferInfo, ()> {
-        native_confidential_assets::verify_sender_proof(self)
-    }
-}
-
-/// Confidential asset transfer info.
-///
-/// Transaction amount encrypted with sender & receiver public keys.
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct ConfidentialTransferInfo {
-    pub sender_amount: CipherText,
-    pub receiver_amount: CipherText,
-}
-
-/// Verify confidential asset burn request.
-#[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
-pub struct VerifyConfidentialBurnRequest {
-    pub issuer: CompressedElgamalPublicKey,
-    pub issuer_balance: CipherText,
-    pub amount: ConfidentialBalance,
-    pub proof: ConfidentialBurnProof,
-    pub seed: [u8; 32],
-}
-
-#[cfg(feature = "std")]
-impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<CipherText, ()> {
-        let issuer_account = self.issuer.into_public_key().ok_or(())?;
-
-        // Verify the issuer's proof.
-        let mut rng = Rng::from_seed(self.seed);
-        let enc_amount = self
-            .proof
-            .verify(&issuer_account, &self.issuer_balance, self.amount, &mut rng)
-            .map_err(|_| ())?;
-
-        Ok(enc_amount)
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl VerifyConfidentialBurnRequest {
-    pub fn verify(&self) -> Result<CipherText, ()> {
-        native_confidential_assets::verify_burn_proof(self)
-    }
+pub enum Error {
+    VerifyFailed,
+    BatchClosed,
 }
 
 /// Native interface for runtime module for Confidential Assets.
@@ -133,10 +33,68 @@ impl VerifyConfidentialBurnRequest {
 pub trait NativeConfidentialAssets {
     fn verify_sender_proof(
         req: &VerifyConfidentialTransferRequest,
-    ) -> Result<ConfidentialTransferInfo, ()> {
-        req.verify()
+        seed: BatchSeed,
+    ) -> Result<(), Error> {
+        req.verify(seed)
     }
-    fn verify_burn_proof(req: &VerifyConfidentialBurnRequest) -> Result<CipherText, ()> {
-        req.verify()
+
+    fn verify_burn_proof(
+        req: &VerifyConfidentialBurnRequest,
+        seed: BatchSeed,
+    ) -> Result<(), Error> {
+        req.verify(seed)
+    }
+
+    fn verify_proof(req: &VerifyConfidentialProofRequest, seed: BatchSeed) -> Result<(), Error> {
+        req.verify(seed)
+    }
+
+    fn cipher_add(val1: HostCipherText, val2: HostCipherText) -> HostCipherText {
+        val1 + val2
+    }
+
+    fn cipher_sub(val1: HostCipherText, val2: HostCipherText) -> HostCipherText {
+        val1 - val2
+    }
+
+    fn create_batch(seed: BatchSeed) -> BatchId {
+        batch::BatchVerifiers::create_batch(seed)
+    }
+
+    fn batch_submit(id: BatchId, req: VerifyConfidentialProofRequest) -> Result<(), Error> {
+        batch::BatchVerifiers::batch_submit(id, req)
+    }
+
+    fn batch_finish(id: BatchId) -> Result<(), Error> {
+        let batch = batch::BatchVerifiers::batch_finish(id).ok_or(Error::VerifyFailed)?;
+        batch.finalize()
+    }
+
+    fn batch_cancel(id: BatchId) {
+        batch::BatchVerifiers::batch_cancel(id);
+    }
+
+    fn set_skip_verify(_skip: bool) {
+        #[cfg(feature = "runtime-benchmarks")]
+        batch::BatchVerifiers::set_skip_verify(_skip);
+    }
+
+    fn batch_generate_proof(_id: BatchId, _req: GenerateProofRequest) -> Result<(), Error> {
+        #[cfg(feature = "runtime-benchmarks")]
+        {
+            batch::BatchVerifiers::batch_generate_proof(_id, _req)
+        }
+        #[cfg(not(feature = "runtime-benchmarks"))]
+        Err(Error::VerifyFailed)
+    }
+
+    fn batch_get_proofs(_id: BatchId) -> Result<Vec<GenerateProofResponse>, Error> {
+        #[cfg(feature = "runtime-benchmarks")]
+        {
+            let batch = batch::BatchVerifiers::batch_finish(_id).ok_or(Error::VerifyFailed)?;
+            batch.get_proofs()
+        }
+        #[cfg(not(feature = "runtime-benchmarks"))]
+        Err(Error::VerifyFailed)
     }
 }
