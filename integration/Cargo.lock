@@ -830,7 +830,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=main#752f70b4b8223832158061bcdb2ded540a7ddbb1"
+source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=main#09f12ded3a06e971dffb76dc5bb366a17164e737"
 dependencies = [
  "bincode",
  "bulletproofs",
