@@ -95,6 +95,8 @@ parameter_types! {
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
     pub const MaxAssetMediators: u32 = 4;
+    pub const MaxMultiSigSigners: u32 = 50;
+    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
@@ -275,7 +277,6 @@ impl CddAndFeeDetails<AccountId, RuntimeCall> for TestRuntime {
         Ok(Some(caller))
     }
     fn clear_context() {
-        Context::set_current_identity::<Identity>(None);
         Context::set_current_payer::<Identity>(None);
     }
     fn set_payer_context(payer: Option<AccountId>) {
@@ -283,9 +284,6 @@ impl CddAndFeeDetails<AccountId, RuntimeCall> for TestRuntime {
     }
     fn get_payer_from_context() -> Option<AccountId> {
         Context::current_payer::<Identity>()
-    }
-    fn set_current_identity(did: &IdentityId) {
-        Context::set_current_identity::<Identity>(Some(*did));
     }
 }
 
@@ -387,7 +385,7 @@ impl committee::Config<committee::Instance4> for TestRuntime {
 impl polymesh_common_utilities::traits::identity::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type Proposal = RuntimeCall;
-    type MultiSig = multisig::Module<TestRuntime>;
+    type MultiSig = multisig::Pallet<TestRuntime>;
     type Portfolio = portfolio::Module<TestRuntime>;
     type CddServiceProviders = CddServiceProvider;
     type Balances = balances::Module<TestRuntime>;
@@ -401,7 +399,6 @@ impl polymesh_common_utilities::traits::identity::Config for TestRuntime {
     type IdentityFn = identity::Module<TestRuntime>;
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
-    type MultiSigBalanceLimit = polymesh_runtime_common::MultiSigBalanceLimit;
     type MaxGivenAuths = MaxGivenAuths;
 }
 
