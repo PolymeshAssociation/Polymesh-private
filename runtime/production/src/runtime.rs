@@ -87,6 +87,7 @@ parameter_types! {
     pub const MaxNumberOfNFTs: u32 = 100;
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
+    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
 
     // I'm online:
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -142,6 +143,9 @@ parameter_types! {
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
+
+    // Multisig
+    pub const MaxMultiSigSigners: u32 = 50;
 }
 
 type ConfidentialAssetMaxNumberOfAffirms = ConstSize<10>;
@@ -194,7 +198,6 @@ impl polymesh_common_utilities::traits::identity::Config for Runtime {
     type IdentityFn = pallet_identity::Module<Runtime>;
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
-    type MultiSigBalanceLimit = polymesh_runtime_common::MultiSigBalanceLimit;
     type MaxGivenAuths = MaxGivenAuths;
 }
 
