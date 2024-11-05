@@ -85,8 +85,8 @@ parameter_types! {
         read: 21 * WEIGHT_REF_TIME_PER_MICROS,   // ~21 µs
         write: 85 * WEIGHT_REF_TIME_PER_MICROS, // ~85 µs
     };
-    /// This implies a 100 POLYX fee per MB of transaction length
-    pub const TransactionByteFee: Balance = 10 * MILLICENTS;
+    /// No fees
+    pub const TransactionByteFee: Balance = 0;
     /// We want the noop transaction to cost 0.03 POLYX
     pub const PolyXBaseFee: Balance = 3 * CENTS;
     /// MultiSig balance limit: 1 POLYX
@@ -139,20 +139,15 @@ parameter_types! {
 
 /// Converts Weight to Fee
 pub struct WeightToFee;
+
 impl WeightToFeePolynomial for WeightToFee {
     type Balance = Balance;
-    /// We want a 0.03 POLYX fee per ExtrinsicBaseWeight.
-    /// 650_000_000 weight = 30_000 fee => 21_666 weight = 1 fee.
-    /// Hence, 1 fee = 0 + 1/21_666 weight.
-    /// This implies, coeff_integer = 0 and coeff_frac = 1/21_666.
+
     fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
         smallvec![WeightToFeeCoefficient {
-            degree: 1,
-            coeff_frac: Perbill::from_rational(
-                PolyXBaseFee::get(),
-                ExtrinsicBaseWeight::get().ref_time() as u128
-            ),
-            coeff_integer: 0u128, // Coefficient is zero.
+            degree: 0,
+            coeff_frac: Perbill::zero(),
+            coeff_integer: 0,
             negative: false,
         }]
     }
