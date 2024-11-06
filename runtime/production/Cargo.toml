@@ -1,6 +1,6 @@
 [package]
 name = "polymesh-private-runtime-production"
-version = "0.1.0"
+version = "2.0.1"
 authors = ["PolymeshAssociation"]
 edition = "2021"
 build = "build.rs"
