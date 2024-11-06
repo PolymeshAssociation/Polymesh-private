@@ -52,7 +52,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     authoring_version: 1,
     // `spec_version: aaa_bbb_ccd` should match node version v`aaa.bbb.cc`
     // N.B. `d` is unpinned from the binary version
-    spec_version: 1_001_000,
+    spec_version: 2_000_000,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -90,6 +90,7 @@ parameter_types! {
     pub const MaxNumberOfNFTs: u32 = 100;
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
+    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
 
     // I'm online:
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -145,6 +146,9 @@ parameter_types! {
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
+
+    // Multisig
+    pub const MaxMultiSigSigners: u32 = 50;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -210,7 +214,6 @@ impl polymesh_common_utilities::traits::identity::Config for Runtime {
     type IdentityFn = pallet_identity::Module<Runtime>;
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
-    type MultiSigBalanceLimit = polymesh_runtime_common::MultiSigBalanceLimit;
     type MaxGivenAuths = MaxGivenAuths;
 }
 

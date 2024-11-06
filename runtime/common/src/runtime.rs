@@ -253,9 +253,9 @@ macro_rules! misc_pallet_impls {
 
         impl pallet_multisig::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
-            type Scheduler = Scheduler;
-            type SchedulerCall = RuntimeCall;
+            type Proposal = RuntimeCall;
             type WeightInfo = polymesh_weights::pallet_multisig::SubstrateWeight;
+            type MaxSigners = MaxMultiSigSigners;
         }
 
         impl pallet_portfolio::Config for Runtime {
@@ -272,9 +272,58 @@ macro_rules! misc_pallet_impls {
             type WeightInfo = polymesh_weights::pallet_external_agents::SubstrateWeight;
         }
 
+        pub struct SubsidyFilter;
+
+        impl SubsidyFilter {
+            fn allowed_batch(calls: &[RuntimeCall]) -> bool {
+                // Limit batch size to 5.
+                if calls.len() > 5 {
+                    return false;
+                }
+                for call in calls {
+                    // Check if the call is allowed inside a batch.
+                    if !Self::allowed(call, true) {
+                        return false;
+                    }
+                }
+                true
+            }
+
+            fn allowed(call: &RuntimeCall, nested: bool) -> bool {
+                match call {
+                    RuntimeCall::Asset(_) => true,
+                    RuntimeCall::ComplianceManager(_) => true,
+                    RuntimeCall::CorporateAction(_) => true,
+                    RuntimeCall::ExternalAgents(_) => true,
+                    RuntimeCall::Portfolio(_) => true,
+                    RuntimeCall::Settlement(_) => true,
+                    RuntimeCall::Statistics(_) => true,
+                    RuntimeCall::Sto(_) => true,
+                    RuntimeCall::Balances(_) => true,
+                    RuntimeCall::Identity(_) => true,
+                    // Allow non-nested batch calls.
+                    RuntimeCall::Utility(call) if nested == false => match call {
+                        // Limit batch size to 5.
+                        pallet_utility::Call::batch { calls } => Self::allowed_batch(&calls),
+                        pallet_utility::Call::batch_all { calls } => Self::allowed_batch(&calls),
+                        pallet_utility::Call::force_batch { calls } => Self::allowed_batch(&calls),
+                        _ => false,
+                    },
+                    _ => false,
+                }
+            }
+        }
+
+        impl frame_support::traits::Contains<RuntimeCall> for SubsidyFilter {
+            fn contains(call: &RuntimeCall) -> bool {
+                Self::allowed(call, false)
+            }
+        }
+
         impl pallet_relayer::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type WeightInfo = polymesh_weights::pallet_relayer::SubstrateWeight;
+            type SubsidyCallFilter = SubsidyFilter;
         }
 
         impl pallet_asset::Config for Runtime {
@@ -298,6 +347,7 @@ macro_rules! misc_pallet_impls {
             type RuntimeEvent = RuntimeEvent;
             type MaxInLen = MaxInLen;
             type MaxOutLen = MaxOutLen;
+            type Asset = pallet_asset::Module<Runtime>;
             type WeightInfo = polymesh_weights::polymesh_contracts::SubstrateWeight;
         }
 
@@ -451,6 +501,7 @@ macro_rules! misc_pallet_impls {
             type MaxNumberOfNFTsPerLeg = MaxNumberOfNFTsPerLeg;
             type MaxNumberOfNFTs = MaxNumberOfNFTs;
             type MaxNumberOfOffChainAssets = MaxNumberOfOffChainAssets;
+            type MaxNumberOfPortfolios = MaxNumberOfPortfolios;
             type MaxNumberOfVenueSigners = MaxNumberOfVenueSigners;
             type MaxInstructionMediators = MaxInstructionMediators;
         }
@@ -547,7 +598,7 @@ macro_rules! runtime_apis {
         use pallet_identity::types::{AssetDidResult, CddStatus, RpcDidRecords, DidStatus, KeyIdentityData};
         use pallet_pips::{Vote, VoteCount};
         use pallet_protocol_fee_rpc_runtime_api::CappedFee;
-        use polymesh_primitives::asset::GranularCanTransferResult;
+        use polymesh_primitives::asset::AssetId;
         use polymesh_primitives::settlement::{Leg, InstructionId, ExecuteInstructionInfo, AffirmationCount};
         use polymesh_primitives::compliance_manager::{AssetComplianceResult, ComplianceReport};
         use polymesh_primitives::{
@@ -877,12 +928,6 @@ macro_rules! runtime_apis {
                         .ok_or_else(|| "Either cdd claim is expired or not yet provided to give identity".into())
                 }
 
-                /// RPC call to query the given ticker did
-                fn get_asset_did(ticker: Ticker) -> AssetDidResult {
-                    Identity::get_token_did(&ticker)
-                        .map_err(|_| "Error in computing the given ticker error".into())
-                }
-
                 /// Retrieve primary key and secondary keys for a given IdentityId
                 fn get_did_records(did: IdentityId) -> RpcDidRecords<polymesh_primitives::AccountId> {
                     Identity::get_did_records(did)
@@ -912,25 +957,21 @@ macro_rules! runtime_apis {
                 }
             }
 
-            impl rpc_api_asset::AssetApi<Block, polymesh_primitives::AccountId> for Runtime {
-                #[inline]
-                fn can_transfer_granular(
-                    from_custodian: Option<IdentityId>,
-                    from_portfolio: PortfolioId,
-                    to_custodian: Option<IdentityId>,
-                    to_portfolio: PortfolioId,
-                    ticker: &Ticker,
-                    value: Balance
-                ) -> FrameResult<GranularCanTransferResult, DispatchError>
-                {
+            impl rpc_api_asset::AssetApi<Block> for Runtime {
+                fn transfer_report(
+                    sender_portfolio: PortfolioId,
+                    receiver_portfolio: PortfolioId,
+                    asset_id: AssetId,
+                    transfer_value: Balance,
+                    skip_locked_check: bool,
+                ) -> Vec<DispatchError> {
                     let mut weight_meter = WeightMeter::max_limit_no_minimum();
-                    Asset::unsafe_can_transfer_granular(
-                        from_custodian,
-                        from_portfolio,
-                        to_custodian,
-                        to_portfolio,
-                        ticker,
-                        value,
+                    Asset::asset_transfer_report(
+                        &sender_portfolio,
+                        &receiver_portfolio,
+                        &asset_id,
+                        transfer_value,
+                        skip_locked_check,
                         &mut weight_meter
                     )
                 }
@@ -952,18 +993,19 @@ macro_rules! runtime_apis {
 
             impl node_rpc_runtime_api::nft::NFTApi<Block> for Runtime {
                 #[inline]
-                fn validate_nft_transfer(
-                    sender_portfolio: &PortfolioId,
-                    receiver_portfolio: &PortfolioId,
-                    nfts: &NFTs
-                ) -> frame_support::dispatch::DispatchResult {
+                fn transfer_report(
+                    sender_portfolio: PortfolioId,
+                    receiver_portfolio: PortfolioId,
+                    nfts: NFTs,
+                    skip_locked_check: bool,
+                ) -> Vec<DispatchError> {
                     let mut weight_meter = WeightMeter::max_limit_no_minimum();
-                    Nft::validate_nft_transfer(
-                        sender_portfolio,
-                        receiver_portfolio,
-                        nfts,
-                        false,
-                        Some(&mut weight_meter)
+                    Nft::nft_transfer_report(
+                        &sender_portfolio,
+                        &receiver_portfolio,
+                        &nfts,
+                        skip_locked_check,
+                        &mut weight_meter
                     )
                 }
             }
@@ -972,7 +1014,7 @@ macro_rules! runtime_apis {
                 #[inline]
                 fn get_execute_instruction_info(
                     instruction_id: &InstructionId
-                ) -> ExecuteInstructionInfo {
+                ) -> Option<ExecuteInstructionInfo> {
                     Settlement::execute_instruction_info(instruction_id)
                 }
 
@@ -1001,13 +1043,13 @@ macro_rules! runtime_apis {
             impl node_rpc_runtime_api::compliance::ComplianceApi<Block> for Runtime {
                 #[inline]
                 fn compliance_report(
-                    ticker: &Ticker,
+                    asset_id: &AssetId,
                     sender_identity: &IdentityId,
                     receiver_identity: &IdentityId,
                 ) -> FrameResult<ComplianceReport, DispatchError> {
                     let mut weight_meter = WeightMeter::max_limit_no_minimum();
                     ComplianceManager::compliance_report(
-                        ticker,
+                        asset_id,
                         sender_identity,
                         receiver_identity,
                         &mut weight_meter
