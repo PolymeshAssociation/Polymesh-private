@@ -4595,7 +4595,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common 1.0.0",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v7.0.0)",
  "rustc-hex",
  "scale-info",
  "serde",
@@ -4782,7 +4782,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-confidential-asset"
-version = "2.0.1"
+version = "0.1.0"
 dependencies = [
  "confidential_assets",
  "frame-benchmarking",
@@ -4798,7 +4798,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-host-functions",
  "polymesh-primitives",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "scale-info",
@@ -5214,7 +5214,7 @@ dependencies = [
  "polymesh-common-utilities",
  "polymesh-primitives",
  "polymesh-primitives-derive",
- "polymesh-runtime-common 1.0.0",
+ "polymesh-runtime-common 1.0.0 (git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v7.0.0)",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "scale-info",
@@ -6102,7 +6102,7 @@ dependencies = [
  "polymesh-primitives",
  "polymesh-private-runtime-develop",
  "polymesh-private-runtime-production",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "rustc-hex",
  "sc-authority-discovery",
@@ -6156,7 +6156,7 @@ dependencies = [
 
 [[package]]
 name = "polymesh-private-runtime-develop"
-version = "2.0.1"
+version = "0.1.0"
 dependencies = [
  "frame-benchmarking",
  "frame-executive",
@@ -6215,7 +6215,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "scale-info",
  "sp-api",
@@ -6238,7 +6238,7 @@ dependencies = [
 
 [[package]]
 name = "polymesh-private-runtime-production"
-version = "2.0.1"
+version = "0.1.0"
 dependencies = [
  "frame-executive",
  "frame-support",
@@ -6292,7 +6292,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "scale-info",
  "sp-api",
@@ -6315,7 +6315,7 @@ dependencies = [
 
 [[package]]
 name = "polymesh-private-runtime-tests"
-version = "2.0.1"
+version = "0.1.0"
 dependencies = [
  "confidential_assets",
  "frame-executive",
@@ -6370,7 +6370,7 @@ dependencies = [
  "polymesh-contracts",
  "polymesh-extensions",
  "polymesh-primitives",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "polymesh-weights",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -6399,6 +6399,29 @@ dependencies = [
 [[package]]
 name = "polymesh-runtime-common"
 version = "1.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances 0.1.0",
+ "pallet-committee",
+ "pallet-group-rpc-runtime-api",
+ "pallet-identity",
+ "pallet-multisig",
+ "pallet-relayer",
+ "pallet-test-utils",
+ "parity-scale-codec",
+ "polymesh-common-utilities",
+ "polymesh-primitives",
+ "scale-info",
+ "smallvec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "polymesh-runtime-common"
+version = "1.0.0"
 source = "git+https://github.com/PolymeshAssociation/Polymesh.git?tag=v7.0.0#048d4dc5026af014d709090bce833ed6c68b68a9"
 dependencies = [
  "frame-election-provider-support",
@@ -6418,29 +6441,6 @@ dependencies = [
  "polymesh-primitives",
  "smallvec",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "polymesh-runtime-common"
-version = "2.0.1"
-dependencies = [
- "frame-support",
- "frame-system",
- "pallet-authorship",
- "pallet-balances 0.1.0",
- "pallet-committee",
- "pallet-group-rpc-runtime-api",
- "pallet-identity",
- "pallet-multisig",
- "pallet-relayer",
- "pallet-test-utils",
- "parity-scale-codec",
- "polymesh-common-utilities",
- "polymesh-primitives",
- "scale-info",
- "smallvec",
  "sp-runtime",
  "sp-std",
 ]
@@ -6481,7 +6481,7 @@ dependencies = [
  "pallet-treasury",
  "pallet-utility",
  "polymesh-contracts",
- "polymesh-runtime-common 2.0.1",
+ "polymesh-runtime-common 1.0.0",
  "sp-std",
 ]
 
