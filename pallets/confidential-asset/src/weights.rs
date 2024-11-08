@@ -52,7 +52,7 @@ use polymesh_runtime_common::{RocksDbWeight as DbWeight, Weight};
 
 /// Weights for pallet_confidential_asset using the Substrate node and recommended hardware.
 pub struct SubstrateWeight;
-impl pallet_confidential_asset::WeightInfo for SubstrateWeight {
+impl crate::WeightInfo for SubstrateWeight {
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof Skipped: Identity KeyRecords (max_values: None, max_size: None, mode: Measured)
     // Storage: ConfidentialAsset AccountDid (r:1 w:1)
