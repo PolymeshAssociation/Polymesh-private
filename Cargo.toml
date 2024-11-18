@@ -347,7 +347,7 @@ curve25519-dalek = { package = "curve25519-dalek-ng", version = "4", default-fea
 substrate-build-script-utils = { version = "3.0.0" }
 
 [features]
-default = ["std", "u64_backend"]
+default = ["std", "simd_backend"]
 
 # Backends
 u64_backend = [
