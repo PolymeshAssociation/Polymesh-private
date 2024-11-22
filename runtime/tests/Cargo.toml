@@ -101,6 +101,8 @@ confidential_assets = { workspace = true, default-features = false }
 [features]
 default = ["std", "testing"]
 
+ci-runtime = []
+
 std = [
   "codec/std",
   "frame-support/std",

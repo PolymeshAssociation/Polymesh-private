@@ -75,3 +75,4 @@ runtime-benchmarks = [
     "polymesh-host-functions/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
+try-runtime = []
