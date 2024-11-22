@@ -103,28 +103,13 @@ getrandom = { version = "0.2.6", default-features = false, optional = true }
 polymesh-build-tool = { workspace = true, default-features = false }
 
 [features]
-default = ["std", "equalize", "u64_backend"]
+default = ["std", "equalize"]
 equalize = []
 
 ci-runtime = []
 
-# Backends
-u64_backend = [
-	"polymesh-primitives/u64_backend",
-	"pallet-confidential-asset/u64_backend",
-]
-simd_backend = [
-	#"polymesh-primitives/simd_backend",
-	"pallet-confidential-asset/simd_backend",
-]
-avx2_backend = [
-	#"polymesh-primitives/avx2_backend",
-	"pallet-confidential-asset/avx2_backend",
-]
-
 no_std = [
     "polymesh-primitives/no_std",
-    "u64_backend"
 ]
 
 std = [

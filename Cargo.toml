@@ -345,24 +345,7 @@ frame-benchmarking-cli = "4.0.0-dev"
 substrate-build-script-utils = { version = "3.0.0" }
 
 [features]
-default = ["std", "simd_backend"]
-
-# Backends
-u64_backend = [
-	"polymesh-host-functions/u64_backend",
-	"polymesh-private-runtime-develop/u64_backend",
-	"polymesh-private-runtime-production/u64_backend",
-]
-simd_backend = [
-	"polymesh-host-functions/simd_backend",
-	"polymesh-private-runtime-develop/simd_backend",
-	"polymesh-private-runtime-production/simd_backend",
-]
-avx2_backend = [
-	"polymesh-host-functions/avx2_backend",
-	"polymesh-private-runtime-develop/avx2_backend",
-	"polymesh-private-runtime-production/avx2_backend",
-]
+default = ["std"]
 
 running-ci = [ "polymesh-private-runtime-develop/running-ci" ]
 default_identity = [ "polymesh-common-utilities/default_identity" ]
