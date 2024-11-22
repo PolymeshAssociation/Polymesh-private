@@ -21,6 +21,7 @@ lazy_static::lazy_static! {
     };
 }
 
+#[cfg(feature = "runtime-benchmarks")]
 pub type Hash = [u8; 8];
 
 #[derive(Debug)]
@@ -82,7 +83,9 @@ impl InnerBatchVerifiers {
                 let _ = tx.send(BatchResult {
                     id: req_id,
                     result,
+                    #[cfg(feature = "runtime-benchmarks")]
                     proof: Err(Error::VerifyFailed),
+                    #[cfg(feature = "runtime-benchmarks")]
                     key: None,
                 });
             });
@@ -200,7 +203,9 @@ impl BatchVerifiers {
 pub struct BatchResult {
     pub id: BatchReqId,
     pub result: Result<(), Error>,
+    #[cfg(feature = "runtime-benchmarks")]
     pub proof: Result<GenerateProofResponse, Error>,
+    #[cfg(feature = "runtime-benchmarks")]
     pub key: Option<Hash>,
 }
 
