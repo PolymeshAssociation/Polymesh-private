@@ -99,10 +99,10 @@ substrate-prometheus-endpoint = { git = "https://github.com/PolymeshAssociation/
 substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
-bulletproofs = { version = "4.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "polymesh" }
-confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "main" }
+#bulletproofs = { version = "5.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "v5.0.0" }
+bulletproofs = { path = "../bulletproofs/" }
+confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "update_curve25519_and_bulletproofs" }
 #confidential_assets = { path = "../confidential_assets" }
-curve25519-dalek-ng = { git = "https://github.com/atouchet/curve25519-dalek-ng.git", branch = "simd" }
 
 substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
 
@@ -122,51 +122,51 @@ exclude = [
 ## Keep common dependencies here.
 [workspace.dependencies]
 # Our pallets
-pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+pallet-asset = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-balances = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-base = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-committee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
 polymesh-host-functions = { path = "host-functions/", default-features = false }
-pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-multisig = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-nft = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-permissions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-pips = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-portfolio = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-protocol-fee = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+polymesh-contracts = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 
 # Common
-polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 polymesh-runtime-common = { path = "runtime/common/", default-features = false }
-polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 polymesh-weights = { path = "pallets/weights/", default-features = false }
-polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 
 # RPC
-node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
-pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+node-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-group-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-group-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-protocol-fee-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
+pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 
 # Build tool
-polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", tag = "v7.0.0", default-features = false }
+polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "update_nightly", default-features = false }
 
 # Substrate
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
@@ -340,8 +340,6 @@ sp-transaction-pool = { workspace = true }
 # These dependencies are used for runtime benchmarking
 frame-benchmarking = "4.0.0-dev"
 frame-benchmarking-cli = "4.0.0-dev"
-
-curve25519-dalek = { package = "curve25519-dalek-ng", version = "4", default-features = false, features = ["alloc"] }
 
 [build-dependencies]
 substrate-build-script-utils = { version = "3.0.0" }
