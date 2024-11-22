@@ -99,8 +99,8 @@ substrate-prometheus-endpoint = { git = "https://github.com/PolymeshAssociation/
 substrate-build-script-utils = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkadot-sdk", branch = "polymesh-v6-monthly-2023-03" }
 
-#bulletproofs = { version = "5.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "v5.0.0" }
-bulletproofs = { path = "../bulletproofs/" }
+bulletproofs = { version = "5.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "v5.0.0" }
+#bulletproofs = { path = "../bulletproofs/" }
 confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "update_curve25519_and_bulletproofs" }
 #confidential_assets = { path = "../confidential_assets" }
 

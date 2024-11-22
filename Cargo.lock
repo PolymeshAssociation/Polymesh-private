@@ -699,6 +699,7 @@ dependencies = [
 [[package]]
 name = "bulletproofs"
 version = "5.0.0"
+source = "git+https://github.com/PolymeshAssociation/bulletproofs?branch=v5.0.0#119cc876cdba056cdb71890fbf073f1b296c9edd"
 dependencies = [
  "byteorder",
  "clear_on_drop",
@@ -708,6 +709,8 @@ dependencies = [
  "merlin 3.0.0",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "serde",
+ "serde_derive",
  "sha3",
  "subtle",
  "thiserror",
@@ -1019,8 +1022,8 @@ dependencies = [
 
 [[package]]
 name = "confidential_assets"
-version = "1.0.0"
-source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=update_curve25519_and_bulletproofs#bfc4b473f401fc4ccdd724ab71a3af063f72c6bf"
+version = "1.1.0"
+source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=update_curve25519_and_bulletproofs#015b1ac0d94219b63691cb9071e81fac6dd369bc"
 dependencies = [
  "bulletproofs",
  "byteorder",
@@ -10331,7 +10334,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.8.5",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
