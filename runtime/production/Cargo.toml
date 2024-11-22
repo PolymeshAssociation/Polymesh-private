@@ -49,7 +49,7 @@ pallet-protocol-fee-rpc-runtime-api = { workspace = true, default-features = fal
 log = "0.4"
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-system-rpc-runtime-api = { workspace = true, default-features = false }
@@ -58,7 +58,7 @@ pallet-authorship = { workspace = true, default-features = false }
 pallet-babe = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
 pallet-contracts-primitives = { workspace = true, default-features = false}
-pallet-executive = { package = "frame-executive", workspace = true, default-features = false }
+pallet-executive = { workspace = true, default-features = false }
 pallet-grandpa = { workspace = true, default-features = false }
 pallet-im-online = { workspace = true, default-features = false }
 pallet-indices = { workspace = true, default-features = false }
