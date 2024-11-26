@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "confidential_assets"
 version = "1.1.0"
-source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=update_curve25519_and_bulletproofs#015b1ac0d94219b63691cb9071e81fac6dd369bc"
+source = "git+https://github.com/PolymeshAssociation/confidential_assets?branch=main#a5b0414235be6ed965d9e356022aa2ee00852c03"
 dependencies = [
  "bulletproofs",
  "byteorder",

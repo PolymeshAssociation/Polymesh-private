@@ -101,7 +101,7 @@ substrate-wasm-builder = { git = "https://github.com/PolymeshAssociation/polkado
 
 bulletproofs = { version = "5.0.0", git = "https://github.com/PolymeshAssociation/bulletproofs", branch = "v5.0.0" }
 #bulletproofs = { path = "../bulletproofs/" }
-confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "update_curve25519_and_bulletproofs" }
+confidential_assets = { git = "https://github.com/PolymeshAssociation/confidential_assets", branch = "main" }
 #confidential_assets = { path = "../confidential_assets" }
 
 substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
