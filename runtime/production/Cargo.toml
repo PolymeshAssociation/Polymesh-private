@@ -49,7 +49,7 @@ pallet-protocol-fee-rpc-runtime-api = { workspace = true, default-features = fal
 log = "0.4"
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-system-rpc-runtime-api = { workspace = true, default-features = false }
@@ -58,7 +58,7 @@ pallet-authorship = { workspace = true, default-features = false }
 pallet-babe = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
 pallet-contracts-primitives = { workspace = true, default-features = false}
-pallet-executive = { package = "frame-executive", workspace = true, default-features = false }
+pallet-executive = { workspace = true, default-features = false }
 pallet-grandpa = { workspace = true, default-features = false }
 pallet-im-online = { workspace = true, default-features = false }
 pallet-indices = { workspace = true, default-features = false }
@@ -92,27 +92,12 @@ validator-set = { workspace = true, default-features = false }
 polymesh-build-tool = { workspace = true, default-features = false }
 
 [features]
-default = ["std", "equalize", "u64_backend"]
+default = ["std", "equalize"]
 equalize = []
-
-# Backends
-u64_backend = [
-	"polymesh-primitives/u64_backend",
-	"pallet-confidential-asset/u64_backend",
-]
-simd_backend = [
-	#"polymesh-primitives/simd_backend",
-	"pallet-confidential-asset/simd_backend",
-]
-avx2_backend = [
-	#"polymesh-primitives/avx2_backend",
-	"pallet-confidential-asset/avx2_backend",
-]
 
 migration-dry-run = []
 no_std = [
     "polymesh-primitives/no_std",
-    "u64_backend"
 ]
 std = [
 		"polymesh-build-tool/std",

@@ -45,7 +45,7 @@ log = "0.4.8"
 smallvec = "1.4.0"
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
 scale-info = { workspace = true, default-features = false, features = ["derive"] }
 sp-core = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
@@ -100,6 +100,8 @@ confidential_assets = { workspace = true, default-features = false }
 
 [features]
 default = ["std", "testing"]
+
+ci-runtime = []
 
 std = [
   "codec/std",
