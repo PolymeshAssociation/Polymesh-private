@@ -25,7 +25,7 @@ confidential_assets = { workspace = true, default-features = false }
 polymesh-host-functions = { workspace = true, default-features = false }
 
 # Substrate
-codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
 scale-info = { workspace = true, default-features = false, features = ["derive"] }
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
@@ -38,27 +38,13 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 
 [features]
 equalize = []
-default = ["std", "equalize", "u64_backend"]
+default = ["std", "equalize"]
 
 testing = [
   "polymesh-host-functions/runtime-benchmarks",
 ]
 
-# Backends
-u64_backend = [
-  "confidential_assets/u64_backend",
-  "polymesh-host-functions/u64_backend",
-]
-simd_backend = [
-  "confidential_assets/simd_backend",
-  "polymesh-host-functions/simd_backend",
-]
-avx2_backend = [
-  "confidential_assets/avx2_backend",
-  "polymesh-host-functions/avx2_backend",
-]
-
-no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std", "u64_backend"]
+no_std = ["confidential_assets/no_std", "polymesh-host-functions/no_std"]
 std = [
     "rand_core/std",
     "rand_chacha/std",
@@ -89,3 +75,4 @@ runtime-benchmarks = [
     "polymesh-host-functions/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
+try-runtime = []

@@ -20,20 +20,15 @@ log = "0.4"
 
 # Substrate
 scale-info = { workspace = true, default-features = false, features = ["derive"] }
-codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-runtime-interface = { workspace = true, default-features = false }
 
 [features]
-default = ["std", "u64_backend"]
+default = ["std"]
 
-# Backends
-u64_backend = ["confidential_assets/u64_backend"]
-simd_backend = ["confidential_assets/simd_backend"]
-avx2_backend = ["confidential_assets/avx2_backend"]
-
-no_std = ["confidential_assets/no_std", "u64_backend"]
+no_std = ["confidential_assets/no_std"]
 std = [
     "rand_core/std",
     "rand_chacha/std",
