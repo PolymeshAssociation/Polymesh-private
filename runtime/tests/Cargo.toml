@@ -10,7 +10,6 @@ polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 polymesh-primitives = { workspace = true, default-features = false }
 polymesh-weights = { workspace = true, default-features = false }
-polymesh-extensions = { workspace = true, default-features = false }
 
 # Our pallets
 pallet-asset = { workspace = true, default-features = false }
@@ -33,7 +32,7 @@ pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
 pallet-test-utils = { workspace = true, default-features = false }
-pallet-transaction-payment = { workspace = true, default-features = false }
+pallet-transaction-payment = { workspace = true, default-features = false, features = ["disable_fees"] }
 pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
 pallet-sudo = { workspace = true, default-features = false }
@@ -171,7 +170,6 @@ std = [
   "sp-transaction-pool/std",
   "sp-version/std",
   "polymesh-contracts/std",
-  "polymesh-extensions/std",
 ]
 
 runtime-benchmarks = [
