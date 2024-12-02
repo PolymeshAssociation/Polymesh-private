@@ -144,7 +144,7 @@ pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", bran
 pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false, features = ["disable_fees"]}
 pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -155,7 +155,6 @@ polymesh-common-utilities = { git = "https://github.com/PolymeshAssociation/Poly
 polymesh-runtime-common = { path = "runtime/common/", default-features = false }
 polymesh-primitives = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 polymesh-weights = { path = "pallets/weights/", default-features = false }
-polymesh-extensions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 
 # RPC
 node-rpc = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -256,7 +255,6 @@ polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 polymesh-primitives = { workspace = true, default-features = false }
 polymesh-weights = { workspace = true, default-features = false }
-polymesh-extensions = { workspace = true, default-features = false }
 
 # PoA
 validator-set = { workspace = true, default-features = false }
