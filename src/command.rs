@@ -16,7 +16,7 @@
 // limitations under the License.
 
 use crate::chain_spec;
-use crate::cli::{Cli, Subcommand};
+use crate::cli::{Cli, CustomChainConfig, Subcommand};
 use crate::service::{
     self, develop_chain_ops, new_partial, production_chain_ops, DevelopExecutor, FullClient,
     FullServiceComponents, IsNetwork, Network, NewChainOps, ProductionExecutor,
@@ -60,6 +60,13 @@ impl SubstrateCli for Cli {
     }
 
     fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
+        if let Some(file_path) = id.strip_prefix("config_path:") {
+            let custom_chain_config = read_chain_config(file_path)?;
+            return Ok(Box::new(chain_spec::develop::custom_config(
+                custom_chain_config,
+            )));
+        }
+
         Ok(match id {
             "dev" => Box::new(chain_spec::develop::develop_config()),
             "local" => Box::new(chain_spec::develop::local_config()),
@@ -89,9 +96,11 @@ impl SubstrateCli for Cli {
 /// Parses Polymesh specific CLI arguments and run the service.
 pub fn run() -> Result<()> {
     let mut cli = Cli::from_args();
+
     if cli.run.operator {
         cli.run.base.validator = true;
     }
+
     match &cli.subcommand {
         None => {
             let runner = cli.create_runner(&cli.run.base)?;
@@ -248,4 +257,13 @@ where
             runner.async_run(|mut config| production(production_chain_ops(&mut config)?, config))
         }
     }
+}
+
+/// Returns [`CustomChainConfig`] if `config_path` contains the path to its valid JSON file.
+fn read_chain_config(config_path: &str) -> std::result::Result<CustomChainConfig, String> {
+    let file = std::fs::File::open(config_path).map_err(|_| "Failed to open file".to_owned())?;
+    let reader = std::io::BufReader::new(file);
+
+    serde_json::from_reader(reader)
+        .map_err(|_| "Unable to deserialize CustomChainConfig from file".into())
 }
