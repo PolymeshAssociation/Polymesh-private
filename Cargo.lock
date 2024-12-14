@@ -5956,6 +5956,7 @@ dependencies = [
  "pallet-confidential-asset",
  "pallet-corporate-actions",
  "pallet-external-agents",
+ "pallet-grandpa",
  "pallet-group",
  "pallet-group-rpc",
  "pallet-group-rpc-runtime-api",

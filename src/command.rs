@@ -62,7 +62,8 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
         if let Some(file_path) = id.strip_prefix("config_path:") {
             let custom_chain_config = read_chain_config(file_path)?;
-            return Ok(Box::new(chain_spec::develop::custom_config(
+
+            return Ok(Box::new(chain_spec::custom::chain_spec(
                 custom_chain_config,
             )));
         }

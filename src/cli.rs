@@ -77,22 +77,38 @@ pub struct CustomChainConfig {
     pub account_ss58_prefix: Option<u8>,
     /// Defines the token symbol. If `None` will default to POLYX.
     pub token_symbol: Option<String>,
+    /// All session keys.
+    pub session_keys: Vec<ValidatorKeys>,
     /// A list of identities that are created at initialization.
-    pub initial_identities: Option<Vec<InitialIdentity>>,
+    pub initial_identities: InitialIdentities,
     /// The amount that will be added to the funded accounts.
     pub initial_funds: Option<u128>,
-    /// The polymesh commmittee coordinator account.
-    pub polymesh_release_coordinator: Option<AccountId>,
-    /// The technical commmittee coordinator account.
-    pub technical_release_coordinator: Option<AccountId>,
-    /// The upgrade commmittee coordinator account.
-    pub upgrade_release_coordinator: Option<AccountId>,
-    /// Set to `true` if there are no sudo accounts.
-    pub disable_sudo: Option<bool>,
-    /// The sudo account. If `None`, "Eve" will be the sudo account.
+    /// The sudo account.
     pub sudo_account: Option<AccountId>,
     /// Set to `true` if no fees should be charged.
     pub disable_fees: Option<bool>,
+}
+
+/// The session keys of the validator.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ValidatorKeys {
+    // Validator's account.
+    pub account_id: AccountId,
+    /// Hexadecimal String representation of the session keys.
+    pub session_keys: String,
+}
+
+/// A set of identities that will be created at initialization.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InitialIdentities {
+    /// All indentities that will be created at genesis.
+    pub identities: Vec<InitialIdentity>,
+    /// The polymesh commmittee coordinator account.
+    pub polymesh_coordinator: AccountId,
+    /// The upgrade commmittee coordinator account.
+    pub upgrade_coordinator: AccountId,
+    /// The technical commmittee coordinator account.
+    pub technical_coordinator: AccountId,
 }
 
 /// Data needed for creating identities at initialization.
