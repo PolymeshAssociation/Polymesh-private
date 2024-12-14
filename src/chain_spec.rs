@@ -889,6 +889,7 @@ pub mod develop {
 
 pub mod custom {
     use pallet_im_online::sr25519::AuthorityId as OnlineAuthorityId;
+    use rustc_hex::FromHex;
     use sp_authority_discovery::AuthorityId as DiscoveryAuthorityId;
     use sp_core::ByteArray;
     use sp_runtime::FixedU128;
@@ -1155,18 +1156,18 @@ pub mod custom {
                 panic!("Invalid session keys");
             }
 
-            let grandpa =
-                pallet_grandpa::AuthorityId::from_slice(validator.session_keys[2..66].as_bytes())
-                    .expect("Invalid Grandpa session keys");
-            let babe =
-                pallet_babe::AuthorityId::from_slice(validator.session_keys[66..130].as_bytes())
-                    .expect("Invalid BABE session keys");
-            let im_online =
-                OnlineAuthorityId::from_slice(validator.session_keys[130..194].as_bytes())
-                    .expect("Invalid Im-Online session keys");
-            let authority_discovery =
-                DiscoveryAuthorityId::from_slice(validator.session_keys[194..258].as_bytes())
-                    .expect("Invalid Authority session keys");
+            let grandpa: Vec<u8> = FromHex::from_hex(&validator.session_keys[2..66]).unwrap();
+            let grandpa = pallet_grandpa::AuthorityId::from_slice(&grandpa).unwrap();
+
+            let babe: Vec<u8> = FromHex::from_hex(&validator.session_keys[66..130]).unwrap();
+            let babe = pallet_babe::AuthorityId::from_slice(&babe).unwrap();
+
+            let im_online: Vec<u8> = FromHex::from_hex(&validator.session_keys[130..194]).unwrap();
+            let im_online = OnlineAuthorityId::from_slice(&im_online).unwrap();
+
+            let auth_discovery: Vec<u8> =
+                FromHex::from_hex(&validator.session_keys[194..258]).unwrap();
+            let authority_discovery = DiscoveryAuthorityId::from_slice(&auth_discovery).unwrap();
 
             session_keys.push((
                 validator.account_id.clone(),
