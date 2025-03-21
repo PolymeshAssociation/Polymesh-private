@@ -24,6 +24,8 @@ use sp_runtime::traits::{AccountIdConversion, IdentifyAccount, Verify};
 use sp_runtime::{Deserialize, Serialize};
 use std::convert::TryInto;
 
+const DEFAULT_TOKEN_SYMBOL: &str = "POLYX";
+
 // The URL for the telemetry server.
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polymesh.network/submit/";
 
@@ -100,11 +102,25 @@ pub fn get_authority_keys_from_seed(s: &str, uniq: bool) -> InitialAuth {
     )
 }
 
-fn polymesh_props(ss58: u8) -> Properties {
-    json!({ "ss58Format": ss58, "tokenDecimals": 6, "tokenSymbol": "POLYX" })
-        .as_object()
-        .unwrap()
-        .clone()
+/// Returns the following JSON object:
+///
+/// {
+///     "ss58Format": `ss58_prefix`,
+///     "tokenDecimals": 6,
+///     "tokenSymbol": `token_symbol`
+/// }
+///
+/// If `token_symbol` is `None`, defaults to POLYX.
+fn polymesh_properties(ss58_prefix: u8, token_symbol: Option<&str>) -> Properties {
+    json!(
+    {
+        "ss58Format": ss58_prefix,
+        "tokenDecimals": 6,
+        "tokenSymbol": token_symbol.unwrap_or(DEFAULT_TOKEN_SYMBOL)
+    })
+    .as_object()
+    .unwrap()
+    .clone()
 }
 
 macro_rules! session_keys {
@@ -519,7 +535,7 @@ pub mod develop {
         ctype: ChainType,
         genesis: impl 'static + Sync + Send + Fn() -> rt::runtime::GenesisConfig,
     ) -> ChainSpec {
-        let props = Some(polymesh_props(42));
+        let props = Some(polymesh_properties(42, None));
         ChainSpec::from_genesis(
             name,
             id,
@@ -678,7 +694,7 @@ pub mod production {
             ),
             Some(&*"/polymesh/production"),
             None,
-            Some(polymesh_props(12)),
+            Some(polymesh_properties(12, None)),
             Default::default(),
         )
     }
@@ -704,7 +720,7 @@ pub mod production {
             None,
             None,
             None,
-            Some(polymesh_props(12)),
+            Some(polymesh_properties(12, None)),
             Default::default(),
         )
     }
@@ -734,7 +750,7 @@ pub mod production {
             None,
             None,
             None,
-            Some(polymesh_props(12)),
+            Some(polymesh_properties(12, None)),
             Default::default(),
         )
     }
@@ -868,5 +884,303 @@ pub mod develop {
             Some(polymesh_props(42)),
             Default::default(),
         )
+    }
+}
+
+pub mod custom {
+    use pallet_im_online::sr25519::AuthorityId as OnlineAuthorityId;
+    use rustc_hex::FromHex;
+    use sp_authority_discovery::AuthorityId as DiscoveryAuthorityId;
+    use sp_core::ByteArray;
+    use sp_runtime::FixedU128;
+
+    use polymesh_private_runtime_production::constants::time;
+    use polymesh_private_runtime_production::runtime::GenesisConfig as ProductionGenesisConfig;
+    use polymesh_private_runtime_production::runtime::{BalancesConfig, BABE_GENESIS_EPOCH_CONFIG};
+    use polymesh_private_runtime_production::SessionKeys;
+    use polymesh_private_runtime_production::WASM_BINARY;
+
+    use super::*;
+    use crate::cli::{CustomChainConfig, ValidatorKeys};
+
+    pub type ChainSpec = GenericChainSpec<ProductionGenesisConfig>;
+
+    /// The identity of all committee members.
+    #[derive(Default)]
+    struct CommitteeMembers {
+        pub(crate) upgrade_committee: Vec<IdentityId>,
+        pub(crate) polymesh_committee: Vec<IdentityId>,
+        pub(crate) technical_committee: Vec<IdentityId>,
+        pub(crate) cdd_providers_committee: Vec<IdentityId>,
+    }
+
+    /// The identity of all release coordinators.
+    struct ReleaseCoordinators {
+        /// The upgrade commmittee coordinator account.
+        pub(crate) upgrade: IdentityId,
+        /// The polymesh commmittee coordinator account.
+        pub(crate) polymesh: IdentityId,
+        /// The technical commmittee coordinator account.
+        pub(crate) technical: IdentityId,
+    }
+
+    /// The data that will be used for setting the genesis config.
+    struct CustomGenesisSettings {
+        /// The identity records that will be created at genesis.
+        pub(crate) identity_records: Vec<GenesisIdentityRecord<AccountId>>,
+        /// The balance of all accounts set at genesis.
+        pub(crate) balances: Vec<(AccountId, u128)>,
+        /// The Identity of all committee members.
+        pub(crate) committee_members: CommitteeMembers,
+        /// The account of all initial_validators.
+        pub(crate) initial_validators: Vec<AccountId>,
+        /// The account of all release coordinators.
+        pub(crate) release_coordinators: ReleaseCoordinators,
+        /// Set to `true` if no fees should be charged.
+        pub(crate) disable_fees: bool,
+        /// The sudo account.
+        pub(crate) sudo_account: Option<AccountId>,
+    }
+
+    /// Returns [`ChainSpec`] based on `chain_config` (see [`CustomChainConfig`]).
+    pub fn chain_spec(custom_chain_config: CustomChainConfig) -> ChainSpec {
+        let chain_config = custom_chain_config.clone();
+
+        let genesis_constructor = move || -> ProductionGenesisConfig {
+            let genesis_settings = genesis_settings(chain_config.clone());
+
+            ProductionGenesisConfig {
+                system: frame(WASM_BINARY),
+                asset: asset!(),
+                checkpoint: checkpoint!(),
+                identity: pallet_identity::GenesisConfig {
+                    identities: genesis_settings.identity_records,
+                    ..Default::default()
+                },
+                balances: BalancesConfig {
+                    balances: genesis_settings.balances,
+                },
+                transaction_payment: pallet_transaction_payment::GenesisConfig {
+                    multiplier: FixedU128::from(1),
+                    disable_fees: genesis_settings.disable_fees,
+                },
+                session: pallet_session::GenesisConfig {
+                    keys: split_session_keys(chain_config.session_keys.clone()),
+                },
+                pips: pips!(time::DAYS * 30, MaybeBlock::Some(time::DAYS * 90), 1000),
+                validator_set: validator_set::GenesisConfig {
+                    initial_validators: genesis_settings.initial_validators,
+                },
+                babe: pallet_babe::GenesisConfig {
+                    authorities: vec![],
+                    epoch_config: Some(BABE_GENESIS_EPOCH_CONFIG),
+                },
+                committee_membership: pallet_group::GenesisConfig {
+                    active_members_limit: 20,
+                    active_members: genesis_settings.committee_members.polymesh_committee,
+                    phantom: Default::default(),
+                },
+                polymesh_committee: pallet_committee::GenesisConfig {
+                    vote_threshold: (2, 3),
+                    release_coordinator: genesis_settings.release_coordinators.polymesh,
+                    ..Default::default()
+                },
+                cdd_service_providers: pallet_group::GenesisConfig {
+                    active_members_limit: 20,
+                    active_members: genesis_settings.committee_members.cdd_providers_committee,
+                    phantom: Default::default(),
+                },
+                technical_committee_membership: pallet_group::GenesisConfig {
+                    active_members_limit: 20,
+                    active_members: genesis_settings.committee_members.technical_committee,
+                    phantom: Default::default(),
+                },
+                technical_committee: pallet_committee::GenesisConfig {
+                    vote_threshold: (1, 2),
+                    release_coordinator: genesis_settings.release_coordinators.technical,
+                    ..Default::default()
+                },
+                upgrade_committee_membership: pallet_group::GenesisConfig {
+                    active_members_limit: 20,
+                    active_members: genesis_settings.committee_members.upgrade_committee,
+                    phantom: Default::default(),
+                },
+                upgrade_committee: pallet_committee::GenesisConfig {
+                    vote_threshold: (1, 2),
+                    release_coordinator: genesis_settings.release_coordinators.upgrade,
+                    ..Default::default()
+                },
+                protocol_fee: protocol_fee!(),
+                corporate_action: corporate_actions!(),
+                polymesh_contracts: polymesh_contracts!(genesis_settings.sudo_account),
+                ..Default::default()
+            }
+        };
+
+        ChainSpec::from_genesis(
+            custom_chain_config.chain_name.as_str(),
+            custom_chain_config.chain_id.as_str(),
+            custom_chain_config.chain_type,
+            genesis_constructor,
+            custom_chain_config.boot_nodes.unwrap_or_default(),
+            custom_chain_config.telemetry_endpoints,
+            custom_chain_config.protocol_id.as_deref(),
+            None,
+            Some(polymesh_properties(
+                custom_chain_config.account_ss58_prefix.unwrap_or(42),
+                custom_chain_config.token_symbol.as_deref(),
+            )),
+            Default::default(),
+        )
+    }
+
+    /// Returns [`CustomGenesisSettings`] containing the records for the identities created at genesis,
+    /// their balance, the set of validators and the committee members.
+    fn genesis_settings(chain_config: CustomChainConfig) -> CustomGenesisSettings {
+        let initial_funds = chain_config.initial_funds.unwrap_or(BOOTSTRAP_KEYS);
+
+        let mut balances = Vec::new();
+        let mut initial_validators = Vec::new();
+        let mut identity_records = Vec::new();
+
+        let mut upgrade_coordinator = None;
+        let mut polymesh_coordinator = None;
+        let mut technical_coordinator = None;
+        let mut committee_members = CommitteeMembers::default();
+
+        let mut nonce = 1;
+        for initial_id in chain_config.initial_identities.identities {
+            let mut genesis_record =
+                GenesisIdentityRecord::new(nonce, initial_id.account_id.clone());
+
+            if initial_id.is_cdd_provider {
+                genesis_record
+                    .issuers
+                    .push(SystematicIssuers::CDDProvider.as_id());
+                committee_members
+                    .cdd_providers_committee
+                    .push(genesis_record.did);
+            }
+
+            if initial_id.is_validator {
+                initial_validators.push(initial_id.account_id.clone());
+            }
+
+            // Check if the account is a committee member
+            if initial_id.polymesh_committee_member {
+                committee_members
+                    .polymesh_committee
+                    .push(genesis_record.did);
+            }
+
+            if initial_id.upgrade_committee_member {
+                committee_members.upgrade_committee.push(genesis_record.did);
+            }
+
+            if initial_id.technical_committee_member {
+                committee_members
+                    .technical_committee
+                    .push(genesis_record.did);
+            }
+
+            // Check if the account is a coordinator
+            if initial_id.account_id == chain_config.initial_identities.polymesh_coordinator {
+                polymesh_coordinator = Some(genesis_record.did);
+            }
+
+            if initial_id.account_id == chain_config.initial_identities.upgrade_coordinator {
+                upgrade_coordinator = Some(genesis_record.did);
+            }
+
+            if initial_id.account_id == chain_config.initial_identities.technical_coordinator {
+                technical_coordinator = Some(genesis_record.did);
+            }
+
+            identity_records.push(genesis_record);
+            balances.push((initial_id.account_id, initial_funds));
+            nonce += 1;
+        }
+
+        // Set sudo genesis record
+        if let Some(sudo_account) = &chain_config.sudo_account {
+            let mut genesis_record = GenesisIdentityRecord::new(nonce, sudo_account.clone());
+            genesis_record
+                .issuers
+                .push(SystematicIssuers::CDDProvider.as_id());
+            identity_records.push(genesis_record);
+            balances.push((sudo_account.clone(), initial_funds));
+        }
+
+        // Set treasury balance
+        balances.push((
+            TREASURY_PALLET_ID.into_account_truncating(),
+            BOOTSTRAP_TREASURY,
+        ));
+
+        // If any of the coordinator accounts has not been set as an initial identity, we must panic.
+        let release_coordinators = ReleaseCoordinators {
+            upgrade: upgrade_coordinator.expect(
+                "The release coordinator AccountId has not been set as an initial identity.",
+            ),
+            polymesh: polymesh_coordinator.expect(
+                "The polymesh coordinator AccountId has not been set as an initial identity.",
+            ),
+            technical: technical_coordinator.expect(
+                "The technical coordinator AccountId has not been set as an initial identity.",
+            ),
+        };
+        CustomGenesisSettings {
+            identity_records,
+            balances,
+            committee_members,
+            initial_validators,
+            release_coordinators,
+            disable_fees: chain_config.disable_fees.unwrap_or(false),
+            sudo_account: chain_config.sudo_account,
+        }
+    }
+
+    fn split_session_keys(
+        validators_keys: Vec<ValidatorKeys>,
+    ) -> Vec<(AccountId, AccountId, SessionKeys)> {
+        let mut session_keys = Vec::new();
+
+        for validator in validators_keys {
+            // Must be represented in hexadecimal
+            if !validator.session_keys.starts_with("0x") {
+                panic!("Invalid session keys");
+            }
+
+            // Must contain 4 keys of 64 bytes
+            if validator.session_keys.len() != 258 {
+                panic!("Invalid session keys");
+            }
+
+            let grandpa: Vec<u8> = FromHex::from_hex(&validator.session_keys[2..66]).unwrap();
+            let grandpa = pallet_grandpa::AuthorityId::from_slice(&grandpa).unwrap();
+
+            let babe: Vec<u8> = FromHex::from_hex(&validator.session_keys[66..130]).unwrap();
+            let babe = pallet_babe::AuthorityId::from_slice(&babe).unwrap();
+
+            let im_online: Vec<u8> = FromHex::from_hex(&validator.session_keys[130..194]).unwrap();
+            let im_online = OnlineAuthorityId::from_slice(&im_online).unwrap();
+
+            let auth_discovery: Vec<u8> =
+                FromHex::from_hex(&validator.session_keys[194..258]).unwrap();
+            let authority_discovery = DiscoveryAuthorityId::from_slice(&auth_discovery).unwrap();
+
+            session_keys.push((
+                validator.account_id.clone(),
+                validator.account_id,
+                SessionKeys {
+                    grandpa,
+                    babe,
+                    im_online,
+                    authority_discovery,
+                },
+            ));
+        }
+
+        session_keys
     }
 }

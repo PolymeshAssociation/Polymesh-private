@@ -1,0 +1,69 @@
+{
+    "chain_name": "My Cutom Production Chain",
+    "chain_id": "My-Chain-Id",
+    "chain_type": "Live",
+    "session_keys": [
+        {
+            "account_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            "session_keys": "0x88dc3417d5058ec4b4503e0c12ea1a0a89be200fe98922423d4334014fa6b0eed43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27dd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+        },
+        {
+            "account_id": "5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc",
+            "session_keys": "0xd17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae698eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a488eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a488eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48"
+        }
+    ],
+    "initial_identities": {
+        "identities": [
+            {
+                "account_id": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+                "is_validator": true,
+                "is_cdd_provider": false,
+                "is_funded": true,
+                "polymesh_committee_member": true,
+                "technical_committee_member": true,
+                "upgrade_committee_member": true
+            },
+            {
+                "account_id": "5HpG9w8EBLe5XCrbczpwq5TSXvedjrBGCwqxK1iQ7qUsSWFc",
+                "is_validator": true,
+                "is_cdd_provider": false,
+                "is_funded": true,
+                "polymesh_committee_member": false,
+                "technical_committee_member": false,
+                "upgrade_committee_member": false
+            },
+            {
+                "account_id": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+                "is_validator": false,
+                "is_cdd_provider": false,
+                "is_funded": true,
+                "polymesh_committee_member": false,
+                "technical_committee_member": false,
+                "upgrade_committee_member": false
+            },
+            {
+                "account_id": "5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy",
+                "is_validator": false,
+                "is_cdd_provider": false,
+                "is_funded": true,
+                "polymesh_committee_member": false,
+                "technical_committee_member": false,
+                "upgrade_committee_member": false
+            },
+            {
+                "account_id": "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw",
+                "is_validator": false,
+                "is_cdd_provider": true,
+                "is_funded": true,
+                "polymesh_committee_member": false,
+                "technical_committee_member": false,
+                "upgrade_committee_member": false
+            }
+        ],
+        "polymesh_coordinator": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "upgrade_coordinator": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+        "technical_coordinator": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+    },
+    "sudo_account": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    "disable_fees": false
+}
