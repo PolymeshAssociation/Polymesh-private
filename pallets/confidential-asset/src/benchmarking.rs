@@ -15,10 +15,7 @@ use codec::{Decode, Encode};
 
 use confidential_assets::{elgamal::CommitmentWitness, Balance as ConfidentialBalance, Scalar};
 
-use polymesh_common_utilities::{
-    benchs::{user, AccountIdOf},
-    traits::TestUtilsFn,
-};
+use pallet_identity::benchmarking::user;
 
 use crate::testing::*;
 use crate::*;
@@ -39,7 +36,7 @@ fn verify_requests(seed: BatchSeed, requests: Vec<VerifyConfidentialTransferRequ
 }
 
 benchmarks! {
-    where_clause { where T: Config, T: TestUtilsFn<AccountIdOf<T>> }
+    where_clause { where T: Config }
 
     create_account {
         let mut rng = StdRng::from_seed([10u8; 32]);

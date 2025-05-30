@@ -418,4 +418,32 @@ impl pallet_pips::WeightInfo for SubstrateWeight {
             .saturating_add(DbWeight::get().reads(1608))
             .saturating_add(DbWeight::get().writes(1608))
     }
+    // Storage: Pips PendingRefunds (r:1 w:1)
+    // Proof: Pips PendingRefunds (max_values: None, max_size: Some(13), added: 2488, mode: MaxEncodedLen)
+    // Storage: Pips Deposits (r:129 w:128)
+    // Proof: Pips Deposits (max_values: None, max_size: Some(100), added: 2575, mode: MaxEncodedLen)
+    // Storage: Balances Locks (r:128 w:128)
+    // Proof Skipped: Balances Locks (max_values: None, max_size: None, mode: Measured)
+    // Storage: System Account (r:128 w:128)
+    // Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    // Storage: Pips VotesToBePruned (r:1 w:1)
+    // Proof: Pips VotesToBePruned (max_values: None, max_size: Some(13), added: 2488, mode: MaxEncodedLen)
+    // Storage: Pips ProposalVotes (r:129 w:128)
+    // Proof: Pips ProposalVotes (max_values: None, max_size: Some(69), added: 2544, mode: MaxEncodedLen)
+    /// The range of component `r` is `[0, 128]`.
+    /// The range of component `v` is `[0, 128]`.
+    fn remove_pending_storage(r: u32, v: u32) -> Weight {
+        // Minimum execution time: 739_279 nanoseconds.
+        Weight::from_ref_time(63_144_485)
+            // Standard Error: 18_226
+            .saturating_add(Weight::from_ref_time(24_421_417).saturating_mul(r.into()))
+            // Standard Error: 18_226
+            .saturating_add(Weight::from_ref_time(5_613_829).saturating_mul(v.into()))
+            .saturating_add(DbWeight::get().reads(4))
+            .saturating_add(DbWeight::get().reads((3_u64).saturating_mul(r.into())))
+            .saturating_add(DbWeight::get().reads((1_u64).saturating_mul(v.into())))
+            .saturating_add(DbWeight::get().writes(2))
+            .saturating_add(DbWeight::get().writes((3_u64).saturating_mul(r.into())))
+            .saturating_add(DbWeight::get().writes((1_u64).saturating_mul(v.into())))
+    }
 }

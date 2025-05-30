@@ -31,7 +31,6 @@ pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
-pallet-test-utils = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false, features = ["disable_fees"] }
 pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
@@ -145,7 +144,6 @@ std = [
   "pallet-settlement/std",
   "pallet-statistics/std",
   "pallet-sudo/std",
-  "pallet-test-utils/std",
   "pallet-timestamp/std",
   "pallet-transaction-payment/std",
   "pallet-treasury/std",
@@ -203,8 +201,6 @@ runtime-benchmarks = [
   "pallet-timestamp/runtime-benchmarks",
   "pallet-treasury/runtime-benchmarks",
   "pallet-utility/runtime-benchmarks",
-  "pallet-test-utils/runtime-benchmarks",
-  "polymesh-common-utilities/runtime-benchmarks",
   "polymesh-contracts/runtime-benchmarks",
   "polymesh-primitives/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",

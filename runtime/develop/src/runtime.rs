@@ -4,19 +4,16 @@ use crate::constants::time::*;
 use codec::Encode;
 use core::convert::TryFrom;
 use frame_support::{
-    construct_runtime, dispatch::DispatchResult, parameter_types, traits::KeyOwnerProofSystem,
-    weights::Weight,
+    construct_runtime, parameter_types, traits::KeyOwnerProofSystem, weights::Weight,
 };
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_corporate_actions::ballot as pallet_corporate_ballot;
 use pallet_corporate_actions::distribution as pallet_capital_distribution;
 use pallet_session::historical as pallet_session_historical;
 pub use pallet_transaction_payment::{Multiplier, RuntimeDispatchInfo, TargetedFeeAdjustment};
-use polymesh_common_utilities::{
-    constants::currency::*, constants::ENSURED_MAX_LEN, protocol_fee::ProtocolOp, ConstSize,
-    TestUtilsFn,
-};
-use polymesh_primitives::{AccountId, Balance, BlockNumber, Moment};
+use polymesh_common_utilities::protocol_fee::ProtocolOp;
+use polymesh_primitives::{constants::currency::*, constants::ENSURED_MAX_LEN, ConstSize};
+use polymesh_primitives::{Balance, BlockNumber, Moment};
 use polymesh_runtime_common::{
     impls::Author,
     merge_active_and_inactive,
@@ -88,9 +85,10 @@ parameter_types! {
     pub const MaxNumberOfFungibleAssets: u32 = 10;
     pub const MaxNumberOfNFTsPerLeg: u32 = 10;
     pub const MaxNumberOfNFTs: u32 = 100;
+    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
-    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
+    pub const MaximumLockPeriod: Moment = 1_440_000; // 24 hours
 
     // I'm online:
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -149,6 +147,9 @@ parameter_types! {
 
     // Multisig
     pub const MaxMultiSigSigners: u32 = 50;
+
+    // PIPs
+    pub const MaxRefundsAndVotesPruned: u32 = 128;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -185,33 +186,20 @@ pub type DealWithFees = Author<Runtime>;
 
 polymesh_runtime_common::misc_pallet_impls!();
 
-pub type CddHandler = polymesh_runtime_common::fee_details::DevCddHandler<Runtime>;
+type CddHandler = polymesh_runtime_common::fee_details::CddHandler<Runtime>;
 
-impl<'a> TryFrom<&'a RuntimeCall> for &'a pallet_test_utils::Call<Runtime> {
-    type Error = ();
-    fn try_from(call: &'a RuntimeCall) -> Result<&'a pallet_test_utils::Call<Runtime>, ()> {
-        match call {
-            RuntimeCall::TestUtils(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl polymesh_common_utilities::traits::identity::Config for Runtime {
+impl pallet_identity::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Proposal = RuntimeCall;
-    type MultiSig = MultiSig;
-    type Portfolio = Portfolio;
     type CddServiceProviders = CddServiceProviders;
-    type Balances = pallet_balances::Module<Runtime>;
-    type ChargeTxFeeTarget = TransactionPayment;
+    type Balances = pallet_balances::Pallet<Runtime>;
     type CddHandler = CddHandler;
     type Public = <MultiSignature as Verify>::Signer;
     type OffChainSignature = MultiSignature;
-    type ProtocolFee = pallet_protocol_fee::Module<Runtime>;
+    type ProtocolFee = pallet_protocol_fee::Pallet<Runtime>;
     type GCVotingMajorityOrigin = VMO<GovernanceCommittee>;
     type WeightInfo = polymesh_weights::pallet_identity::SubstrateWeight;
-    type IdentityFn = pallet_identity::Module<Runtime>;
+    type IdentityFn = pallet_identity::Pallet<Runtime>;
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
     type MaxGivenAuths = MaxGivenAuths;
@@ -280,6 +268,7 @@ impl pallet_pips::Config for Runtime {
     type WeightInfo = polymesh_weights::pallet_pips::SubstrateWeight;
     type Scheduler = Scheduler;
     type SchedulerCall = RuntimeCall;
+    type MaxRefundsAndVotesPruned = MaxRefundsAndVotesPruned;
 }
 
 /// CddProviders instance of group
@@ -294,11 +283,6 @@ impl pallet_group::Config<pallet_group::Instance2> for Runtime {
     type MembershipInitialized = Identity;
     type MembershipChanged = Identity;
     type WeightInfo = polymesh_weights::pallet_group::SubstrateWeight;
-}
-
-impl pallet_test_utils::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = polymesh_weights::pallet_test_utils::SubstrateWeight;
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -324,16 +308,6 @@ impl pallet_confidential_asset::Config for Runtime {
     type MaxAssetsPerMoveFunds = ConfidentialAssetMaxAssetsPerMoveFunds;
     type MaxMoveFunds = ConfidentialAssetMaxMoveFunds;
     type BatchHostThreads = ConfidentialAssetBatchHostThreads;
-}
-
-/// NB It is needed by benchmarks, in order to use `UserBuilder`.
-impl TestUtilsFn<AccountId> for Runtime {
-    fn register_did(
-        target: AccountId,
-        secondary_keys: Vec<polymesh_primitives::secondary_key::SecondaryKey<AccountId>>,
-    ) -> DispatchResult {
-        <TestUtils as TestUtilsFn<AccountId>>::register_did(target, secondary_keys)
-    }
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -372,7 +346,6 @@ mod benches {
         [pallet_indices, Indices]
         [pallet_grandpa, Grandpa]
         [pallet_scheduler, Scheduler]
-        [pallet_test_utils, TestUtils]
         [polymesh_contracts, PolymeshContracts]
         [pallet_nft, Nft]
     );
@@ -438,24 +411,24 @@ construct_runtime!(
         Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 
         // Asset: Genesis config deps: Timestamp,
-        Asset: pallet_asset::{Pallet, Call, Storage, Config<T>, Event<T>},
-        CapitalDistribution: pallet_capital_distribution::{Pallet, Call, Storage, Event},
-        Checkpoint: pallet_checkpoint::{Pallet, Call, Storage, Event, Config},
-        ComplianceManager: pallet_compliance_manager::{Pallet, Call, Storage, Event},
-        CorporateAction: pallet_corporate_actions::{Pallet, Call, Storage, Event, Config},
-        CorporateBallot: pallet_corporate_ballot::{Pallet, Call, Storage, Event},
+        Asset: pallet_asset::{Pallet, Call, Storage, Config, Event<T>},
+        CapitalDistribution: pallet_capital_distribution::{Pallet, Call, Storage, Event<T>},
+        Checkpoint: pallet_checkpoint::{Pallet, Call, Storage, Event<T>, Config},
+        ComplianceManager: pallet_compliance_manager::{Pallet, Call, Storage, Event<T>},
+        CorporateAction: pallet_corporate_actions::{Pallet, Call, Storage, Event<T>, Config},
+        CorporateBallot: pallet_corporate_ballot::{Pallet, Call, Storage, Event<T>},
         Permissions: pallet_permissions::{Pallet},
         Pips: pallet_pips::{Pallet, Call, Storage, Event<T>, Config<T>},
-        Portfolio: pallet_portfolio::{Pallet, Call, Storage, Event, Config},
+        Portfolio: pallet_portfolio::{Pallet, Call, Storage, Event<T>, Config},
         ProtocolFee: pallet_protocol_fee::{Pallet, Call, Storage, Event<T>, Config},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Settlement: pallet_settlement::{Pallet, Call, Storage, Event<T>, Config},
-        Statistics: pallet_statistics::{Pallet, Call, Storage, Event, Config},
+        Statistics: pallet_statistics::{Pallet, Call, Storage, Event<T>, Config},
         Sto: pallet_sto::{Pallet, Call, Storage, Event<T>},
         Treasury: pallet_treasury::{Pallet, Call, Event<T>},
         Utility: pallet_utility::{Pallet, Call, Storage, Event<T>},
         Base: pallet_base::{Pallet, Call, Event},
-        ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event},
+        ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event<T>},
         Relayer: pallet_relayer::{Pallet, Call, Storage, Event<T>},
         // Removed pallet_rewards = 45
 
@@ -466,9 +439,7 @@ construct_runtime!(
         // Preimage register.  Used by `pallet_scheduler`.
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>},
 
-        Nft: pallet_nft::{Pallet, Call, Storage, Event},
-
-        TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
+        Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 
         // Confidential Asset pallets.
         ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,

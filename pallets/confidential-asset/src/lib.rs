@@ -26,14 +26,15 @@ use frame_support::{
     weights::Weight,
     BoundedBTreeMap, BoundedBTreeSet, BoundedVec,
 };
+use pallet_balances::Config as BalancesConfig;
 use pallet_base::try_next_post;
-use polymesh_common_utilities::{
-    balances::Config as BalancesConfig, identity::Config as IdentityConfig, GetExtra,
-};
+use pallet_identity::Config as IdentityConfig;
 use polymesh_host_functions::{
     BatchVerify, HostCipherText, VerifyConfidentialBurnRequest, VerifyConfidentialTransferRequest,
 };
-use polymesh_primitives::{impl_checked_inc, settlement::VenueId, Balance, IdentityId, Memo};
+use polymesh_primitives::{
+    impl_checked_inc, settlement::VenueId, Balance, GetExtra, IdentityId, Memo,
+};
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_128;
 use sp_runtime::{traits::Zero, SaturatedConversion};
@@ -41,7 +42,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::{convert::From, prelude::*};
 
-type PalletIdentity<T> = pallet_identity::Module<T>;
+type PalletIdentity<T> = pallet_identity::Pallet<T>;
 type System<T> = frame_system::Pallet<T>;
 
 #[cfg(feature = "runtime-benchmarks")]

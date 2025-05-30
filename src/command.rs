@@ -80,9 +80,21 @@ impl SubstrateCli for Cli {
                         .into(),
                 );
             }
-            path => Box::new(chain_spec::production::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
+            path => {
+                if let Some(path) = path.strip_prefix("dev:") {
+                    Box::new(chain_spec::develop::ChainSpec::from_json_file(
+                        std::path::PathBuf::from(path),
+                    )?)
+                } else if let Some(path) = path.strip_prefix("prod:") {
+                    Box::new(chain_spec::production::ChainSpec::from_json_file(
+                        std::path::PathBuf::from(path),
+                    )?)
+                } else {
+                    Box::new(chain_spec::production::ChainSpec::from_json_file(
+                        std::path::PathBuf::from(path),
+                    )?)
+                }
+            }
         })
     }
 

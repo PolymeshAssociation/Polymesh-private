@@ -1,15 +1,13 @@
 use codec::{Decode, Encode};
 use pallet_asset::TickerRegistrationConfig;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
-use polymesh_common_utilities::{
-    constants::{currency::ONE_POLY, TREASURY_PALLET_ID},
-    protocol_fee::ProtocolOp,
-    MaybeBlock, SystematicIssuers,
-};
+use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_primitives::{
     asset_metadata::{AssetMetadataName, AssetMetadataSpec},
+    constants::{currency::ONE_POLY, TREASURY_PALLET_ID},
     identity_id::GenesisIdentityRecord,
-    AccountId, IdentityId, Moment, PosRatio, SecondaryKey, Signature, Ticker,
+    AccountId, IdentityId, MaybeBlock, Moment, PosRatio, SecondaryKey, Signature,
+    SystematicIssuers, Ticker,
 };
 use sc_chain_spec::{ChainSpecExtension, ChainType};
 use sc_consensus_grandpa::AuthorityId as GrandpaId;
@@ -423,7 +421,7 @@ macro_rules! polymesh_contracts {
                 .as_bytes()
                 .try_into()
                 .expect("Wrong Length - should be length 4"),
-            upgradable_major: 6,
+            upgradable_major: 7,
             upgradable_owner: $root_key,
         }
     };
@@ -431,7 +429,7 @@ macro_rules! polymesh_contracts {
 
 fn contracts_upgradable_code() -> Vec<u8> {
     // NB - Contract should match the `upgradable_major` version above.
-    let upgradable_code = include_bytes!("data/contracts/polymesh_ink_6.wasm").to_vec();
+    let upgradable_code = include_bytes!("data/contracts/polymesh_ink_7.wasm").to_vec();
     upgradable_code
 }
 
@@ -821,9 +819,7 @@ pub mod develop {
             settlement: Default::default(),
             portfolio: Default::default(),
             statistics: Default::default(),
-            multi_sig: pallet_multisig::GenesisConfig {
-                transaction_version: 1,
-            },
+            multi_sig: Default::default(),
             corporate_action: corporate_actions!(),
             polymesh_contracts: polymesh_contracts!(Some(root_key)),
             ..Default::default()
@@ -851,7 +847,7 @@ pub mod develop {
             None,
             None,
             None,
-            Some(polymesh_props(42)),
+            Some(polymesh_properties(42, None)),
             Default::default(),
         )
     }
@@ -881,7 +877,7 @@ pub mod develop {
             None,
             None,
             None,
-            Some(polymesh_props(42)),
+            Some(polymesh_properties(42, None)),
             Default::default(),
         )
     }

@@ -1,4 +1,5 @@
 use frame_support::dispatch::Weight;
+use frame_support::pallet_prelude::GenesisBuild;
 use sp_io::TestExternalities;
 use sp_keyring::AccountKeyring;
 use sp_runtime::Storage;
@@ -11,11 +12,10 @@ use pallet_committee as committee;
 use pallet_group as group;
 use pallet_identity as identity;
 use pallet_pips as pips;
-use polymesh_common_utilities::{
-    constants::currency::POLY, protocol_fee::ProtocolOp, SystematicIssuers, GC_DID,
-};
+use polymesh_common_utilities::protocol_fee::ProtocolOp;
 use polymesh_primitives::{
-    identity_id::GenesisIdentityRecord, AccountId, IdentityId, PosRatio, SecondaryKey,
+    constants::currency::POLY, identity_id::GenesisIdentityRecord, AccountId, IdentityId, PosRatio,
+    SecondaryKey, SystematicIssuers, GC_DID,
 };
 
 use crate::test_runtime::TestRuntime;
@@ -199,13 +199,12 @@ impl ExtBuilder {
             max_ticker_length: 8,
             registration_length: Some(10000),
         };
-        asset::GenesisConfig::<TestRuntime> {
+        let genesis = asset::GenesisConfig {
             ticker_registration_config,
             reserved_country_currency_codes: vec![],
             asset_metadata: vec![],
-        }
-        .assimilate_storage(storage)
-        .unwrap();
+        };
+        GenesisBuild::<TestRuntime>::assimilate_storage(&genesis, storage).unwrap();
     }
 
     /// For each `cdd_providers`:
@@ -266,12 +265,11 @@ impl ExtBuilder {
     }
 
     fn build_protocol_fee_genesis(&self, storage: &mut Storage) {
-        pallet_protocol_fee::GenesisConfig {
+        let genesis = pallet_protocol_fee::GenesisConfig {
             base_fees: self.protocol_base_fees.0.clone(),
             coefficient: self.protocol_coefficient,
-        }
-        .assimilate_storage(storage)
-        .unwrap();
+        };
+        GenesisBuild::<TestRuntime>::assimilate_storage(&genesis, storage).unwrap();
     }
 
     fn build_pips_genesis(&self, storage: &mut Storage) {

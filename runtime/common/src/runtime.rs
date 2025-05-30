@@ -91,7 +91,7 @@ macro_rules! misc_pallet_impls {
             /// What to do if an account is fully reaped from the system.
             type OnKilledAccount = ();
             /// The data to be stored in an account.
-            type AccountData = polymesh_common_utilities::traits::balances::AccountData;
+            type AccountData = pallet_balances::AccountData;
             type SystemWeightInfo = polymesh_weights::frame_system::SubstrateWeight;
             type OnSetCode = ();
             type MaxConsumers = frame_support::traits::ConstU32<16>;
@@ -177,7 +177,7 @@ macro_rules! misc_pallet_impls {
             type WeightToFeeConst = polymesh_runtime_common::WeightToFee;
         }
 
-        impl polymesh_common_utilities::traits::CommonConfig for Runtime {
+        impl pallet_balances::BlockRewardConfig for Runtime {
             type BlockRewardsReserve = pallet_balances::Pallet<Runtime>;
         }
 
@@ -261,11 +261,10 @@ macro_rules! misc_pallet_impls {
 
         impl pallet_portfolio::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
-            type Asset = Asset;
             type WeightInfo = polymesh_weights::pallet_portfolio::SubstrateWeight;
             type MaxNumberOfFungibleMoves = MaxNumberOfFungibleMoves;
             type MaxNumberOfNFTsMoves = MaxNumberOfNFTsMoves;
-            type NFT = pallet_nft::Module<Runtime>;
+            type NFT = pallet_nft::Pallet<Runtime>;
         }
 
         impl pallet_external_agents::Config for Runtime {
@@ -327,20 +326,27 @@ macro_rules! misc_pallet_impls {
             type SubsidyCallFilter = SubsidyFilter;
         }
 
+        impl polymesh_primitives::traits::AssetFnConfig for Runtime {
+            type AssetFn = Asset;
+        }
+
+        impl pallet_asset::checkpoint::Config for Runtime {
+            type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = polymesh_weights::pallet_checkpoint::SubstrateWeight;
+        }
+
         impl pallet_asset::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type Currency = Balances;
-            type ComplianceManager = pallet_compliance_manager::Module<Runtime>;
+            type ComplianceManager = pallet_compliance_manager::Pallet<Runtime>;
             type UnixTime = pallet_timestamp::Pallet<Runtime>;
             type AssetNameMaxLength = AssetNameMaxLength;
             type FundingRoundNameMaxLength = FundingRoundNameMaxLength;
             type AssetMetadataNameMaxLength = AssetMetadataNameMaxLength;
             type AssetMetadataValueMaxLength = AssetMetadataValueMaxLength;
             type AssetMetadataTypeDefMaxLength = AssetMetadataTypeDefMaxLength;
-            type AssetFn = Asset;
             type WeightInfo = polymesh_weights::pallet_asset::SubstrateWeight;
-            type CPWeightInfo = polymesh_weights::pallet_checkpoint::SubstrateWeight;
-            type NFTFn = pallet_nft::Module<Runtime>;
+            type NFTFn = pallet_nft::Pallet<Runtime>;
             type MaxAssetMediators = MaxAssetMediators;
         }
 
@@ -348,7 +354,6 @@ macro_rules! misc_pallet_impls {
             type RuntimeEvent = RuntimeEvent;
             type MaxInLen = MaxInLen;
             type MaxOutLen = MaxOutLen;
-            type Asset = pallet_asset::Module<Runtime>;
             type WeightInfo = polymesh_weights::polymesh_contracts::SubstrateWeight;
         }
 
@@ -385,9 +390,16 @@ macro_rules! misc_pallet_impls {
 
         impl pallet_compliance_manager::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
-            type Asset = Asset;
             type WeightInfo = polymesh_weights::pallet_compliance_manager::SubstrateWeight;
             type MaxConditionComplexity = MaxConditionComplexity;
+        }
+
+        impl pallet_capital_distribution::Config for Runtime {
+            type RuntimeEvent = RuntimeEvent;
+        }
+
+        impl pallet_corporate_ballot::Config for Runtime {
+            type RuntimeEvent = RuntimeEvent;
         }
 
         impl pallet_corporate_actions::Config for Runtime {
@@ -401,7 +413,6 @@ macro_rules! misc_pallet_impls {
 
         impl pallet_statistics::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
-            type Asset = Asset;
             type MaxStatsPerAsset = MaxStatsPerAsset;
             type MaxTransferConditionsPerAsset = MaxTransferConditionsPerAsset;
             type WeightInfo = polymesh_weights::pallet_statistics::SubstrateWeight;
@@ -498,6 +509,7 @@ macro_rules! misc_pallet_impls {
             type Proposal = RuntimeCall;
             type Scheduler = Scheduler;
             type WeightInfo = polymesh_weights::pallet_settlement::SubstrateWeight;
+            type Portfolio = Portfolio;
             type MaxNumberOfFungibleAssets = MaxNumberOfFungibleAssets;
             type MaxNumberOfNFTsPerLeg = MaxNumberOfNFTsPerLeg;
             type MaxNumberOfNFTs = MaxNumberOfNFTs;
@@ -505,6 +517,7 @@ macro_rules! misc_pallet_impls {
             type MaxNumberOfPortfolios = MaxNumberOfPortfolios;
             type MaxNumberOfVenueSigners = MaxNumberOfVenueSigners;
             type MaxInstructionMediators = MaxInstructionMediators;
+            type MaximumLockPeriod = MaximumLockPeriod;
         }
 
         impl pallet_sto::Config for Runtime {
@@ -512,7 +525,7 @@ macro_rules! misc_pallet_impls {
             type WeightInfo = polymesh_weights::pallet_sto::SubstrateWeight;
         }
 
-        impl polymesh_common_utilities::traits::permissions::Config for Runtime {
+        impl pallet_permissions::Config for Runtime {
             type Checker = Identity;
         }
 
@@ -580,7 +593,7 @@ macro_rules! misc_pallet_impls {
         impl pallet_nft::Config for Runtime {
             type RuntimeEvent = RuntimeEvent;
             type WeightInfo = polymesh_weights::pallet_nft::SubstrateWeight;
-            type Compliance = pallet_compliance_manager::Module<Runtime>;
+            type Compliance = pallet_compliance_manager::Pallet<Runtime>;
             type MaxNumberOfCollectionKeys = MaxNumberOfCollectionKeys;
             type MaxNumberOfNFTsCount = MaxNumberOfNFTsPerLeg;
         }
@@ -596,16 +609,17 @@ macro_rules! runtime_apis {
         use frame_support::dispatch::result::Result as FrameResult;
         use node_rpc_runtime_api::asset as rpc_api_asset;
 
-        use pallet_identity::types::{AssetDidResult, CddStatus, RpcDidRecords, DidStatus, KeyIdentityData};
+        use pallet_identity::types::{AssetDidResult, CddStatus, RpcDidRecords};
+        use pallet_identity::types::{DidStatus, KeyIdentityData};
         use pallet_pips::{Vote, VoteCount};
         use pallet_protocol_fee_rpc_runtime_api::CappedFee;
-        use polymesh_primitives::asset::AssetId;
-        use polymesh_primitives::settlement::{Leg, InstructionId, ExecuteInstructionInfo, AffirmationCount};
+        use polymesh_primitives::asset::{AssetId, CheckpointId};
+        use polymesh_primitives::settlement::{AssetCount, AffirmationCount, Leg};
+        use polymesh_primitives::settlement::{InstructionId, ExecuteInstructionInfo};
+        use polymesh_primitives::transfer_compliance::TransferCondition;
         use polymesh_primitives::compliance_manager::{AssetComplianceResult, ComplianceReport};
-        use polymesh_primitives::{
-            asset::CheckpointId, IdentityId, Index, NFTs,PortfolioId, Signatory, Ticker,
-            WeightMeter, IdentityClaim
-        };
+        use polymesh_primitives::{IdentityId, Index, NFTs, PortfolioId};
+        use polymesh_primitives::{Signatory, Ticker, WeightMeter, IdentityClaim};
 
         /// The address format for describing accounts.
         pub type Address = <Indices as StaticLookup>::Source;
@@ -1014,9 +1028,9 @@ macro_rules! runtime_apis {
             impl node_rpc_runtime_api::settlement::SettlementApi<Block> for Runtime {
                 #[inline]
                 fn get_execute_instruction_info(
-                    instruction_id: &InstructionId
+                    instruction_id: InstructionId
                 ) -> Option<ExecuteInstructionInfo> {
-                    Settlement::execute_instruction_info(instruction_id)
+                    Settlement::manual_execution_weight(instruction_id)
                 }
 
                 #[inline]
@@ -1035,10 +1049,18 @@ macro_rules! runtime_apis {
 
                 #[inline]
                 fn get_execute_instruction_report(instruction_id: InstructionId) -> Vec<DispatchError> {
-                    let mut weight_meter = WeightMeter::max_limit_no_minimum();
-                    Settlement::execute_instruction_report(&instruction_id, &mut weight_meter)
+                    Settlement::execute_instruction_report(&instruction_id)
                 }
 
+                #[inline]
+                fn lock_instruction_weight(instruction_id: InstructionId) -> Result<Weight, DispatchError> {
+                    Settlement::lock_instruction_weight(instruction_id)
+                }
+
+                #[inline]
+                fn instruction_asset_count(instruction_id: InstructionId) -> AssetCount {
+                    Settlement::instruction_asset_count(&instruction_id)
+                }
             }
 
             impl node_rpc_runtime_api::compliance::ComplianceApi<Block> for Runtime {

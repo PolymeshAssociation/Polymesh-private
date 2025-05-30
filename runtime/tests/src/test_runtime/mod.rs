@@ -5,7 +5,7 @@ pub mod ext_builder;
 use sp_version::NativeVersion;
 
 use codec::Encode;
-use frame_support::dispatch::{DispatchInfo, DispatchResult, Weight};
+use frame_support::dispatch::Weight;
 use frame_support::parameter_types;
 use frame_support::traits::{Currency, Imbalance, KeyOwnerProofSystem, OnUnbalanced};
 use frame_support::weights::RuntimeDbWeight;
@@ -17,9 +17,7 @@ use sp_runtime::create_runtime_str;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Extrinsic, NumberFor, StaticLookup, Verify,
 };
-use sp_runtime::transaction_validity::{
-    InvalidTransaction, TransactionPriority, TransactionValidity, ValidTransaction,
-};
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionPriority};
 use sp_runtime::Perbill;
 use sp_version::RuntimeVersion;
 use std::cell::RefCell;
@@ -28,22 +26,20 @@ use std::convert::From;
 use pallet_asset::checkpoint as pallet_checkpoint;
 use pallet_balances as balances;
 use pallet_committee as committee;
-use pallet_corporate_actions::ballot as corporate_ballots;
-use pallet_corporate_actions::distribution as capital_distributions;
+use pallet_corporate_actions::ballot as pallet_corporate_ballot;
+use pallet_corporate_actions::distribution as pallet_capital_distribution;
 use pallet_group as group;
-use pallet_identity as identity;
-use pallet_multisig as multisig;
+use pallet_identity::{self as identity, Context};
 use pallet_pips as pips;
-use pallet_portfolio as portfolio;
 use pallet_protocol_fee as protocol_fee;
 use pallet_session::historical as pallet_session_historical;
 use pallet_transaction_payment::RuntimeDispatchInfo;
 use pallet_utility;
-use polymesh_common_utilities::constants::currency::DOLLARS;
 use polymesh_common_utilities::protocol_fee::ProtocolOp;
-use polymesh_common_utilities::traits::group::GroupTrait;
-use polymesh_common_utilities::traits::transaction_payment::{CddAndFeeDetails, ChargeTxFee};
-use polymesh_common_utilities::{ConstSize, Context, TestUtilsFn};
+use polymesh_primitives::constants::currency::DOLLARS;
+use polymesh_primitives::traits::group::GroupTrait;
+use polymesh_primitives::traits::CddAndFeeDetails;
+use polymesh_primitives::ConstSize;
 use polymesh_primitives::{AccountId, BlockNumber, Claim, Moment};
 use polymesh_runtime_common::runtime::{BENCHMARK_MAX_INCREASE, VMO};
 use polymesh_runtime_common::{merge_active_and_inactive, AvailableBlockRatio, MaximumBlockWeight};
@@ -53,8 +49,8 @@ use crate::test_runtime::ext_builder::{EXTRINSIC_BASE_WEIGHT, TRANSACTION_BYTE_F
 
 type Runtime = TestRuntime;
 type CddHandler = TestRuntime;
-type Committee = committee::Module<TestRuntime, committee::Instance1>;
-type CddServiceProvider = group::Module<TestRuntime, group::Instance2>;
+type Committee = committee::Pallet<TestRuntime, committee::Instance1>;
+type CddServiceProvider = group::Pallet<TestRuntime, group::Instance2>;
 
 type Balance = u128;
 type RuntimeBaseCallFilter = TestBaseCallFilter;
@@ -92,11 +88,15 @@ parameter_types! {
     pub const MaxNumberOfFungibleMoves: u32 = 10;
     pub const MaxNumberOfNFTsMoves: u32 = 100;
     pub const MaxNumberOfOffChainAssets: u32 = 10;
+    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
     pub const MaxNumberOfVenueSigners: u32 = 50;
     pub const MaxInstructionMediators: u32 = 4;
+    pub const MaximumLockPeriod: Moment = 1_440_000; // 24 hours
     pub const MaxAssetMediators: u32 = 4;
     pub const MaxMultiSigSigners: u32 = 50;
-    pub const MaxNumberOfPortfolios: u32 = (10 + 100) * 2;
+
+    // PIPs
+    pub const MaxRefundsAndVotesPruned: u32 = 128;
 
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
@@ -124,16 +124,6 @@ pub type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 pub type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 pub type ConfidentialAssetBatchHostThreads = ConstSize<8>;
-
-/// NB It is needed by benchmarks, in order to use `UserBuilder`.
-impl TestUtilsFn<AccountId> for Runtime {
-    fn register_did(
-        target: AccountId,
-        secondary_keys: Vec<polymesh_primitives::secondary_key::SecondaryKey<AccountId>>,
-    ) -> DispatchResult {
-        <TestUtils as TestUtilsFn<AccountId>>::register_did(target, secondary_keys)
-    }
-}
 
 frame_support::construct_runtime!(
     pub enum TestRuntime where
@@ -168,30 +158,29 @@ frame_support::construct_runtime!(
         ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 23,
         RandomnessCollectiveFlip: pallet_insecure_randomness_collective_flip::{Pallet, Storage} = 24,
         Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 25,
-        Asset: pallet_asset::{Pallet, Call, Storage, Config<T>, Event<T>} = 26,
-        CapitalDistribution: capital_distributions::{Pallet, Call, Storage, Event} = 27,
-        Checkpoint: pallet_checkpoint::{Pallet, Call, Storage, Event, Config} = 28,
-        ComplianceManager: pallet_compliance_manager::{Pallet, Call, Storage, Event} = 29,
-        CorporateAction: pallet_corporate_actions::{Pallet, Call, Storage, Event, Config} = 30,
-        CorporateBallot: corporate_ballots::{Pallet, Call, Storage, Event} = 31,
+        Asset: pallet_asset::{Pallet, Call, Storage, Config, Event<T>} = 26,
+        CapitalDistribution: pallet_capital_distribution::{Pallet, Call, Storage, Event<T>} = 27,
+        Checkpoint: pallet_checkpoint::{Pallet, Call, Storage, Event<T>, Config} = 28,
+        ComplianceManager: pallet_compliance_manager::{Pallet, Call, Storage, Event<T>} = 29,
+        CorporateAction: pallet_corporate_actions::{Pallet, Call, Storage, Event<T>, Config} = 30,
+        CorporateBallot: pallet_corporate_ballot::{Pallet, Call, Storage, Event<T>} = 31,
         Permissions: pallet_permissions::{Pallet, Storage} = 32,
         Pips: pallet_pips::{Pallet, Call, Storage, Event<T>, Config<T>} = 33,
-        Portfolio: pallet_portfolio::{Pallet, Call, Storage, Event} = 34,
+        Portfolio: pallet_portfolio::{Pallet, Call, Storage, Event<T>} = 34,
         ProtocolFee: pallet_protocol_fee::{Pallet, Call, Storage, Event<T>, Config} = 35,
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 36,
         Settlement: pallet_settlement::{Pallet, Call, Storage, Event<T>, Config} = 37,
-        Statistics: pallet_statistics::{Pallet, Call, Storage, Event} = 38,
+        Statistics: pallet_statistics::{Pallet, Call, Storage, Event<T>} = 38,
         Sto: pallet_sto::{Pallet, Call, Storage, Event<T>} = 39,
         Treasury: pallet_treasury::{Pallet, Call, Event<T>} = 40,
         Utility: pallet_utility::{Pallet, Call, Storage, Event<T>} = 41,
         Base: pallet_base::{Pallet, Call, Event} = 42,
-        ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event} = 43,
+        ExternalAgents: pallet_external_agents::{Pallet, Call, Storage, Event<T>} = 43,
         Relayer: pallet_relayer::{Pallet, Call, Storage, Event<T>} = 44,
         Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 46,
         PolymeshContracts: polymesh_contracts::{Pallet, Call, Storage, Event<T>, Config<T>} = 47,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 48,
-        TestUtils: pallet_test_utils::{Pallet, Call, Storage, Event<T> } = 50,
-        Nft: pallet_nft::{Pallet, Call, Storage, Event} = 51,
+        Nft: pallet_nft::{Pallet, Call, Storage, Event<T>} = 51,
         ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>} = 60,
     }
 );
@@ -260,13 +249,7 @@ thread_local! {
 }
 
 pub type NegativeImbalance<T> =
-    <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
-
-impl ChargeTxFee for TestRuntime {
-    fn charge_fee(_len: u32, _info: DispatchInfo) -> TransactionValidity {
-        Ok(ValidTransaction::default())
-    }
-}
+    <balances::Pallet<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
 impl CddAndFeeDetails<AccountId, RuntimeCall> for TestRuntime {
     fn get_valid_payer(
@@ -314,8 +297,8 @@ impl group::Config<group::Instance1> for TestRuntime {
     type RemoveOrigin = EnsureRoot<AccountId>;
     type SwapOrigin = EnsureRoot<AccountId>;
     type ResetOrigin = EnsureRoot<AccountId>;
-    type MembershipInitialized = committee::Module<TestRuntime, committee::Instance1>;
-    type MembershipChanged = committee::Module<TestRuntime, committee::Instance1>;
+    type MembershipInitialized = committee::Pallet<TestRuntime, committee::Instance1>;
+    type MembershipChanged = committee::Pallet<TestRuntime, committee::Instance1>;
     type WeightInfo = polymesh_weights::pallet_group::SubstrateWeight;
 }
 
@@ -326,8 +309,8 @@ impl group::Config<group::Instance2> for TestRuntime {
     type RemoveOrigin = EnsureRoot<AccountId>;
     type SwapOrigin = EnsureRoot<AccountId>;
     type ResetOrigin = EnsureRoot<AccountId>;
-    type MembershipInitialized = identity::Module<TestRuntime>;
-    type MembershipChanged = identity::Module<TestRuntime>;
+    type MembershipInitialized = identity::Pallet<TestRuntime>;
+    type MembershipChanged = identity::Pallet<TestRuntime>;
     type WeightInfo = polymesh_weights::pallet_group::SubstrateWeight;
 }
 
@@ -382,28 +365,25 @@ impl committee::Config<committee::Instance4> for TestRuntime {
     type WeightInfo = polymesh_weights::pallet_committee::SubstrateWeight;
 }
 
-impl polymesh_common_utilities::traits::identity::Config for TestRuntime {
+impl pallet_identity::Config for TestRuntime {
     type RuntimeEvent = RuntimeEvent;
     type Proposal = RuntimeCall;
-    type MultiSig = multisig::Pallet<TestRuntime>;
-    type Portfolio = portfolio::Module<TestRuntime>;
     type CddServiceProviders = CddServiceProvider;
-    type Balances = balances::Module<TestRuntime>;
-    type ChargeTxFeeTarget = TestRuntime;
+    type Balances = balances::Pallet<TestRuntime>;
     type CddHandler = TestRuntime;
     type Public = <MultiSignature as Verify>::Signer;
     type OffChainSignature = MultiSignature;
-    type ProtocolFee = protocol_fee::Module<TestRuntime>;
+    type ProtocolFee = protocol_fee::Pallet<TestRuntime>;
     type GCVotingMajorityOrigin = VMO<committee::Instance1>;
     type WeightInfo = polymesh_weights::pallet_identity::SubstrateWeight;
-    type IdentityFn = identity::Module<TestRuntime>;
+    type IdentityFn = identity::Pallet<TestRuntime>;
     type SchedulerOrigin = OriginCaller;
     type InitialPOLYX = InitialPOLYX;
     type MaxGivenAuths = MaxGivenAuths;
 }
 
 impl pips::Config for TestRuntime {
-    type Currency = balances::Module<Self>;
+    type Currency = balances::Pallet<Self>;
     type VotingMajorityOrigin = VMO<committee::Instance1>;
     type GovernanceCommittee = Committee;
     type TechnicalCommitteeVMO = VMO<committee::Instance3>;
@@ -412,11 +392,7 @@ impl pips::Config for TestRuntime {
     type WeightInfo = polymesh_weights::pallet_pips::SubstrateWeight;
     type Scheduler = Scheduler;
     type SchedulerCall = RuntimeCall;
-}
-
-impl pallet_test_utils::Config for TestRuntime {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = polymesh_weights::pallet_test_utils::SubstrateWeight;
+    type MaxRefundsAndVotesPruned = MaxRefundsAndVotesPruned;
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -537,7 +513,7 @@ pub fn make_account_with_balance(
             did
         }
         _ => {
-            let _ = TestUtils::register_did(signed_id.clone(), vec![])
+            let _ = Identity::testing_cdd_register_did(id.clone(), vec![])
                 .map_err(|_| "Register DID failed")?;
             Identity::get_identity(&id).unwrap()
         }
