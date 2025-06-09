@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "@polymeshassociation/polymesh-private-rust-docs": "./workers-site/"
-  }
-}
