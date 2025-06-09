@@ -49,7 +49,7 @@ where
 {
     fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
         if let Some(author) = authorship::Pallet::<R>::author() {
-            <balances::Module<R>>::resolve_creating(&author, amount);
+            <balances::Pallet<R>>::resolve_creating(&author, amount);
         }
     }
 }

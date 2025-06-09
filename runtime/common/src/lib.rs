@@ -39,14 +39,14 @@ pub use frame_support::{
 };
 use frame_system::limits::{BlockLength, BlockWeights};
 use pallet_balances as balances;
-use polymesh_common_utilities::constants::currency::*;
+use polymesh_primitives::constants::currency::*;
 use polymesh_primitives::{Balance, BlockNumber, IdentityId, Moment};
 use smallvec::smallvec;
 
 pub use impls::Author;
 
 pub type NegativeImbalance<T> =
-    <balances::Module<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
+    <balances::Pallet<T> as Currency<<T as frame_system::Config>::AccountId>>::NegativeImbalance;
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
     items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
@@ -166,7 +166,7 @@ impl Get<Vec<WeightToFeeCoefficient<Balance>>> for WeightToFee {
 }
 
 use pallet_group_rpc_runtime_api::Member;
-use polymesh_common_utilities::traits::group::InactiveMember;
+use polymesh_primitives::traits::group::InactiveMember;
 use sp_std::{convert::From, prelude::*};
 
 /// It merges actives and in-actives members.

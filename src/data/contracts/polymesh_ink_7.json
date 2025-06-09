@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xab91551a532a13957ef35fcaf26b4a715929bb6791caf5ef85eac272c58ee24a",
+    "hash": "0x26574539fbf51da1160ed2279ceb5e989ba253a2d29e00484c4ff86e48be24f2",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.70.0",
     "build_info": {
@@ -15,7 +15,7 @@
   },
   "contract": {
     "name": "polymesh-ink",
-    "version": "3.3.0",
+    "version": "3.4.0",
     "authors": [
       "PolymeshAssociation"
     ],
@@ -48,7 +48,7 @@
         "displayName": [
           "AccountId"
         ],
-        "type": 78
+        "type": 84
       },
       "balance": {
         "displayName": [
@@ -66,13 +66,13 @@
         "displayName": [
           "ChainExtension"
         ],
-        "type": 80
+        "type": 86
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 79
+        "type": 85
       },
       "maxEventTopics": 4,
       "timestamp": {
@@ -129,7 +129,7 @@
         ],
         "default": false,
         "docs": [
-          " Create a portfolio."
+          " Creates a portfolio with the given `name`."
         ],
         "label": "create_portfolio",
         "mutates": false,
@@ -153,7 +153,7 @@
             }
           },
           {
-            "label": "portfolio",
+            "label": "portfolio_kind",
             "type": {
               "displayName": [],
               "type": 19
@@ -162,7 +162,7 @@
         ],
         "default": false,
         "docs": [
-          " Accept custody of a portfolio."
+          " Accepts custody of a portfolio."
         ],
         "label": "accept_portfolio_custody",
         "mutates": false,
@@ -179,7 +179,7 @@
       {
         "args": [
           {
-            "label": "portfolio",
+            "label": "portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
@@ -188,7 +188,7 @@
         ],
         "default": false,
         "docs": [
-          " Quit custodianship of a portfolio returning control back to the owner."
+          " Quits custodianship of a portfolio returning control back to the owner."
         ],
         "label": "quit_portfolio_custody",
         "mutates": false,
@@ -205,14 +205,14 @@
       {
         "args": [
           {
-            "label": "src",
+            "label": "source_portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
             }
           },
           {
-            "label": "dest",
+            "label": "destination_portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
@@ -228,7 +228,7 @@
         ],
         "default": false,
         "docs": [
-          " Move funds between portfolios."
+          " Moves the given `funds` from `source_portfolio_id` to `destination_portfolio_id`."
         ],
         "label": "move_portfolio_funds",
         "mutates": false,
@@ -245,14 +245,14 @@
       {
         "args": [
           {
-            "label": "portfolio",
+            "label": "portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
             }
           },
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -261,7 +261,7 @@
         ],
         "default": false,
         "docs": [
-          " Get portfolio balance."
+          " Returns the [`Balance`] for the `asset_id` in the given `portfolio_id`."
         ],
         "label": "portfolio_asset_balances",
         "mutates": false,
@@ -278,14 +278,14 @@
       {
         "args": [
           {
-            "label": "did",
+            "label": "custodian_did",
             "type": {
               "displayName": [],
               "type": 17
             }
           },
           {
-            "label": "portfolio",
+            "label": "portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
@@ -294,7 +294,7 @@
         ],
         "default": false,
         "docs": [
-          " Check portfolios_in_custody."
+          " Returns `true` if `portfolio_id` is in custody of `custodian_did`, otherwise returns `false`."
         ],
         "label": "check_portfolios_in_custody",
         "mutates": false,
@@ -311,14 +311,14 @@
       {
         "args": [
           {
-            "label": "details",
+            "label": "venue_details",
             "type": {
               "displayName": [],
               "type": 38
             }
           },
           {
-            "label": "ty",
+            "label": "venue_type",
             "type": {
               "displayName": [],
               "type": 39
@@ -327,7 +327,7 @@
         ],
         "default": false,
         "docs": [
-          " Create a Settlement Venue."
+          " Creates a Settlement Venue."
         ],
         "label": "create_venue",
         "mutates": false,
@@ -344,30 +344,30 @@
       {
         "args": [
           {
-            "label": "venue",
-            "type": {
-              "displayName": [],
-              "type": 42
-            }
-          },
-          {
-            "label": "legs",
+            "label": "venue_id",
             "type": {
               "displayName": [],
               "type": 43
             }
           },
           {
+            "label": "legs",
+            "type": {
+              "displayName": [],
+              "type": 44
+            }
+          },
+          {
             "label": "portfolios",
             "type": {
               "displayName": [],
-              "type": 45
+              "type": 48
             }
           }
         ],
         "default": false,
         "docs": [
-          " Create and execute a settlement to transfer assets."
+          " Creates and manually executes a settlement to transfer assets."
         ],
         "label": "settlement_execute",
         "mutates": false,
@@ -384,21 +384,21 @@
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
             }
           },
           {
-            "label": "amount",
+            "label": "amount_to_issue",
             "type": {
               "displayName": [],
               "type": 27
             }
           },
           {
-            "label": "portfolio",
+            "label": "portfolio_kind",
             "type": {
               "displayName": [],
               "type": 19
@@ -407,7 +407,7 @@
         ],
         "default": false,
         "docs": [
-          " Asset issue tokens."
+          " Issues `amount_to_issue` new tokens to `portfolio_kind`."
         ],
         "label": "asset_issue",
         "mutates": false,
@@ -424,21 +424,21 @@
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
             }
           },
           {
-            "label": "amount",
+            "label": "amount_to_redeem",
             "type": {
               "displayName": [],
               "type": 27
             }
           },
           {
-            "label": "portfolio",
+            "label": "portfolio_kind",
             "type": {
               "displayName": [],
               "type": 19
@@ -447,7 +447,7 @@
         ],
         "default": false,
         "docs": [
-          " Asset redeem tokens."
+          " Redeems `amount_to_redeem` tokens from `portfolio_kind`."
         ],
         "label": "asset_redeem",
         "mutates": false,
@@ -464,24 +464,17 @@
       {
         "args": [
           {
-            "label": "name",
+            "label": "asset_name",
             "type": {
               "displayName": [],
-              "type": 46
-            }
-          },
-          {
-            "label": "ticker",
-            "type": {
-              "displayName": [],
-              "type": 25
+              "type": 50
             }
           },
           {
             "label": "asset_type",
             "type": {
               "displayName": [],
-              "type": 47
+              "type": 51
             }
           },
           {
@@ -492,16 +485,16 @@
             }
           },
           {
-            "label": "issue",
+            "label": "amount_to_issue",
             "type": {
               "displayName": [],
-              "type": 50
+              "type": 54
             }
           }
         ],
         "default": false,
         "docs": [
-          " Very simple create asset and issue."
+          " Creates a new asset and issues `amount_to_issue` tokens of that asset to the default portfolio of the caller."
         ],
         "label": "asset_create_and_issue",
         "mutates": false,
@@ -511,14 +504,14 @@
             "ink",
             "MessageResult"
           ],
-          "type": 5
+          "type": 55
         },
         "selector": "0x713184ef"
       },
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -534,7 +527,7 @@
         ],
         "default": false,
         "docs": [
-          " Get an identity's asset balance."
+          " Returns the `asset_id` [`Balance`] for the given `did`."
         ],
         "label": "asset_balance_of",
         "mutates": false,
@@ -551,7 +544,7 @@
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -560,7 +553,7 @@
         ],
         "default": false,
         "docs": [
-          " Get the `total_supply` of an asset."
+          " Returns the total supply of `asset_id`."
         ],
         "label": "asset_total_supply",
         "mutates": false,
@@ -580,7 +573,7 @@
             "label": "ca_id",
             "type": {
               "displayName": [],
-              "type": 51
+              "type": 57
             }
           }
         ],
@@ -596,7 +589,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 53
+          "type": 59
         },
         "selector": "0x109d9a44"
       },
@@ -606,13 +599,13 @@
             "label": "ca_id",
             "type": {
               "displayName": [],
-              "type": 51
+              "type": 57
             }
           }
         ],
         "default": false,
         "docs": [
-          " Cliam dividends from a distribution."
+          " Claims dividends from a distribution."
         ],
         "label": "dividend_claim",
         "mutates": false,
@@ -632,7 +625,7 @@
             "label": "dividend",
             "type": {
               "displayName": [],
-              "type": 58
+              "type": 64
             }
           }
         ],
@@ -658,21 +651,21 @@
             "label": "venue_id",
             "type": {
               "displayName": [],
-              "type": 42
+              "type": 43
             }
           },
           {
             "label": "legs",
             "type": {
               "displayName": [],
-              "type": 43
+              "type": 44
             }
           },
           {
             "label": "portfolios",
             "type": {
               "displayName": [],
-              "type": 45
+              "type": 48
             }
           }
         ],
@@ -688,7 +681,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 60
+          "type": 66
         },
         "selector": "0xa2c50463"
       },
@@ -705,7 +698,7 @@
             "label": "portfolio_name",
             "type": {
               "displayName": [],
-              "type": 63
+              "type": 69
             }
           }
         ],
@@ -729,7 +722,7 @@
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -739,13 +732,13 @@
             "label": "asset_metadata_name",
             "type": {
               "displayName": [],
-              "type": 64
+              "type": 70
             }
           }
         ],
         "default": false,
         "docs": [
-          " Returns the [`AssetMetadataLocalKey`] for the given `ticker` and `asset_metadata_name`."
+          " Returns the [`AssetMetadataLocalKey`] for the given `asset_id` and `asset_metadata_name`."
         ],
         "label": "asset_metadata_local_name_to_key",
         "mutates": false,
@@ -755,14 +748,14 @@
             "ink",
             "MessageResult"
           ],
-          "type": 65
+          "type": 71
         },
         "selector": "0x45d87113"
       },
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -772,13 +765,13 @@
             "label": "asset_metadata_key",
             "type": {
               "displayName": [],
-              "type": 69
+              "type": 75
             }
           }
         ],
         "default": false,
         "docs": [
-          " Returns the [`AssetMetadataValue`] for the given `ticker` and `asset_metadata_key`."
+          " Returns the [`AssetMetadataValue`] for the given `asset_id` and `asset_metadata_key`."
         ],
         "label": "asset_metadata_value",
         "mutates": false,
@@ -788,14 +781,14 @@
             "ink",
             "MessageResult"
           ],
-          "type": 71
+          "type": 77
         },
         "selector": "0xa8f59c06"
       },
       {
         "args": [
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -811,7 +804,7 @@
         ],
         "default": false,
         "docs": [
-          " Get the portfolio owning an NFT."
+          " Returns the [`PortfolioId`] that holds the NFT."
         ],
         "label": "nft_owner",
         "mutates": false,
@@ -821,21 +814,21 @@
             "ink",
             "MessageResult"
           ],
-          "type": 75
+          "type": 81
         },
         "selector": "0x19f161f1"
       },
       {
         "args": [
           {
-            "label": "portfolio",
+            "label": "portfolio_id",
             "type": {
               "displayName": [],
               "type": 16
             }
           },
           {
-            "label": "ticker",
+            "label": "asset_id",
             "type": {
               "displayName": [],
               "type": 25
@@ -851,9 +844,9 @@
         ],
         "default": false,
         "docs": [
-          " Check the owner of some NFTs."
+          " Returns `Ok` if `portfolio_id` holds all `nfts`. Otherwise, returns [`PolymeshError::NotNftOwner`]."
         ],
-        "label": "check_nfts_owner",
+        "label": "holds_nfts",
         "mutates": false,
         "payable": true,
         "returnType": {
@@ -863,7 +856,7 @@
           ],
           "type": 5
         },
-        "selector": "0x7f8caba0"
+        "selector": "0x31b062a4"
       }
     ]
   },
@@ -1522,9 +1515,9 @@
               {
                 "fields": [
                   {
-                    "name": "ticker",
+                    "name": "asset_id",
                     "type": 25,
-                    "typeName": "polymesh_primitives::ticker::Ticker"
+                    "typeName": "::polymesh_api_ink::AssetId"
                   },
                   {
                     "name": "amount",
@@ -1566,18 +1559,15 @@
             "fields": [
               {
                 "type": 26,
-                "typeName": "[u8; 12usize]"
+                "typeName": "[u8; 16]"
               }
             ]
           }
         },
         "path": [
-          "polymesh_api",
-          "polymesh",
-          "types",
-          "polymesh_primitives",
-          "ticker",
-          "Ticker"
+          "polymesh_api_ink",
+          "basic_types",
+          "AssetId"
         ]
       }
     },
@@ -1586,7 +1576,7 @@
       "type": {
         "def": {
           "array": {
-            "len": 12,
+            "len": 16,
             "type": 4
           }
         }
@@ -1607,9 +1597,9 @@
           "composite": {
             "fields": [
               {
-                "name": "ticker",
+                "name": "asset_id",
                 "type": 25,
-                "typeName": "polymesh_primitives::ticker::Ticker"
+                "typeName": "::polymesh_api_ink::AssetId"
               },
               {
                 "name": "ids",
@@ -2062,14 +2052,47 @@
       "id": 43,
       "type": {
         "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 42
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 42
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 44,
+      "type": {
+        "def": {
           "sequence": {
-            "type": 44
+            "type": 45
           }
         }
       }
     },
     {
-      "id": 44,
+      "id": 45,
       "type": {
         "def": {
           "variant": {
@@ -2087,9 +2110,9 @@
                     "typeName": "polymesh_primitives::identity_id::PortfolioId"
                   },
                   {
-                    "name": "ticker",
+                    "name": "asset_id",
                     "type": 25,
-                    "typeName": "polymesh_primitives::ticker::Ticker"
+                    "typeName": "::polymesh_api_ink::AssetId"
                   },
                   {
                     "name": "amount",
@@ -2135,7 +2158,7 @@
                   },
                   {
                     "name": "ticker",
-                    "type": 25,
+                    "type": 46,
                     "typeName": "polymesh_primitives::ticker::Ticker"
                   },
                   {
@@ -2161,7 +2184,64 @@
       }
     },
     {
-      "id": 45,
+      "id": 46,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 47,
+                "typeName": "[u8; 12usize]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "polymesh_api",
+          "polymesh",
+          "types",
+          "polymesh_primitives",
+          "ticker",
+          "Ticker"
+        ]
+      }
+    },
+    {
+      "id": 47,
+      "type": {
+        "def": {
+          "array": {
+            "len": 12,
+            "type": 4
+          }
+        }
+      }
+    },
+    {
+      "id": 48,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 49
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 16
+          }
+        ],
+        "path": [
+          "BTreeSet"
+        ]
+      }
+    },
+    {
+      "id": 49,
       "type": {
         "def": {
           "sequence": {
@@ -2171,7 +2251,7 @@
       }
     },
     {
-      "id": 46,
+      "id": 50,
       "type": {
         "def": {
           "composite": {
@@ -2194,7 +2274,7 @@
       }
     },
     {
-      "id": 47,
+      "id": 51,
       "type": {
         "def": {
           "variant": {
@@ -2238,7 +2318,7 @@
               {
                 "fields": [
                   {
-                    "type": 48,
+                    "type": 52,
                     "typeName": "polymesh_primitives::asset::CustomAssetTypeId"
                   }
                 ],
@@ -2252,7 +2332,7 @@
               {
                 "fields": [
                   {
-                    "type": 49,
+                    "type": 53,
                     "typeName": "polymesh_primitives::asset::NonFungibleType"
                   }
                 ],
@@ -2273,7 +2353,7 @@
       }
     },
     {
-      "id": 48,
+      "id": 52,
       "type": {
         "def": {
           "composite": {
@@ -2296,7 +2376,7 @@
       }
     },
     {
-      "id": 49,
+      "id": 53,
       "type": {
         "def": {
           "variant": {
@@ -2316,7 +2396,7 @@
               {
                 "fields": [
                   {
-                    "type": 48,
+                    "type": 52,
                     "typeName": "polymesh_primitives::asset::CustomAssetTypeId"
                   }
                 ],
@@ -2337,7 +2417,7 @@
       }
     },
     {
-      "id": 50,
+      "id": 54,
       "type": {
         "def": {
           "variant": {
@@ -2370,19 +2450,103 @@
       }
     },
     {
-      "id": 51,
+      "id": 55,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 56
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 2
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 56
+          },
+          {
+            "name": "E",
+            "type": 2
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 56,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 25
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 25
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 57,
       "type": {
         "def": {
           "composite": {
             "fields": [
               {
-                "name": "ticker",
+                "name": "asset_id",
                 "type": 25,
-                "typeName": "polymesh_primitives::ticker::Ticker"
+                "typeName": "::polymesh_api_ink::AssetId"
               },
               {
                 "name": "local_id",
-                "type": 52,
+                "type": 58,
                 "typeName": "pallet_corporate_actions::LocalCAId"
               }
             ]
@@ -2398,7 +2562,7 @@
       }
     },
     {
-      "id": 52,
+      "id": 58,
       "type": {
         "def": {
           "composite": {
@@ -2420,7 +2584,7 @@
       }
     },
     {
-      "id": 53,
+      "id": 59,
       "type": {
         "def": {
           "variant": {
@@ -2428,7 +2592,7 @@
               {
                 "fields": [
                   {
-                    "type": 54
+                    "type": 60
                   }
                 ],
                 "index": 0,
@@ -2449,7 +2613,7 @@
         "params": [
           {
             "name": "T",
-            "type": 54
+            "type": 60
           },
           {
             "name": "E",
@@ -2462,7 +2626,7 @@
       }
     },
     {
-      "id": 54,
+      "id": 60,
       "type": {
         "def": {
           "variant": {
@@ -2470,7 +2634,7 @@
               {
                 "fields": [
                   {
-                    "type": 55
+                    "type": 61
                   }
                 ],
                 "index": 0,
@@ -2491,7 +2655,7 @@
         "params": [
           {
             "name": "T",
-            "type": 55
+            "type": 61
           },
           {
             "name": "E",
@@ -2504,7 +2668,7 @@
       }
     },
     {
-      "id": 55,
+      "id": 61,
       "type": {
         "def": {
           "variant": {
@@ -2516,7 +2680,7 @@
               {
                 "fields": [
                   {
-                    "type": 56
+                    "type": 62
                   }
                 ],
                 "index": 1,
@@ -2528,7 +2692,7 @@
         "params": [
           {
             "name": "T",
-            "type": 56
+            "type": 62
           }
         ],
         "path": [
@@ -2537,7 +2701,7 @@
       }
     },
     {
-      "id": 56,
+      "id": 62,
       "type": {
         "def": {
           "composite": {
@@ -2545,7 +2709,7 @@
               {
                 "name": "currency",
                 "type": 25,
-                "typeName": "Ticker"
+                "typeName": "AssetId"
               },
               {
                 "name": "per_share",
@@ -2564,7 +2728,7 @@
               },
               {
                 "name": "expires_at",
-                "type": 57,
+                "type": 63,
                 "typeName": "Option<Timestamp>"
               }
             ]
@@ -2577,7 +2741,7 @@
       }
     },
     {
-      "id": 57,
+      "id": 63,
       "type": {
         "def": {
           "variant": {
@@ -2610,15 +2774,15 @@
       }
     },
     {
-      "id": 58,
+      "id": 64,
       "type": {
         "def": {
           "composite": {
             "fields": [
               {
-                "name": "ticker",
+                "name": "asset_id",
                 "type": 25,
-                "typeName": "Ticker"
+                "typeName": "AssetId"
               },
               {
                 "name": "decl_date",
@@ -2632,13 +2796,13 @@
               },
               {
                 "name": "portfolio",
-                "type": 59,
+                "type": 65,
                 "typeName": "Option<PortfolioNumber>"
               },
               {
                 "name": "currency",
                 "type": 25,
-                "typeName": "Ticker"
+                "typeName": "AssetId"
               },
               {
                 "name": "per_share",
@@ -2657,7 +2821,7 @@
               },
               {
                 "name": "expires_at",
-                "type": 57,
+                "type": 63,
                 "typeName": "Option<Timestamp>"
               }
             ]
@@ -2670,7 +2834,7 @@
       }
     },
     {
-      "id": 59,
+      "id": 65,
       "type": {
         "def": {
           "variant": {
@@ -2703,7 +2867,7 @@
       }
     },
     {
-      "id": 60,
+      "id": 66,
       "type": {
         "def": {
           "variant": {
@@ -2711,7 +2875,7 @@
               {
                 "fields": [
                   {
-                    "type": 61
+                    "type": 67
                   }
                 ],
                 "index": 0,
@@ -2732,7 +2896,7 @@
         "params": [
           {
             "name": "T",
-            "type": 61
+            "type": 67
           },
           {
             "name": "E",
@@ -2745,7 +2909,7 @@
       }
     },
     {
-      "id": 61,
+      "id": 67,
       "type": {
         "def": {
           "variant": {
@@ -2753,7 +2917,7 @@
               {
                 "fields": [
                   {
-                    "type": 62
+                    "type": 68
                   }
                 ],
                 "index": 0,
@@ -2774,7 +2938,7 @@
         "params": [
           {
             "name": "T",
-            "type": 62
+            "type": 68
           },
           {
             "name": "E",
@@ -2787,7 +2951,7 @@
       }
     },
     {
-      "id": 62,
+      "id": 68,
       "type": {
         "def": {
           "composite": {
@@ -2810,7 +2974,7 @@
       }
     },
     {
-      "id": 63,
+      "id": 69,
       "type": {
         "def": {
           "composite": {
@@ -2833,7 +2997,7 @@
       }
     },
     {
-      "id": 64,
+      "id": 70,
       "type": {
         "def": {
           "composite": {
@@ -2852,208 +3016,6 @@
           "polymesh_primitives",
           "asset_metadata",
           "AssetMetadataName"
-        ]
-      }
-    },
-    {
-      "id": 65,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 66
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 2
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 66
-          },
-          {
-            "name": "E",
-            "type": 2
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 66,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 67
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 67
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 67,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 0,
-                "name": "None"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 68
-                  }
-                ],
-                "index": 1,
-                "name": "Some"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 68
-          }
-        ],
-        "path": [
-          "Option"
-        ]
-      }
-    },
-    {
-      "id": 68,
-      "type": {
-        "def": {
-          "composite": {
-            "fields": [
-              {
-                "type": 21,
-                "typeName": "u64"
-              }
-            ]
-          }
-        },
-        "path": [
-          "polymesh_api",
-          "polymesh",
-          "types",
-          "polymesh_primitives",
-          "asset_metadata",
-          "AssetMetadataLocalKey"
-        ]
-      }
-    },
-    {
-      "id": 69,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 70,
-                    "typeName": "polymesh_primitives::asset_metadata::AssetMetadataGlobalKey"
-                  }
-                ],
-                "index": 0,
-                "name": "Global"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 68,
-                    "typeName": "polymesh_primitives::asset_metadata::AssetMetadataLocalKey"
-                  }
-                ],
-                "index": 1,
-                "name": "Local"
-              }
-            ]
-          }
-        },
-        "path": [
-          "polymesh_api",
-          "polymesh",
-          "types",
-          "polymesh_primitives",
-          "asset_metadata",
-          "AssetMetadataKey"
-        ]
-      }
-    },
-    {
-      "id": 70,
-      "type": {
-        "def": {
-          "composite": {
-            "fields": [
-              {
-                "type": 21,
-                "typeName": "u64"
-              }
-            ]
-          }
-        },
-        "path": [
-          "polymesh_api",
-          "polymesh",
-          "types",
-          "polymesh_primitives",
-          "asset_metadata",
-          "AssetMetadataGlobalKey"
         ]
       }
     },
@@ -3181,8 +3143,8 @@
           "composite": {
             "fields": [
               {
-                "type": 3,
-                "typeName": "::alloc::vec::Vec<u8>"
+                "type": 21,
+                "typeName": "u64"
               }
             ]
           }
@@ -3193,7 +3155,7 @@
           "types",
           "polymesh_primitives",
           "asset_metadata",
-          "AssetMetadataValue"
+          "AssetMetadataLocalKey"
         ]
       }
     },
@@ -3206,7 +3168,69 @@
               {
                 "fields": [
                   {
-                    "type": 76
+                    "type": 76,
+                    "typeName": "polymesh_primitives::asset_metadata::AssetMetadataGlobalKey"
+                  }
+                ],
+                "index": 0,
+                "name": "Global"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 74,
+                    "typeName": "polymesh_primitives::asset_metadata::AssetMetadataLocalKey"
+                  }
+                ],
+                "index": 1,
+                "name": "Local"
+              }
+            ]
+          }
+        },
+        "path": [
+          "polymesh_api",
+          "polymesh",
+          "types",
+          "polymesh_primitives",
+          "asset_metadata",
+          "AssetMetadataKey"
+        ]
+      }
+    },
+    {
+      "id": 76,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 21,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "polymesh_api",
+          "polymesh",
+          "types",
+          "polymesh_primitives",
+          "asset_metadata",
+          "AssetMetadataGlobalKey"
+        ]
+      }
+    },
+    {
+      "id": 77,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 78
                   }
                 ],
                 "index": 0,
@@ -3227,7 +3251,7 @@
         "params": [
           {
             "name": "T",
-            "type": 76
+            "type": 78
           },
           {
             "name": "E",
@@ -3240,7 +3264,7 @@
       }
     },
     {
-      "id": 76,
+      "id": 78,
       "type": {
         "def": {
           "variant": {
@@ -3248,7 +3272,7 @@
               {
                 "fields": [
                   {
-                    "type": 77
+                    "type": 79
                   }
                 ],
                 "index": 0,
@@ -3269,7 +3293,7 @@
         "params": [
           {
             "name": "T",
-            "type": 77
+            "type": 79
           },
           {
             "name": "E",
@@ -3282,7 +3306,147 @@
       }
     },
     {
-      "id": 77,
+      "id": 79,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 80
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 80
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 80,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 3,
+                "typeName": "::alloc::vec::Vec<u8>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "polymesh_api",
+          "polymesh",
+          "types",
+          "polymesh_primitives",
+          "asset_metadata",
+          "AssetMetadataValue"
+        ]
+      }
+    },
+    {
+      "id": 81,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 82
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 2
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 82
+          },
+          {
+            "name": "E",
+            "type": 2
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 82,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 83
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 83
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 83,
       "type": {
         "def": {
           "variant": {
@@ -3315,7 +3479,7 @@
       }
     },
     {
-      "id": 78,
+      "id": 84,
       "type": {
         "def": {
           "composite": {
@@ -3335,7 +3499,7 @@
       }
     },
     {
-      "id": 79,
+      "id": 85,
       "type": {
         "def": {
           "composite": {
@@ -3355,7 +3519,7 @@
       }
     },
     {
-      "id": 80,
+      "id": 86,
       "type": {
         "def": {
           "variant": {}

@@ -39,7 +39,6 @@ pallet-statistics = { workspace = true, default-features = false  }
 pallet-sto = { workspace = true, default-features = false  }
 pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
-pallet-test-utils = { workspace = true, default-features = false }
 polymesh-contracts = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 

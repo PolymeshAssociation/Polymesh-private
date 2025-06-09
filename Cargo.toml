@@ -1,6 +1,6 @@
 [package]
 name = "polymesh-private"
-version = "2.0.1"
+version = "2.1.0"
 authors = ["PolymeshAssociation"]
 build = "build.rs"
 edition = "2021"
@@ -143,7 +143,6 @@ pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", 
 pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-test-utils = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false, features = ["disable_fees"]}
 pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -244,7 +243,6 @@ pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
-pallet-test-utils = { workspace = true, default-features = false }
 pallet-transaction-payment = { workspace = true, default-features = false }
 pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
@@ -347,7 +345,6 @@ substrate-build-script-utils = { version = "3.0.0" }
 default = ["std"]
 
 running-ci = [ "polymesh-private-runtime-develop/running-ci" ]
-default_identity = [ "polymesh-common-utilities/default_identity" ]
 runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "polymesh-private-runtime-develop/runtime-benchmarks",

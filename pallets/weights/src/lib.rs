@@ -46,7 +46,6 @@ pub mod pallet_session;
 pub mod pallet_settlement;
 pub mod pallet_statistics;
 pub mod pallet_sto;
-pub mod pallet_test_utils;
 pub mod pallet_timestamp;
 pub mod pallet_treasury;
 pub mod pallet_utility;

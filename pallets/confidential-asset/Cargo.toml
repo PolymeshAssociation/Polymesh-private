@@ -70,7 +70,6 @@ runtime-benchmarks = [
     "testing",
     "frame-benchmarking/runtime-benchmarks",
     "pallet-committee/runtime-benchmarks",
-    "polymesh-common-utilities/runtime-benchmarks",
     "polymesh-primitives/runtime-benchmarks",
     "polymesh-host-functions/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",

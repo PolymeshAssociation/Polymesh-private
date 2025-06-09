@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::collections::{BTreeMap, BTreeSet};
 
-use integration::*;
+use integration::confidential_assets_helper::*;
 
 #[tokio::test]
 async fn confidential_moves() -> Result<()> {

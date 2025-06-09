@@ -15,14 +15,11 @@ use confidential_assets::{
 
 use polymesh_host_functions::{BatchVerify, GenerateTransferProofRequest};
 
-use polymesh_common_utilities::{
-    benchs::{user, AccountIdOf, User},
-    traits::TestUtilsFn,
-};
+use pallet_identity::benchmarking::{user, User};
 
 use crate::*;
 
-pub trait ConfigT<T: frame_system::Config>: Config + TestUtilsFn<AccountIdOf<T>> {}
+pub trait ConfigT<T: frame_system::Config>: Config {}
 
 pub(crate) const SEED: u32 = 42;
 pub(crate) const TICKER_SEED: u32 = 1_000_000;
@@ -33,14 +30,14 @@ pub(crate) fn gen_asset_id(u: u128) -> AssetId {
 }
 
 #[derive(Clone)]
-pub struct AuditorState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
+pub struct AuditorState<T: Config> {
     pub asset: ConfidentialAuditors<T>,
     pub auditors: BoundedBTreeSet<AuditorAccount, T::MaxVenueAuditors>,
     pub mediators: BoundedBTreeSet<IdentityId, T::MaxVenueMediators>,
     pub users: BTreeMap<AuditorAccount, ConfidentialUser<T>>,
 }
 
-impl<T: Config + TestUtilsFn<AccountIdOf<T>>> AuditorState<T> {
+impl<T: Config> AuditorState<T> {
     /// Create maximum number of auditors with one mediator role for an asset.
     pub fn new(asset: u32, rng: &mut StdRng) -> Self {
         let count = T::MaxVenueAuditors::get() + T::MaxAssetAuditors::get();
@@ -133,7 +130,7 @@ pub fn next_asset_id<T: Config>(did: IdentityId) -> AssetId {
     Pallet::<T>::next_asset_id(did, false)
 }
 
-pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+pub fn create_confidential_token<T: Config>(
     prefix: &'static str,
     rng: &mut StdRng,
 ) -> (AssetId, ConfidentialUser<T>, AuditorState<T>) {
@@ -149,12 +146,12 @@ pub fn create_confidential_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 }
 
 #[derive(Clone, Debug)]
-pub struct ConfidentialUser<T: Config + TestUtilsFn<AccountIdOf<T>>> {
+pub struct ConfidentialUser<T: Config> {
     pub user: User<T>,
     pub sec: ElgamalKeys,
 }
 
-impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
+impl<T: Config> ConfidentialUser<T> {
     /// Creates a confidential user.
     pub fn new(name: &'static str, rng: &mut StdRng) -> Self {
         Self::new_from_seed(name, SEED, rng)
@@ -325,7 +322,7 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> ConfidentialUser<T> {
 }
 
 /// Create issuer's confidential account, create asset and mint.
-pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+pub fn create_account_and_mint_token<T: Config>(
     name: &'static str,
     total_supply: ConfidentialBalance,
     idx: u32,
@@ -346,7 +343,7 @@ pub fn create_account_and_mint_token<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     (asset_id, owner, balance, auditors)
 }
 
-pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+pub fn generate_proof_verify_requests<T: Config>(
     count: usize,
     auditor_count: Option<u32>,
     mediator_count: Option<u32>,
@@ -421,7 +418,7 @@ pub fn generate_proof_verify_requests<T: Config + TestUtilsFn<AccountIdOf<T>>>(
     requests
 }
 
-pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
+pub fn create_move_funds<T: Config>(
     m: usize,
     a: usize,
     rng: &mut StdRng,
@@ -498,7 +495,7 @@ pub fn create_move_funds<T: Config + TestUtilsFn<AccountIdOf<T>>>(
 }
 
 #[derive(Clone)]
-pub struct TransactionLegState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
+pub struct TransactionLegState<T: Config> {
     pub asset_id: AssetId,
     pub amount: ConfidentialBalance,
     pub issuer_balance: ConfidentialBalance,
@@ -509,7 +506,7 @@ pub struct TransactionLegState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
     pub leg: TransactionLeg<T>,
 }
 
-impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
+impl<T: Config> TransactionLegState<T> {
     /// Create 3 confidential accounts (issuer, investor, mediator), create asset, mint.
     pub fn new(
         venue_id: VenueId,
@@ -644,14 +641,14 @@ impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionLegState<T> {
 }
 
 #[derive(Clone)]
-pub struct TransactionState<T: Config + TestUtilsFn<AccountIdOf<T>>> {
+pub struct TransactionState<T: Config> {
     pub custodian: ConfidentialUser<T>,
     pub venue_id: VenueId,
     pub legs: Vec<TransactionLegState<T>>,
     pub id: TransactionId,
 }
 
-impl<T: Config + TestUtilsFn<AccountIdOf<T>>> TransactionState<T> {
+impl<T: Config> TransactionState<T> {
     /// Setup for a transaction with one leg.
     pub fn new(rng: &mut StdRng) -> Self {
         Self::new_legs(1, rng)
