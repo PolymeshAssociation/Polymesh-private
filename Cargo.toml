@@ -106,9 +106,22 @@ confidential_assets = { git = "https://github.com/PolymeshAssociation/confidenti
 
 substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
 
+# DART
+# Curve tree dependencies
+curve_tree_bulletproofs = { package = "bulletproofs", path = "../curve-trees/bulletproofs" }
+curve_tree_relations = { package = "relations", path = "../curve-trees/relations" }
+# If want to pull code for curve-trees from git, comment above 2 relations and uncomment below 2
+#bulletproofs = { git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+#curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+
+dart = { path = "../dart" }
+dart-bp = { path = "../dart/dart-bp" }
+dart-common = { path = "../dart/dart-common" }
+
 [workspace]
 members = [
   "pallets/confidential-asset",
+	"pallets/dart",
   "runtime/common",
   "runtime/develop",
   "runtime/production",
@@ -215,6 +228,9 @@ rand = { version = "0.8", default-features = false }
 rand_core = { version = "0.6", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 confidential_assets = { version = "1.0.0", default-features = false }
+
+# DART
+dart = { path = "../dart", version = "0.1.0", default-features = false }
 
 # Validator set (PoA)
 validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }
