@@ -104,6 +104,8 @@ polymesh-build-tool = { workspace = true, default-features = false }
 default = ["std", "equalize"]
 equalize = []
 
+testing = []
+
 ci-runtime = []
 
 no_std = [

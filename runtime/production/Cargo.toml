@@ -94,6 +94,8 @@ polymesh-build-tool = { workspace = true, default-features = false }
 default = ["std", "equalize"]
 equalize = []
 
+testing = []
+
 migration-dry-run = []
 no_std = [
     "polymesh-primitives/no_std",
@@ -165,3 +167,4 @@ std = [
     "sp-transaction-pool/std",
     "sp-version/std",
 ]
+runtime-benchmarks = []
