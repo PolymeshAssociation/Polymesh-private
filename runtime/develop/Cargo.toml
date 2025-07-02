@@ -20,6 +20,7 @@ pallet-committee = { workspace = true, default-features = false }
 pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
+pallet-dart = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
 pallet-identity = { workspace = true, default-features = false }
@@ -102,7 +103,7 @@ polymesh-build-tool = { workspace = true, default-features = false }
 
 [features]
 default = ["std", "equalize"]
-equalize = []
+equalize = ["pallet-dart/backend_bp"]
 
 testing = []
 
@@ -110,6 +111,7 @@ ci-runtime = []
 
 no_std = [
     "polymesh-primitives/no_std",
+    "pallet-dart/no_std",
 ]
 
 std = [
@@ -133,6 +135,7 @@ std = [
   "pallet-confidential-asset/std",
   "pallet-contracts/std",
   "pallet-corporate-actions/std",
+  "pallet-dart/std",
   "pallet-executive/std",
   "pallet-external-agents/std",
   "pallet-grandpa/std",
@@ -202,6 +205,7 @@ runtime-benchmarks = [
   "pallet-confidential-asset/runtime-benchmarks",
   "pallet-contracts/runtime-benchmarks",
   "pallet-corporate-actions/runtime-benchmarks",
+  "pallet-dart/runtime-benchmarks",
   "pallet-external-agents/runtime-benchmarks",
   "pallet-group/runtime-benchmarks",
   "pallet-identity/runtime-benchmarks",

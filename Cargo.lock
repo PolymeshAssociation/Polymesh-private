@@ -354,6 +354,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-pallas"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "760ecac12a00211188c9101b63bd284b80da5abcc5d97d9d2b3803bca1f63a52"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+]
+
+[[package]]
 name = "ark-poly"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -375,7 +386,29 @@ dependencies = [
  "ark-ff",
  "ark-std",
  "tracing",
- "tracing-subscriber",
+]
+
+[[package]]
+name = "ark-secp256k1"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c02e954eaeb4ddb29613fee20840c2bbc85ca4396d53e33837e11905363c5f2"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+]
+
+[[package]]
+name = "ark-secq256k1"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a87789a7a9397bc3f477e4138859ca4cacf2d0903745a30b22b51b20d9da2c7a"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-secp256k1",
+ "ark-std",
 ]
 
 [[package]]
@@ -421,6 +454,18 @@ checksum = "94893f1e0c6eeab764ade8dc4c0db24caf4fe7cbbaafc0eba0a9030f447b5185"
 dependencies = [
  "num-traits",
  "rand 0.8.5",
+]
+
+[[package]]
+name = "ark-vesta"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "534dddabcd5017dca22582d25bf6946fadab04aa6cf15af243a126f27f6632f9"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-pallas",
+ "ark-std",
 ]
 
 [[package]]
@@ -866,6 +911,7 @@ dependencies = [
  "dock_crypto_utils",
  "log",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "sha3 0.9.1",
  "thiserror 2.0.12",
  "zeroize",
@@ -1709,49 +1755,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dart"
-version = "0.1.0"
-dependencies = [
- "blake2",
- "bounded-collections",
- "dart-bp",
- "dart-common",
- "digest 0.10.7",
- "indexmap 2.9.0",
- "lazy_static",
- "log",
- "parity-scale-codec",
- "rand 0.8.5",
- "rand_chacha 0.3.1",
- "rand_core 0.6.4",
- "scale-info",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "dart-bp"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "blake2",
- "bulletproofs 2.0.0",
- "dart-common",
- "digest 0.10.7",
- "dock_crypto_utils",
- "log",
- "rand 0.8.5",
- "relations",
- "schnorr_pok",
-]
-
-[[package]]
-name = "dart-common"
-version = "0.1.0"
-
-[[package]]
 name = "data-encoding"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1998,7 +2001,6 @@ dependencies = [
 [[package]]
 name = "dock_crypto_utils"
 version = "0.22.0"
-source = "git+https://github.com/docknetwork/crypto#9d1b031ecda6b0aa844a79186037f19b73d87495"
 dependencies = [
  "aead 0.5.2",
  "ark-ec",
@@ -2020,7 +2022,6 @@ dependencies = [
 [[package]]
 name = "dock_merlin"
 version = "3.0.0"
-source = "git+https://github.com/docknetwork/crypto#9d1b031ecda6b0aa844a79186037f19b73d87495"
 dependencies = [
  "ark-serialize",
  "ark-std",
@@ -3583,15 +3584,6 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
 dependencies = [
  "either",
 ]
@@ -5430,7 +5422,6 @@ dependencies = [
 name = "pallet-dart"
 version = "0.1.0"
 dependencies = [
- "dart",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5442,6 +5433,7 @@ dependencies = [
  "pallet-statistics",
  "parity-scale-codec",
  "polymesh-common-utilities",
+ "polymesh-dart",
  "polymesh-host-functions",
  "polymesh-primitives",
  "polymesh-runtime-common 1.0.0",
@@ -6484,6 +6476,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "polymesh-dart"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-pallas",
+ "ark-secp256k1",
+ "ark-secq256k1",
+ "ark-serialize",
+ "ark-std",
+ "ark-vesta",
+ "blake2",
+ "bounded-collections",
+ "bulletproofs 2.0.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "hex",
+ "lazy_static",
+ "log",
+ "parity-scale-codec",
+ "polymesh-dart-bp",
+ "polymesh-dart-common",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "relations",
+ "scale-info",
+ "schnorr_pok",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "polymesh-dart-bp"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
+ "blake2",
+ "bulletproofs 2.0.0",
+ "digest 0.10.7",
+ "dock_crypto_utils",
+ "log",
+ "polymesh-dart-common",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "relations",
+ "schnorr_pok",
+]
+
+[[package]]
+name = "polymesh-dart-common"
+version = "0.1.0"
+
+[[package]]
 name = "polymesh-host-functions"
 version = "0.1.0"
 dependencies = [
@@ -6674,6 +6721,7 @@ dependencies = [
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-corporate-actions",
+ "pallet-dart",
  "pallet-external-agents",
  "pallet-grandpa",
  "pallet-group",
@@ -7563,7 +7611,6 @@ dependencies = [
  "bulletproofs 2.0.0",
  "digest 0.10.7",
  "dock_crypto_utils",
- "itertools 0.12.1",
  "log",
  "rand 0.8.5",
  "schnorr_pok",
@@ -8966,7 +9013,6 @@ dependencies = [
 [[package]]
 name = "schnorr_pok"
 version = "0.22.0"
-source = "git+https://github.com/docknetwork/crypto#9d1b031ecda6b0aa844a79186037f19b73d87495"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -10951,7 +10997,7 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "digest 0.10.7",
- "rand 0.7.3",
+ "rand 0.8.5",
  "static_assertions",
 ]
 

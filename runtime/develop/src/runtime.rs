@@ -310,6 +310,15 @@ impl pallet_confidential_asset::Config for Runtime {
     type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
+impl pallet_dart::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+    type WeightInfo = pallet_dart::weights::SubstrateWeight;
+
+    type MaxTotalSupply = MaxTotalSupply;
+    type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
+}
+
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
 mod benches {
@@ -443,6 +452,9 @@ construct_runtime!(
 
         // Confidential Asset pallets.
         ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,
+
+        // Dart pallets.
+        DartAsset: pallet_dart::{Pallet, Call, Storage, Event<T>, Config} = 70,
     }
 );
 

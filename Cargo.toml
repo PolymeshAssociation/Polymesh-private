@@ -114,9 +114,14 @@ curve_tree_relations = { package = "relations", path = "../curve-trees/relations
 #bulletproofs = { git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
 #curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
 
-dart = { path = "../dart" }
-dart-bp = { path = "../dart/dart-bp" }
-dart-common = { path = "../dart/dart-common" }
+dock_crypto_utils = { path = "../crypto/utils" }
+schnorr_pok = { path = "../crypto/schnorr_pok" }
+#dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
+#schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
+
+polymesh-dart = { path = "../polymesh-dart" }
+polymesh-dart-bp = { path = "../polymesh-dart/dart-bp" }
+polymesh-dart-common = { path = "../polymesh-dart/dart-common" }
 
 [workspace]
 members = [
@@ -143,6 +148,7 @@ pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Poly
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
 polymesh-host-functions = { path = "host-functions/", default-features = false }
 pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-dart = { path = "pallets/dart/", default-features = false }
 pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -230,7 +236,7 @@ rand_chacha = { version = "0.3", default-features = false }
 confidential_assets = { version = "1.0.0", default-features = false }
 
 # DART
-dart = { path = "../dart", version = "0.1.0", default-features = false }
+polymesh-dart = { path = "../polymesh-dart", version = "0.1.0", default-features = false }
 
 # Validator set (PoA)
 validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }

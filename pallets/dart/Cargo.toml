@@ -24,7 +24,7 @@ rand_chacha = { workspace = true, default-features = false }
 polymesh-host-functions = { workspace = true, default-features = false }
 
 # DART
-dart = { workspace = true, default-features = false }
+polymesh-dart = { workspace = true, default-features = false }
 
 # Substrate
 codec = { workspace = true, default-features = false, features = ["derive"] }
@@ -40,18 +40,26 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 
 [features]
 equalize = []
-default = ["std", "equalize"]
+default = ["std", "equalize", "backend_bp"]
+
+backend_bp = [
+	"polymesh-dart/backend_bp",
+]
 
 testing = [
   "polymesh-host-functions/runtime-benchmarks",
 ]
 
-no_std = ["polymesh-host-functions/no_std"]
+no_std = [
+	"polymesh-host-functions/no_std",
+	"polymesh-dart/no_std",
+	"backend_bp",
+]
 std = [
     "rand_core/std",
     "rand_chacha/std",
     "codec/std",
-		"dart/std",
+		"polymesh-dart/std",
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking?/std",
@@ -64,6 +72,7 @@ std = [
     "polymesh-runtime-common/std",
     "polymesh-primitives/std",
     "polymesh-host-functions/std",
+		"backend_bp",
     "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
