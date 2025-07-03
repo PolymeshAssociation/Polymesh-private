@@ -116,8 +116,10 @@ curve_tree_relations = { package = "relations", path = "../curve-trees/relations
 
 dock_crypto_utils = { path = "../crypto/utils" }
 schnorr_pok = { path = "../crypto/schnorr_pok" }
+dock_merlin = { path = "../crypto/merlin" }
 #dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
 #schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
+#dock_merlin = { git = "https://github.com/PolymeshAssociation/crypto" }
 
 polymesh-dart = { path = "../polymesh-dart" }
 polymesh-dart-bp = { path = "../polymesh-dart/dart-bp" }
