@@ -103,7 +103,7 @@ polymesh-build-tool = { workspace = true, default-features = false }
 
 [features]
 default = ["std", "equalize"]
-equalize = ["pallet-dart/backend_bp"]
+equalize = []
 
 testing = []
 
