@@ -145,6 +145,9 @@ parameter_types! {
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
 
+    // DART asset parameters
+    pub const DartMaxTotalSupply: Balance = 10_000_000_000_000;
+
     // Multisig
     pub const MaxMultiSigSigners: u32 = 50;
 
@@ -180,6 +183,10 @@ type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 type ConfidentialAssetBatchHostThreads = ConstSize<8>;
+
+/// Dart parameters
+type DartMaxAssetDataLength = ConstSize<8192>;
+type DartMaxSettlementLegs = ConstSize<10>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -316,7 +323,8 @@ impl pallet_dart::Config for Runtime {
     type WeightInfo = pallet_dart::weights::SubstrateWeight;
 
     type MaxTotalSupply = MaxTotalSupply;
-    type MaxAssetDataLength = ConfidentialAssetMaxAssetDataLength;
+    type MaxAssetDataLength = DartMaxAssetDataLength;
+    type MaxSettlementLegs = DartMaxSettlementLegs;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

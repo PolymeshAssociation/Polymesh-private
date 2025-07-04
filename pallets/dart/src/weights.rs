@@ -47,4 +47,31 @@ impl crate::WeightInfo for SubstrateWeight {
         // Minimum execution time: 54_712 nanoseconds.
         Weight::from_ref_time(55_023_000)
     }
+    fn register_account_asset() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn mint_asset() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn create_settlement(_l: u32) -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn sender_affirmation() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn receiver_affirmation() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn mediator_affirmation() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn sender_update_counter() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn sender_revert() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
+    fn receiver_claim() -> Weight {
+        Weight::from_ref_time(55_023_000)
+    }
 }

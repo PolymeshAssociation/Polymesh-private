@@ -11,12 +11,8 @@ polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 
 # Our Pallets
-pallet-base = { workspace = true, default-features = false  }
-pallet-balances = { workspace = true, default-features = false  }
 pallet-identity = { workspace = true, default-features = false }
 pallet-portfolio = { workspace = true, default-features = false }
-pallet-statistics = { workspace = true, default-features = false }
-pallet-committee = { workspace = true, default-features = false }
 
 # Crypto
 rand_core = { workspace = true, default-features = false }
@@ -24,11 +20,15 @@ rand_chacha = { workspace = true, default-features = false }
 polymesh-host-functions = { workspace = true, default-features = false }
 
 # DART
-polymesh-dart = { workspace = true, default-features = false, features = ["backend_bp"] }
+polymesh-dart = { workspace = true, default-features = false, features = [
+  "backend_bp",
+] }
 
 # Substrate
 codec = { workspace = true, default-features = false, features = ["derive"] }
-scale-info = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = [
+  "derive",
+] }
 frame-system = { workspace = true, default-features = false }
 frame-support = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
@@ -42,41 +42,31 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional
 equalize = []
 default = ["std", "equalize"]
 
-testing = [
-  "polymesh-host-functions/runtime-benchmarks",
-]
+testing = ["polymesh-host-functions/runtime-benchmarks"]
 
-no_std = [
-	"polymesh-host-functions/no_std",
-	"polymesh-dart/no_std",
-]
+no_std = ["polymesh-host-functions/no_std", "polymesh-dart/no_std"]
 std = [
-    "rand_core/std",
-    "rand_chacha/std",
-    "codec/std",
-		"polymesh-dart/std",
-    "frame-support/std",
-    "frame-system/std",
-    "frame-benchmarking?/std",
-    "pallet-balances/std",
-    "pallet-identity/std",
-    "pallet-portfolio/std",
-    "pallet-statistics/std",
-    "pallet-committee/std",
-    "polymesh-common-utilities/std",
-    "polymesh-runtime-common/std",
-    "polymesh-primitives/std",
-    "polymesh-host-functions/std",
-    "sp-runtime/std",
-    "sp-std/std",
-    "sp-io/std",
+  "rand_core/std",
+  "rand_chacha/std",
+  "codec/std",
+  "polymesh-dart/std",
+  "frame-support/std",
+  "frame-system/std",
+  "frame-benchmarking?/std",
+  "pallet-identity/std",
+  "polymesh-common-utilities/std",
+  "polymesh-runtime-common/std",
+  "polymesh-primitives/std",
+  "polymesh-host-functions/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-io/std",
 ]
 runtime-benchmarks = [
-    "testing",
-    "frame-benchmarking/runtime-benchmarks",
-    "pallet-committee/runtime-benchmarks",
-    "polymesh-primitives/runtime-benchmarks",
-    "polymesh-host-functions/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+  "testing",
+  "frame-benchmarking/runtime-benchmarks",
+  "polymesh-primitives/runtime-benchmarks",
+  "polymesh-host-functions/runtime-benchmarks",
+  "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = []
