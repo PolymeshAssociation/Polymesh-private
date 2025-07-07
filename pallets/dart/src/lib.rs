@@ -27,7 +27,6 @@ use frame_system::pallet_prelude::*;
 use polymesh_primitives::{Balance, IdentityId};
 use rand_core::{CryptoRng, RngCore};
 use scale_info::TypeInfo;
-use sp_io::hashing::blake2_256;
 use sp_std::convert::From;
 
 use polymesh_dart::{
@@ -575,6 +574,12 @@ impl<T: Config> UpdateSettlementStatus<T> {
         // Store the updated status if it exists.
         if let Some(status) = updated_status {
             SettlementState::<T>::insert(self.settlement_id, status);
+
+            // Emit an event for the settlement status update.
+            Pallet::<T>::deposit_event(Event::<T>::SettlementStatusUpdated {
+                settlement_id: self.settlement_id,
+                status,
+            });
         }
 
         Ok(())
@@ -606,12 +611,6 @@ pub struct DartAssetDetail<T: Config> {
     pub data: BoundedVec<u8, T::MaxAssetDataLength>,
     /// Auditor or mediator public key.
     pub auditor_or_mediator: AuditorOrMediator,
-}
-
-pub type CurveTreeRootHash = [u8; 32];
-
-pub fn hash_curve_tree_root<const L: usize>(root: &CurveTreeRoot<L>) -> CurveTreeRootHash {
-    blake2_256(&(b"modlpy/dart_root_hash", root).encode())
 }
 
 pub type AssetLeaf = LeafValue<PallasParameters>;
@@ -808,8 +807,7 @@ impl<T: Config> AssetCurveTree<T> {
 
 impl<T: Config> ValidateCurveTreeRoot<ASSET_TREE_L> for &AssetCurveTree<T> {
     fn validate_root(&self, root: &CurveTreeRoot<ASSET_TREE_L>) -> bool {
-        let hash = hash_curve_tree_root::<ASSET_TREE_L>(root);
-        AssetCurveTreeRoots::<T>::contains_key(hash)
+        AssetCurveTreeRoots::<T>::contains_key(root)
     }
 
     fn params(&self) -> &CurveTreeParameters {
@@ -853,8 +851,7 @@ impl<T: Config> AccountCurveTree<T> {
 
 impl<T: Config> ValidateCurveTreeRoot<ACCOUNT_TREE_L> for &AccountCurveTree<T> {
     fn validate_root(&self, root: &CurveTreeRoot<ACCOUNT_TREE_L>) -> bool {
-        let hash = hash_curve_tree_root::<ACCOUNT_TREE_L>(root);
-        AccountCurveTreeRoots::<T>::contains_key(hash)
+        AccountCurveTreeRoots::<T>::contains_key(root)
     }
 
     fn params(&self) -> &CurveTreeParameters {
@@ -905,6 +902,120 @@ pub mod pallet {
             account: AccountPublicKey,
             /// Dart account (encryuption key)
             encryption_key: EncryptionPublicKey,
+        },
+        /// A new DART asset has been created.
+        AssetCreated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Asset ID.
+            asset_id: DartAssetId,
+            /// Auditor or mediator.
+            auditor_or_mediator: AuditorOrMediator,
+            /// Asset data.
+            data: BoundedVec<u8, T::MaxAssetDataLength>,
+        },
+        /// A DART asset has been updated.
+        AssetUpdated {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Asset ID.
+            asset_id: DartAssetId,
+            /// Auditor or mediator.
+            auditor_or_mediator: AuditorOrMediator,
+        },
+        /// Account asset registered.
+        AccountAssetRegistered {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Dart account (public key)
+            account: AccountPublicKey,
+            /// Dart asset ID.
+            asset_id: DartAssetId,
+        },
+        /// Minted DART asset.
+        AssetMinted {
+            /// Caller's identity.
+            caller_did: IdentityId,
+            /// Dart asset ID.
+            asset_id: DartAssetId,
+            /// Amount minted.
+            amount: Balance,
+            /// Total supply after minting.
+            total_supply: Balance,
+            /// Dart account (public key)
+            account: AccountPublicKey,
+        },
+        /// Settlement created.
+        SettlementCreated {
+            /// Settlement ID.
+            settlement_id: SettlementId,
+            /// Legs in the settlement.
+            legs: BoundedVec<LegEncrypted, T::MaxSettlementLegs>,
+        },
+        /// Sender has affirmed a leg.
+        SenderAffirmed {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Receiver has affirmed a leg.
+        ReceiverAffirmed {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Mediator has affirmed a leg.
+        MediatorAffirmed {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Sender updated counter.
+        SenderCounterUpdated {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Sender has reverted a leg.
+        SenderReverted {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Receiver has claimed assets.
+        ReceiverClaimed {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
+        /// Settlement status updated.
+        SettlementStatusUpdated {
+            /// Settlement ID.
+            settlement_id: SettlementId,
+            /// New status of the settlement.
+            status: SettlementStatus,
+        },
+        /// Account curve tree leaf inserted.
+        ///
+        /// This curve tree is append-only, so we only store the new leaf.
+        AccountStateLeafInserted {
+            /// The new leaf index.
+            leaf_index: LeafIndex,
+            /// The new account state leaf.
+            account_leaf: AccountLeaf,
+        },
+        /// An asset state leaf has been updated.
+        ///
+        /// This curve tree is mutable, so we can update existing leaves.
+        AssetStateLeafUpdated {
+            /// The new leaf index.
+            leaf_index: LeafIndex,
+            /// The new asset leaf.
+            asset_leaf: AssetLeaf,
+        },
+        /// Asset curve tree root updated.
+        AssetCurveTreeRootUpdated {
+            /// The new root.
+            root: CurveTreeRoot<ASSET_TREE_L>,
+        },
+        /// Account curve tree root updated.
+        AccountCurveTreeRootUpdated {
+            /// The new root.
+            root: CurveTreeRoot<ACCOUNT_TREE_L>,
         },
     }
 
@@ -1012,13 +1123,13 @@ pub mod pallet {
     pub(super) type AssetInnerNodes<T: Config> =
         StorageMap<_, Twox64Concat, AssetNodeLocation, AssetInnerNode, OptionQuery>;
 
-    /// Root hashes for DART assets curve tree.
+    /// CurveTree Roots for DART assets curve tree.
     ///
-    /// At the end of each block we will store the root hash of the assets curve tree.
-    /// The map key is the root hash and the value is the block number when the root hash was last updated.
+    /// At the end of each block we will store the root of the assets curve tree.
+    /// The map key is the root and the value is the block number when the root was last updated.
     #[pallet::storage]
     pub(super) type AssetCurveTreeRoots<T: Config> =
-        StorageMap<_, Twox64Concat, CurveTreeRootHash, T::BlockNumber, OptionQuery>;
+        StorageMap<_, Twox64Concat, CurveTreeRoot<ASSET_TREE_L>, T::BlockNumber, OptionQuery>;
 
     /// Update flag for the asset curve tree.
     ///
@@ -1044,13 +1155,13 @@ pub mod pallet {
     pub(super) type AccountInnerNodes<T: Config> =
         StorageMap<_, Twox64Concat, AccountNodeLocation, AccountInnerNode, OptionQuery>;
 
-    /// Root hashes for DART accounts curve tree.
+    /// CurveTree Roots for DART accounts curve tree.
     ///
-    /// At the end of each block we will store the root hash of the accounts curve tree.
-    /// The map key is the root hash and the value is the block number when the root hash was last updated.
+    /// At the end of each block we will store the root of the accounts curve tree.
+    /// The map key is the root and the value is the block number when the root was last updated.
     #[pallet::storage]
     pub(super) type AccountCurveTreeRoots<T: Config> =
-        StorageMap<_, Twox64Concat, CurveTreeRootHash, T::BlockNumber, OptionQuery>;
+        StorageMap<_, Twox64Concat, CurveTreeRoot<ACCOUNT_TREE_L>, T::BlockNumber, OptionQuery>;
 
     /// Nullifiers for DART account state commitments.
     ///
@@ -1120,17 +1231,20 @@ pub mod pallet {
                 // Get the asset curve tree.
                 let tree = Self::get_asset_curve_tree()
                     .expect("Asset curve tree should be initialized; qed");
+
                 // Get the root of the asset curve tree.
-                let root = tree
-                    .root_node()
-                    .expect("Asset curve tree should have a root; qed")
-                    .into();
-                // Store the root hash in the storage.
-                let root_hash = hash_curve_tree_root::<ASSET_TREE_L>(&root);
-                AssetCurveTreeRoots::<T>::insert(
-                    root_hash,
-                    frame_system::Pallet::<T>::block_number(),
-                );
+                let root = CurveTreeRoot::new(
+                    &tree
+                        .root_node()
+                        .expect("Asset curve tree should have a root; qed"),
+                )
+                .expect("Asset curve tree root should be valid; qed");
+
+                // Store the root in the storage.
+                AssetCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
+
+                // Emit an event for the asset curve tree root update.
+                Self::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
             }
 
             // Check if the account curve tree has been updated.
@@ -1138,17 +1252,23 @@ pub mod pallet {
                 // Get the account curve tree.
                 let tree = Self::get_account_curve_tree()
                     .expect("Account curve tree should be initialized; qed");
+
                 // Get the root of the account curve tree.
-                let root = tree
-                    .root_node()
-                    .expect("Account curve tree should have a root; qed")
-                    .into();
-                // Store the root hash in the storage.
-                let root_hash = hash_curve_tree_root::<ACCOUNT_TREE_L>(&root);
+                let root = CurveTreeRoot::new(
+                    &tree
+                        .root_node()
+                        .expect("Account curve tree should have a root; qed"),
+                )
+                .expect("Account curve tree root should be valid; qed");
+
+                // Store the root in the storage.
                 AccountCurveTreeRoots::<T>::insert(
-                    root_hash,
+                    &root,
                     frame_system::Pallet::<T>::block_number(),
                 );
+
+                // Emit an event for the account curve tree root update.
+                Self::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
             }
         }
     }
@@ -1259,6 +1379,13 @@ pub mod pallet {
                 proof.account_state_commitment,
             )?;
 
+            // Emit an event for the account asset registration.
+            Self::deposit_event(Event::<T>::AccountAssetRegistered {
+                caller_did,
+                asset_id: proof.asset_id,
+                account: proof.account,
+            });
+
             Ok(())
         }
 
@@ -1314,7 +1441,7 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::InvalidProof)?;
 
             // Store the updated asset details.
-            DartAssetDetails::<T>::insert(proof.asset_id, asset_details);
+            DartAssetDetails::<T>::insert(proof.asset_id, &asset_details);
 
             // Insert the update account state commitment into the account curve tree.
             let account_commitment = proof.account_state_commitment();
@@ -1322,6 +1449,15 @@ pub mod pallet {
 
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+
+            // Emit an event for the asset minting.
+            Self::deposit_event(Event::<T>::AssetMinted {
+                caller_did,
+                asset_id: proof.asset_id,
+                amount,
+                total_supply: asset_details.total_supply,
+                account: proof.pk,
+            });
 
             Ok(())
         }
@@ -1372,17 +1508,22 @@ pub mod pallet {
             SettlementState::<T>::insert(settlement_id, SettlementStatus::Pending);
 
             // Store the settlement legs.
+            let mut legs = Vec::with_capacity(leg_count);
             for (leg_id, leg) in proof.legs.into_iter().enumerate() {
                 let leg_id = leg_id as LegId;
+                let leg_enc = leg.leg_enc().map_err(Error::<T>::from)?;
+                legs.push(leg_enc.clone());
+
                 // Mediator affirmation status if the leg has a mediator.
                 let mediator = leg
                     .has_mediator()
                     .map_err(Error::<T>::from)?
                     .then_some(AffirmationStatus::Pending);
+
                 SettlementLegs::<T>::insert(
                     (settlement_id, leg_id),
                     DartSettlementLeg {
-                        enc: leg.leg_enc().map_err(Error::<T>::from)?,
+                        enc: leg_enc.clone(),
                         sender: AffirmationStatus::Pending,
                         receiver: AffirmationStatus::Pending,
                         mediator,
@@ -1391,6 +1532,14 @@ pub mod pallet {
                     },
                 );
             }
+
+            // Emit an event for the settlement creation.
+            Self::deposit_event(Event::<T>::SettlementCreated {
+                settlement_id,
+                legs: legs
+                    .try_into()
+                    .map_err(|_| Error::<T>::SettlementTooManyLegs)?,
+            });
 
             Ok(())
         }
@@ -1436,6 +1585,11 @@ pub mod pallet {
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
+            // Emit an event for the sender affirmation.
+            Self::deposit_event(Event::<T>::SenderAffirmed {
+                leg_ref: proof.leg_ref,
+            });
+
             Ok(())
         }
 
@@ -1480,6 +1634,11 @@ pub mod pallet {
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
+            // Emit an event for the receiver affirmation.
+            Self::deposit_event(Event::<T>::ReceiverAffirmed {
+                leg_ref: proof.leg_ref,
+            });
+
             Ok(())
         }
 
@@ -1509,6 +1668,11 @@ pub mod pallet {
 
             // Verify the mediator affirmation proof and update the settlement and leg status.
             update_settlement.mediator_affirmation(&proof)?;
+
+            // Emit an event for the mediator affirmation.
+            Self::deposit_event(Event::<T>::MediatorAffirmed {
+                leg_ref: proof.leg_ref,
+            });
 
             Ok(())
         }
@@ -1554,6 +1718,11 @@ pub mod pallet {
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
+            // Emit an event for the sender update counter.
+            Self::deposit_event(Event::<T>::SenderCounterUpdated {
+                leg_ref: proof.leg_ref,
+            });
+
             Ok(())
         }
 
@@ -1597,6 +1766,11 @@ pub mod pallet {
 
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+
+            // Emit an event for the sender revert.
+            Self::deposit_event(Event::<T>::SenderReverted {
+                leg_ref: proof.leg_ref,
+            });
 
             Ok(())
         }
@@ -1642,6 +1816,11 @@ pub mod pallet {
             // Burn the nullifier to ensure it cannot be used again.
             AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
+            // Emit an event for the receiver claim.
+            Self::deposit_event(Event::<T>::ReceiverClaimed {
+                leg_ref: proof.leg_ref,
+            });
+
             Ok(())
         }
     }
@@ -1667,14 +1846,22 @@ impl<T: Config> Pallet<T> {
             total_supply: 0,
             asset_id,
             owner_did,
-            data,
+            data: data.clone(),
             auditor_or_mediator,
         };
         // Store the asset details.
         DartAssetDetails::<T>::insert(asset_id, asset_detail);
 
         // Insert the asset state into the asset curve tree.
-        Self::update_asset_leaf(asset_id, &auditor_or_mediator, true)?;
+        Self::update_asset_leaf(owner_did, asset_id, &auditor_or_mediator, true)?;
+
+        // Emit the event for asset creation.
+        Self::deposit_event(Event::<T>::AssetCreated {
+            caller_did: owner_did,
+            asset_id,
+            auditor_or_mediator,
+            data,
+        });
 
         Ok(asset_id)
     }
@@ -1697,6 +1884,7 @@ impl<T: Config> Pallet<T> {
 
     /// Update the asset leaf in the asset curve tree.
     fn update_asset_leaf(
+        caller_did: IdentityId,
         asset_id: DartAssetId,
         auditor_or_mediator: &AuditorOrMediator,
         is_new: bool,
@@ -1721,11 +1909,26 @@ impl<T: Config> Pallet<T> {
 
         // Update the asset curve tree with the new asset.
         let mut asset_curve_tree = Self::get_asset_curve_tree()?;
+        let leaf_index = asset_id.into();
         if is_new {
             asset_curve_tree.insert_leaf(asset_leaf)?;
         } else {
-            asset_curve_tree.update_leaf(asset_id.into(), asset_leaf)?;
+            asset_curve_tree.update_leaf(leaf_index, asset_leaf)?;
         }
+
+        // Set the updated flag for the asset curve tree.
+        UpdatedAssetCurveTree::<T>::put(true);
+
+        // Emit an event for the asset state update.
+        Self::deposit_event(Event::<T>::AssetUpdated {
+            caller_did,
+            asset_id,
+            auditor_or_mediator: auditor_or_mediator.clone(),
+        });
+        Self::deposit_event(Event::<T>::AssetStateLeafUpdated {
+            leaf_index,
+            asset_leaf,
+        });
 
         Ok(())
     }
@@ -1739,10 +1942,16 @@ impl<T: Config> Pallet<T> {
         let account_leaf = account_commitment.as_leaf_value()?;
 
         // Insert the new account leaf.
-        account_curve_tree.insert_leaf(account_leaf)?;
+        let leaf_index = account_curve_tree.insert_leaf(account_leaf)?;
 
         // Set the updated flag for the account curve tree.
         UpdatedAccountCurveTree::<T>::put(true);
+
+        // Emit an event for the account curve tree update.
+        Self::deposit_event(Event::<T>::AccountStateLeafInserted {
+            leaf_index,
+            account_leaf,
+        });
 
         Ok(())
     }
