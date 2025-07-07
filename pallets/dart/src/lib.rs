@@ -34,9 +34,9 @@ use polymesh_dart::{
         CurveTreeBackend, CurveTreeParameters, CurveTreeRoot, CurveTreeWithBackend, Inner,
         LeafValue, NodeLocation, ValidateCurveTreeRoot,
     },
-    AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AssetId as DartAssetId,
-    AssetState, AuditorOrMediator, EncryptionPublicKey, Error as DartError, LeafIndex,
-    LegEncrypted, LegId, LegRef, MediatorAffirmationProof, NodeLevel, PallasParameters,
+    AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
+    AssetId as DartAssetId, AssetState, AuditorOrMediator, EncryptionPublicKey, Error as DartError,
+    LeafIndex, LegEncrypted, LegId, LegRef, MediatorAffirmationProof, NodeLevel, PallasParameters,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
     SenderReversalProof, SettlementId, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
     ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L,
@@ -1452,28 +1452,17 @@ pub mod pallet {
                 Error::<T>::MaxTotalSupplyExceeded
             );
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
-
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Verify the proof.
-            let mut rng = Self::get_rng();
-            proof
-                .verify(&account_curve_tree, &mut rng)
-                .map_err(|_| Error::<T>::InvalidProof)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Verify the proof.
+                proof
+                    .verify(account_curve_tree, rng)
+                    .map_err(|_| Error::<T>::InvalidProof)?;
+                Ok(())
+            })?;
 
             // Store the updated asset details.
             DartAssetDetails::<T>::insert(proof.asset_id, &asset_details);
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
             // Emit an event for the asset minting.
             Self::deposit_event(Event::<T>::AssetMinted {
@@ -1589,26 +1578,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Create an update settlement status instance.
+                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-            // Verify the sender affirmation proof and update the settlement and leg status.
-            let mut rng = Self::get_rng();
-            update_settlement.sender_affirmation(&proof, &account_curve_tree, &mut rng)?;
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Verify the sender affirmation proof and update the settlement and leg status.
+                update_settlement.sender_affirmation(&proof, account_curve_tree, rng)
+            })?;
 
             // Emit an event for the sender affirmation.
             Self::deposit_event(Event::<T>::SenderAffirmed {
@@ -1638,26 +1615,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Create an update settlement status instance.
+                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-            // Verify the receiver affirmation proof and update the settlement and leg status.
-            let mut rng = Self::get_rng();
-            update_settlement.receiver_affirmation(&proof, &account_curve_tree, &mut rng)?;
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Verify the receiver affirmation proof and update the settlement and leg status.
+                update_settlement.receiver_affirmation(&proof, account_curve_tree, rng)
+            })?;
 
             // Emit an event for the receiver affirmation.
             Self::deposit_event(Event::<T>::ReceiverAffirmed {
@@ -1722,26 +1687,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Create an update settlement status instance.
+                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-            // Verify the sender update proof and update the settlement and leg status.
-            let mut rng = Self::get_rng();
-            update_settlement.sender_counter_update(&proof, &account_curve_tree, &mut rng)?;
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Verify the sender update proof and update the settlement and leg status.
+                update_settlement.sender_counter_update(&proof, account_curve_tree, rng)
+            })?;
 
             // Emit an event for the sender update counter.
             Self::deposit_event(Event::<T>::SenderCounterUpdated {
@@ -1771,26 +1724,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Create an update settlement status instance.
+                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-            // Verify the sender reversal proof and update the settlement and leg status.
-            let mut rng = Self::get_rng();
-            update_settlement.sender_reversal(&proof, &account_curve_tree, &mut rng)?;
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Verify the sender reversal proof and update the settlement and leg status.
+                update_settlement.sender_reversal(&proof, account_curve_tree, rng)
+            })?;
 
             // Emit an event for the sender revert.
             Self::deposit_event(Event::<T>::SenderReverted {
@@ -1820,26 +1761,14 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Ensure the nullifier is unique.
-            let nullifier = proof.nullifier();
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+            // Handle the account state update proof and verify the nullifier.
+            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+                // Create an update settlement status instance.
+                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
-            // Get account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
-            // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-            // Verify the receiver claim proof and update the settlement and leg status.
-            let mut rng = Self::get_rng();
-            update_settlement.receiver_claim(&proof, &account_curve_tree, &mut rng)?;
-
-            // Insert the update account state commitment into the account curve tree.
-            let account_commitment = proof.account_state_commitment();
-            Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
-
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Verify the receiver claim proof and update the settlement and leg status.
+                update_settlement.receiver_claim(&proof, account_curve_tree, rng)
+            })?;
 
             // Emit an event for the receiver claim.
             Self::deposit_event(Event::<T>::ReceiverClaimed {
@@ -1889,6 +1818,32 @@ impl<T: Config> Pallet<T> {
         });
 
         Ok(asset_id)
+    }
+
+    /// Handle account state update proof verification and insertion.
+    pub fn handle_account_state_update_proof(
+        proof: &impl AccountStateUpdate,
+        verify: impl FnOnce(&AccountCurveTree<T>, &mut rand_chacha::ChaCha20Rng) -> DispatchResult,
+    ) -> DispatchResult {
+        // Ensure the nullifier is unique.
+        let nullifier = proof.nullifier();
+        Self::ensure_account_state_nullifier_unique(&nullifier)?;
+
+        // Get account curve tree.
+        let mut account_curve_tree = Self::get_account_curve_tree()?;
+
+        // Verify the account state update proof.
+        let mut rng = Self::get_rng();
+        verify(&account_curve_tree, &mut rng)?;
+
+        // Insert the update account state commitment into the account curve tree.
+        let account_commitment = proof.account_state_commitment();
+        Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
+
+        // Burn the nullifier to ensure it cannot be used again.
+        AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+
+        Ok(())
     }
 
     /// Get the asset curve tree interface.
