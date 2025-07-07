@@ -1025,6 +1025,8 @@ pub mod pallet {
         AccountMissing,
         /// Dart account already exists.
         AccountAlreadyCreated,
+        /// Dart account has already registered that asset.
+        AccountAssetAlreadyRegistered,
         /// CurveTree error.
         CurveTreeError,
         /// Leaf not found in the curve tree.
@@ -1110,6 +1112,22 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type EncryptionKeyAccount<T: Config> =
         StorageMap<_, Twox64Concat, EncryptionPublicKey, AccountPublicKey, OptionQuery>;
+
+    /// Dart account asset registrations.
+    ///
+    /// The chain must prevent the same account from registering the same asset multiple times.
+    ///
+    /// This is a double map where the first key is the account public key and the second key is the asset ID.
+    #[pallet::storage]
+    pub(super) type AccountAssetRegistrations<T: Config> = StorageNMap<
+        _,
+        (
+            NMapKey<Twox64Concat, AccountPublicKey>,
+            NMapKey<Twox64Concat, DartAssetId>,
+        ),
+        (),
+        ValueQuery,
+    >;
 
     /// Leaf storage for DART assets curve tree.
     ///
@@ -1351,6 +1369,7 @@ pub mod pallet {
         /// * `BadOrigin` if `origin` isn't signed.
         /// * `AccountMissing` if the DART account is not registered.
         /// * `AssetMissing` if the DART asset is not registered.
+        /// * `AccountAssetAlreadyRegistered` if the DART account has already registered the DART asset.
         /// * `NotAccountOwner` if the caller is not the owner of the DART account.
         /// * `InvalidProof` if the proof is invalid.
         #[pallet::call_index(2)]
@@ -1364,6 +1383,12 @@ pub mod pallet {
 
             // Ensure the DART asset exists.
             Self::ensure_dart_asset_exists(proof.asset_id)?;
+
+            // Ensure the DART account hasn't already registered the DART asset.
+            ensure!(
+                !AccountAssetRegistrations::<T>::contains_key((&proof.account, &proof.asset_id)),
+                Error::<T>::AccountAssetAlreadyRegistered
+            );
 
             // Verify the proof.
             proof
