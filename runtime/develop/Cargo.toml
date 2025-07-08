@@ -11,6 +11,7 @@ polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 polymesh-primitives = { workspace = true, default-features = false }
 polymesh-weights = { workspace = true, default-features = false }
+polymesh-dart = { workspace = true, default-features = false }
 
 # Our pallets
 pallet-asset = { workspace = true, default-features = false }
@@ -34,7 +35,9 @@ pallet-relayer = { workspace = true, default-features = false }
 pallet-sto = { workspace = true, default-features = false }
 pallet-settlement = { workspace = true, default-features = false }
 pallet-statistics = { workspace = true, default-features = false }
-pallet-transaction-payment = { workspace = true, default-features = false, features = ["disable_fees"] }
+pallet-transaction-payment = { workspace = true, default-features = false, features = [
+  "disable_fees",
+] }
 pallet-treasury = { workspace = true, default-features = false }
 pallet-utility = { workspace = true, default-features = false }
 pallet-sudo = { workspace = true, default-features = false }
@@ -45,7 +48,9 @@ log = "0.4.8"
 
 # Substrate
 codec = { workspace = true, default-features = false, features = ["derive"] }
-scale-info = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = [
+  "derive",
+] }
 sp-core = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
@@ -110,8 +115,9 @@ testing = []
 ci-runtime = []
 
 no_std = [
-    "polymesh-primitives/no_std",
-    "pallet-dart/no_std",
+  "polymesh-primitives/no_std",
+  "pallet-dart/no_std",
+  "polymesh-dart/no_std",
 ]
 
 std = [
@@ -169,6 +175,7 @@ std = [
   "polymesh-primitives/std",
   "polymesh-runtime-common/std",
   "polymesh-weights/std",
+  "polymesh-dart/std",
   "sp-api/std",
   "sp-arithmetic/std",
   "sp-authority-discovery/std",
@@ -225,7 +232,7 @@ runtime-benchmarks = [
   "polymesh-contracts/runtime-benchmarks",
   "polymesh-primitives/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
-  "pallet-nft/runtime-benchmarks"
+  "pallet-nft/runtime-benchmarks",
 ]
 running-ci = [
   "pallet-statistics/running-ci",

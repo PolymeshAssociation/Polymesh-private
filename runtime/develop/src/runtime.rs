@@ -187,6 +187,7 @@ type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 /// Dart parameters
 type DartMaxAssetDataLength = ConstSize<8192>;
 type DartMaxSettlementLegs = ConstSize<10>;
+type DartMaxSettlementMemoLength = ConstSize<256>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -324,7 +325,11 @@ impl pallet_dart::Config for Runtime {
 
     type MaxTotalSupply = MaxTotalSupply;
     type MaxAssetDataLength = DartMaxAssetDataLength;
+}
+
+impl polymesh_dart::DartLimits for Runtime {
     type MaxSettlementLegs = DartMaxSettlementLegs;
+    type MaxSettlementMemoLength = DartMaxSettlementMemoLength;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

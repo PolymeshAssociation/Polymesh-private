@@ -35,10 +35,11 @@ use polymesh_dart::{
         LeafValue, NodeLocation, ValidateCurveTreeRoot,
     },
     AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
-    AssetId as DartAssetId, AssetState, AuditorOrMediator, EncryptionPublicKey, Error as DartError,
-    LeafIndex, LegEncrypted, LegId, LegRef, MediatorAffirmationProof, NodeLevel, PallasParameters,
-    ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
-    SenderReversalProof, SettlementId, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
+    AssetId as DartAssetId, AssetState, AuditorOrMediator, BatchedSettlementCounts, DartLimits,
+    EncryptionPublicKey, Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef,
+    MediatorAffirmationProof, NodeLevel, PallasParameters, ReceiverAffirmationProof,
+    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
+    SettlementId, SettlementRef, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
     ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L,
 };
 
@@ -58,6 +59,12 @@ pub trait WeightInfo {
     fn sender_update_counter() -> Weight;
     fn sender_revert() -> Weight;
     fn receiver_claim() -> Weight;
+
+    fn batched_settlement(counts: BatchedSettlementCounts) -> Weight {
+        Self::create_settlement(counts.leg_count)
+            .saturating_add(Self::sender_affirmation().saturating_mul(counts.sender_count))
+            .saturating_add(Self::receiver_affirmation().saturating_mul(counts.receiver_count))
+    }
 }
 
 /// The affirmation status for each party in a DART settlement leg.
@@ -345,8 +352,8 @@ pub enum SettlementStatus {
 }
 
 pub struct UpdateSettlementStatus<T: Config> {
-    /// The settlement ID.
-    pub settlement_id: SettlementId,
+    /// The settlement reference.
+    pub settlement_ref: SettlementRef,
     /// The status of the settlement.
     pub status: SettlementStatus,
     _marker: core::marker::PhantomData<T>,
@@ -355,16 +362,14 @@ pub struct UpdateSettlementStatus<T: Config> {
 impl<T: Config> UpdateSettlementStatus<T> {
     /// Create a new `UpdateSettlementStatus` instance.
     pub fn new(leg_ref: LegRef) -> Result<Self, DispatchError> {
-        // Get the settlement ID from the leg reference.
-        let settlement_id = leg_ref
-            .settlement_id()
-            .ok_or(Error::<T>::SettlementNotFound)?;
+        // Get the settlement reference from the leg reference.
+        let settlement_ref = leg_ref.settlement;
         // Get the status of the settlement.
         let status =
-            SettlementState::<T>::get(settlement_id).ok_or(Error::<T>::SettlementNotFound)?;
+            SettlementState::<T>::get(settlement_ref).ok_or(Error::<T>::SettlementNotFound)?;
 
         Ok(Self {
-            settlement_id,
+            settlement_ref,
             status,
             _marker: core::marker::PhantomData,
         })
@@ -383,15 +388,13 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Get a specific leg from the settlement.
     fn get_leg(&self, leg_id: LegId) -> Result<DartSettlementLeg<T>, DispatchError> {
         // Ensure the leg ID is valid.
-        Ok(
-            SettlementLegs::<T>::get((self.settlement_id, leg_id))
-                .ok_or(Error::<T>::LegNotFound)?,
-        )
+        Ok(SettlementLegs::<T>::get((self.settlement_ref, leg_id))
+            .ok_or(Error::<T>::LegNotFound)?)
     }
 
     /// Update a specific leg in the settlement.
     fn update_leg(&mut self, leg_id: LegId, leg: DartSettlementLeg<T>) -> DispatchResult {
-        SettlementLegs::<T>::insert((self.settlement_id, leg_id), leg);
+        SettlementLegs::<T>::insert((self.settlement_ref, leg_id), leg);
         Ok(())
     }
 
@@ -573,11 +576,11 @@ impl<T: Config> UpdateSettlementStatus<T> {
 
         // Store the updated status if it exists.
         if let Some(status) = updated_status {
-            SettlementState::<T>::insert(self.settlement_id, status);
+            SettlementState::<T>::insert(self.settlement_ref, status);
 
             // Emit an event for the settlement status update.
             Pallet::<T>::deposit_event(Event::<T>::SettlementStatusUpdated {
-                settlement_id: self.settlement_id,
+                settlement_ref: self.settlement_ref,
                 status,
             });
         }
@@ -872,7 +875,7 @@ pub mod pallet {
 
     /// Configuration trait.
     #[pallet::config]
-    pub trait Config: frame_system::Config + pallet_identity::Config + core::fmt::Debug {
+    pub trait Config: frame_system::Config + pallet_identity::Config + DartLimits {
         /// Pallet's events.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Randomness source.
@@ -886,9 +889,6 @@ pub mod pallet {
 
         /// Maximum asset data length.
         type MaxAssetDataLength: Get<u32>;
-
-        /// Maximum number of settlement legs.
-        type MaxSettlementLegs: Get<u32>;
     }
 
     #[pallet::event]
@@ -947,8 +947,8 @@ pub mod pallet {
         },
         /// Settlement created.
         SettlementCreated {
-            /// Settlement ID.
-            settlement_id: SettlementId,
+            /// Settlement reference.
+            settlement_ref: SettlementRef,
             /// Legs in the settlement.
             legs: BoundedVec<LegEncrypted, T::MaxSettlementLegs>,
         },
@@ -984,8 +984,8 @@ pub mod pallet {
         },
         /// Settlement status updated.
         SettlementStatusUpdated {
-            /// Settlement ID.
-            settlement_id: SettlementId,
+            /// Settlement reference.
+            settlement_ref: SettlementRef,
             /// New status of the settlement.
             status: SettlementStatus,
         },
@@ -1049,6 +1049,10 @@ pub mod pallet {
         SettlementMissingLegs,
         /// Settlement has too many legs.
         SettlementTooManyLegs,
+        /// Settlement memo is too long.
+        SettlementMemoTooLong,
+        /// Batched settlement has invalid leg references.
+        BatchedSettlementInvalidLegRefs,
         /// Cannot go from pending to finalized.
         CannotGoFromPendingToFinalized,
         /// Cannot go from finalized to pending.
@@ -1201,7 +1205,17 @@ pub mod pallet {
     /// The settlement status.
     #[pallet::storage]
     pub(crate) type SettlementState<T: Config> =
-        StorageMap<_, Twox64Concat, SettlementId, SettlementStatus, OptionQuery>;
+        StorageMap<_, Twox64Concat, SettlementRef, SettlementStatus, OptionQuery>;
+
+    /// The settlement memo.
+    #[pallet::storage]
+    pub(crate) type SettlementMemo<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        SettlementRef,
+        BoundedVec<u8, T::MaxSettlementMemoLength>,
+        OptionQuery,
+    >;
 
     /// The settlement legs.
     ///
@@ -1211,7 +1225,7 @@ pub mod pallet {
     pub(crate) type SettlementLegs<T: Config> = StorageNMap<
         _,
         (
-            NMapKey<Twox64Concat, SettlementId>,
+            NMapKey<Twox64Concat, SettlementRef>,
             NMapKey<Twox64Concat, LegId>,
         ),
         DartSettlementLeg<T>,
@@ -1491,71 +1505,16 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_settlement(proof.legs.len() as u32))]
         pub fn create_settlement(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SettlementProof,
+            proof: polymesh_dart::SettlementProof<T>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
-
-            let leg_count = proof.legs.len();
-            // Ensure the settlement has at least one leg.
-            ensure!(leg_count > 0, Error::<T>::SettlementMissingLegs);
-
-            // Ensure the settlement doesn't have more than the maximum number of legs.
-            ensure!(
-                leg_count <= T::MaxSettlementLegs::get() as usize,
-                Error::<T>::SettlementTooManyLegs
-            );
-
-            // Get the asset curve tree.
-            let asset_curve_tree = Self::get_asset_curve_tree()?;
-
-            // Verify the settlement proof.
-            let mut rng = Self::get_rng();
-            proof
-                .verify(&asset_curve_tree, &mut rng)
-                .map_err(|_| Error::<T>::InvalidProof)?;
 
             // Allocate a new settlement ID.
             let settlement_id = NextSettlementId::<T>::get();
             NextSettlementId::<T>::put(settlement_id + 1);
+            let settlement_ref = SettlementRef::from(settlement_id);
 
-            // Set the settlement state to pending.
-            SettlementState::<T>::insert(settlement_id, SettlementStatus::Pending);
-
-            // Store the settlement legs.
-            let mut legs = Vec::with_capacity(leg_count);
-            for (leg_id, leg) in proof.legs.into_iter().enumerate() {
-                let leg_id = leg_id as LegId;
-                let leg_enc = leg.leg_enc().map_err(Error::<T>::from)?;
-                legs.push(leg_enc.clone());
-
-                // Mediator affirmation status if the leg has a mediator.
-                let mediator = leg
-                    .has_mediator()
-                    .map_err(Error::<T>::from)?
-                    .then_some(AffirmationStatus::Pending);
-
-                SettlementLegs::<T>::insert(
-                    (settlement_id, leg_id),
-                    DartSettlementLeg {
-                        enc: leg_enc.clone(),
-                        sender: AffirmationStatus::Pending,
-                        receiver: AffirmationStatus::Pending,
-                        mediator,
-                        status: AffirmationStatus::Pending,
-                        _marker: core::marker::PhantomData,
-                    },
-                );
-            }
-
-            // Emit an event for the settlement creation.
-            Self::deposit_event(Event::<T>::SettlementCreated {
-                settlement_id,
-                legs: legs
-                    .try_into()
-                    .map_err(|_| Error::<T>::SettlementTooManyLegs)?,
-            });
-
-            Ok(())
+            Self::base_create_settlement(settlement_ref, &proof)
         }
 
         /// Sender affirms a settlement leg.
@@ -1578,21 +1537,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
-                // Create an update settlement status instance.
-                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-                // Verify the sender affirmation proof and update the settlement and leg status.
-                update_settlement.sender_affirmation(&proof, account_curve_tree, rng)
-            })?;
-
-            // Emit an event for the sender affirmation.
-            Self::deposit_event(Event::<T>::SenderAffirmed {
-                leg_ref: proof.leg_ref,
-            });
-
-            Ok(())
+            Self::base_sender_affirmation(&proof)
         }
 
         /// Receiver affirms a settlement leg.
@@ -1615,21 +1560,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
-                // Create an update settlement status instance.
-                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
-
-                // Verify the receiver affirmation proof and update the settlement and leg status.
-                update_settlement.receiver_affirmation(&proof, account_curve_tree, rng)
-            })?;
-
-            // Emit an event for the receiver affirmation.
-            Self::deposit_event(Event::<T>::ReceiverAffirmed {
-                leg_ref: proof.leg_ref,
-            });
-
-            Ok(())
+            Self::base_receiver_affirmation(&proof)
         }
 
         /// Mediator affirms a settlement leg.
@@ -1777,6 +1708,50 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Create a settlement with batched leg affirmations.
+        ///
+        /// # Arguments
+        /// * `origin` - The origin of the call.
+        /// * `proof` - The settlement proof with batched leg affirmations.
+        ///
+        /// # Errors
+        /// * `BadOrigin` if `origin` isn't signed.
+        /// * `InvalidProof` if the proof is invalid.
+        /// * `SettlementMissingLegs` if the settlement has no legs.
+        /// * `SettlementTooManyLegs` if the settlement has more legs than the maximum allowed.
+        #[pallet::call_index(11)]
+        #[pallet::weight(<T as Config>::WeightInfo::batched_settlement(proof.count_leg_affirmations()))]
+        pub fn batched_settlement(
+            origin: OriginFor<T>,
+            proof: polymesh_dart::BatchedSettlementProof<T>,
+        ) -> DispatchResult {
+            ensure_signed(origin)?;
+
+            // Ensure that the all the leg affirmations have the same settlement reference.
+            ensure!(
+                proof.check_leg_references(),
+                Error::<T>::BatchedSettlementInvalidLegRefs
+            );
+
+            // Get the hash based settlement reference.
+            let settlement_ref = proof.settlement_ref();
+
+            // Create the settlement with the provided proof.
+            Self::base_create_settlement(settlement_ref, proof.settlement_proof())?;
+
+            // Handle the leg affirmations in the proof.
+            for leg_affirmation in &proof.leg_affirmations {
+                if let Some(sender_proof) = &leg_affirmation.sender {
+                    Self::base_sender_affirmation(sender_proof)?;
+                }
+                if let Some(receiver_proof) = &leg_affirmation.receiver {
+                    Self::base_receiver_affirmation(receiver_proof)?;
+                }
+            }
+
+            Ok(())
+        }
     }
 }
 
@@ -1818,6 +1793,110 @@ impl<T: Config> Pallet<T> {
         });
 
         Ok(asset_id)
+    }
+
+    pub fn base_create_settlement(
+        settlement_ref: SettlementRef,
+        proof: &polymesh_dart::SettlementProof<T>,
+    ) -> DispatchResult {
+        let leg_count = proof.legs.len();
+        // Ensure the settlement has at least one leg.
+        ensure!(leg_count > 0, Error::<T>::SettlementMissingLegs);
+
+        // Ensure the settlement doesn't have more than the maximum number of legs.
+        ensure!(
+            leg_count <= T::MaxSettlementLegs::get() as usize,
+            Error::<T>::SettlementTooManyLegs
+        );
+
+        // Get the asset curve tree.
+        let asset_curve_tree = Self::get_asset_curve_tree()?;
+
+        // Verify the settlement proof.
+        let mut rng = Self::get_rng();
+        proof
+            .verify(&asset_curve_tree, &mut rng)
+            .map_err(|_| Error::<T>::InvalidProof)?;
+
+        // Set the settlement state to pending.
+        SettlementState::<T>::insert(settlement_ref, SettlementStatus::Pending);
+
+        // Store the settlement memo.
+        SettlementMemo::<T>::insert(settlement_ref, &proof.memo);
+
+        // Store the settlement legs.
+        let mut legs = BoundedVec::new();
+        for (leg_id, leg) in proof.legs.iter().enumerate() {
+            let leg_id = leg_id as LegId;
+            let leg_enc = leg.leg_enc().map_err(Error::<T>::from)?;
+            legs.force_push(leg_enc.clone());
+
+            // Mediator affirmation status if the leg has a mediator.
+            let mediator = leg
+                .has_mediator()
+                .map_err(Error::<T>::from)?
+                .then_some(AffirmationStatus::Pending);
+
+            SettlementLegs::<T>::insert(
+                (settlement_ref, leg_id),
+                DartSettlementLeg {
+                    enc: leg_enc.clone(),
+                    sender: AffirmationStatus::Pending,
+                    receiver: AffirmationStatus::Pending,
+                    mediator,
+                    status: AffirmationStatus::Pending,
+                    _marker: core::marker::PhantomData,
+                },
+            );
+        }
+
+        // Emit an event for the settlement creation.
+        Self::deposit_event(Event::<T>::SettlementCreated {
+            settlement_ref,
+            legs,
+        });
+
+        Ok(())
+    }
+
+    pub fn base_sender_affirmation(
+        proof: &polymesh_dart::SenderAffirmationProof,
+    ) -> DispatchResult {
+        // Handle the account state update proof and verify the nullifier.
+        Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {
+            // Create an update settlement status instance.
+            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+
+            // Verify the sender affirmation proof and update the settlement and leg status.
+            update_settlement.sender_affirmation(&proof, account_curve_tree, rng)
+        })?;
+
+        // Emit an event for the sender affirmation.
+        Self::deposit_event(Event::<T>::SenderAffirmed {
+            leg_ref: proof.leg_ref,
+        });
+
+        Ok(())
+    }
+
+    pub fn base_receiver_affirmation(
+        proof: &polymesh_dart::ReceiverAffirmationProof,
+    ) -> DispatchResult {
+        // Handle the account state update proof and verify the nullifier.
+        Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {
+            // Create an update settlement status instance.
+            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+
+            // Verify the receiver affirmation proof and update the settlement and leg status.
+            update_settlement.receiver_affirmation(&proof, account_curve_tree, rng)
+        })?;
+
+        // Emit an event for the receiver affirmation.
+        Self::deposit_event(Event::<T>::ReceiverAffirmed {
+            leg_ref: proof.leg_ref,
+        });
+
+        Ok(())
     }
 
     /// Handle account state update proof verification and insertion.
