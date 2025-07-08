@@ -5400,6 +5400,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "pallet-identity",
  "pallet-portfolio",
  "parity-scale-codec",

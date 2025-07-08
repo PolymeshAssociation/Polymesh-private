@@ -40,13 +40,15 @@ use polymesh_dart::{
     MediatorAffirmationProof, NodeLevel, PallasParameters, ReceiverAffirmationProof,
     ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
     SettlementId, SettlementRef, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
-    ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L,
+    ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L, MAX_CURVE_TREE_GENS,
 };
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
 pub trait WeightInfo {
     fn register_account() -> Weight;
     fn create_asset() -> Weight;
@@ -624,8 +626,38 @@ pub type AccountLeaf = LeafValue<PallasParameters>;
 pub type AccountInnerNode = Inner<1, PallasParameters, VestaParameters>;
 pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
 
+#[cfg(feature = "std")]
+lazy_static::lazy_static! {
+    static ref CURVE_TREE_PARAMETERS: CurveTreeParameters = CurveTreeParameters::new(
+        MAX_CURVE_TREE_GENS,
+        MAX_CURVE_TREE_GENS,
+    );
+}
+
+#[cfg(feature = "std")]
+fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
+    &CURVE_TREE_PARAMETERS
+}
+
+#[cfg(not(feature = "std"))]
+static mut CURVE_TREE_PARAMETERS: Option<CurveTreeParameters> = None;
+
+#[allow(static_mut_refs)]
+#[cfg(not(feature = "std"))]
+fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
+    unsafe {
+        if CURVE_TREE_PARAMETERS.is_none() {
+            CURVE_TREE_PARAMETERS = Some(CurveTreeParameters::new(
+                MAX_CURVE_TREE_GENS,
+                MAX_CURVE_TREE_GENS,
+            ));
+        }
+        CURVE_TREE_PARAMETERS.as_ref().unwrap()
+    }
+}
+
 /// Asset Curve Tree Storage backend.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AssetCurveTreeStorage<T: Config> {
     _marker: core::marker::PhantomData<T>,
 }
@@ -635,10 +667,14 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
 {
     type Error = Error<T>;
 
-    fn new(_height: NodeLevel) -> Result<Self, Self::Error> {
+    fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
             _marker: core::marker::PhantomData,
         })
+    }
+
+    fn parameters(&self) -> &CurveTreeParameters {
+        get_curve_tree_parameters()
     }
 
     fn height(&self) -> NodeLevel {
@@ -699,7 +735,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
 }
 
 /// Account Curve Tree Storage backend.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct AccountCurveTreeStorage<T: Config> {
     _marker: core::marker::PhantomData<T>,
 }
@@ -709,10 +745,14 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
 {
     type Error = Error<T>;
 
-    fn new(_height: NodeLevel) -> Result<Self, Self::Error> {
+    fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
             _marker: core::marker::PhantomData,
         })
+    }
+
+    fn parameters(&self) -> &CurveTreeParameters {
+        get_curve_tree_parameters()
     }
 
     fn height(&self) -> NodeLevel {
@@ -1085,6 +1125,8 @@ pub mod pallet {
         SettlementNotExecuted,
         /// Settlement not rejected.
         SettlementNotRejected,
+        /// CurveTree parameters not set.
+        CurveTreeParametersNotSet,
     }
 
     impl<T: Config> From<DartError> for Error<T> {

@@ -38,6 +38,8 @@ sp-runtime = { workspace = true, default-features = false }
 # Only Benchmarking
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, optional = true }
 
+lazy_static = { version = "1.5.0", default-features = false, optional = true }
+
 [features]
 equalize = []
 default = ["std", "equalize"]
@@ -46,6 +48,7 @@ testing = ["polymesh-host-functions/runtime-benchmarks"]
 
 no_std = ["polymesh-host-functions/no_std", "polymesh-dart/no_std"]
 std = [
+  "lazy_static",
   "rand_core/std",
   "rand_chacha/std",
   "codec/std",

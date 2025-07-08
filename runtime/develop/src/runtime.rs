@@ -354,6 +354,7 @@ mod benches {
         [pallet_corporate_actions, CorporateAction]
         [pallet_corporate_ballot, CorporateBallot]
         [pallet_capital_distribution, CapitalDistribution]
+        [pallet_dart, DartAsset]
         [pallet_external_agents, ExternalAgents]
         [pallet_relayer, Relayer]
         [pallet_committee, PolymeshCommittee]
