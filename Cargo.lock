@@ -5401,6 +5401,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "lazy_static",
+ "log",
  "pallet-identity",
  "pallet-portfolio",
  "parity-scale-codec",

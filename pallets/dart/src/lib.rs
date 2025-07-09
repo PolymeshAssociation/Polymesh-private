@@ -31,8 +31,9 @@ use sp_std::convert::From;
 
 use polymesh_dart::{
     curve_tree::{
-        CurveTreeBackend, CurveTreeParameters, CurveTreeRoot, CurveTreeWithBackend, Inner,
-        LeafValue, NodeLocation, ValidateCurveTreeRoot, WrappedCurveTreeParameters,
+        CurveTreeBackend, CurveTreeParameters, CurveTreeRoot,
+        CurveTreeWithBackend, Inner, LeafValue, NodeLocation, ValidateCurveTreeRoot,
+        WrappedCurveTreeParameters,
     },
     AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
     AssetId as DartAssetId, AssetState, AuditorOrMediator, BatchedSettlementCounts, DartLimits,
@@ -40,7 +41,7 @@ use polymesh_dart::{
     MediatorAffirmationProof, NodeLevel, PallasParameters, ReceiverAffirmationProof,
     ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
     SettlementId, SettlementRef, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
-    ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L, MAX_CURVE_TREE_GENS,
+    ASSET_TREE_GENS, ASSET_TREE_HEIGHT, ASSET_TREE_L,
 };
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
@@ -629,8 +630,8 @@ pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
 #[cfg(feature = "std")]
 lazy_static::lazy_static! {
     static ref CURVE_TREE_PARAMETERS: CurveTreeParameters = CurveTreeParameters::new(
-        MAX_CURVE_TREE_GENS,
-        MAX_CURVE_TREE_GENS,
+        polymesh_dart::MAX_CURVE_TREE_GENS,
+        polymesh_dart::MAX_CURVE_TREE_GENS,
     );
 }
 
@@ -776,7 +777,8 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
         &self,
         leaf_index: LeafIndex,
     ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
-        Ok(AccountLeaves::<T>::get(leaf_index))
+        let leaf = AccountLeaves::<T>::get(leaf_index);
+        Ok(leaf)
     }
 
     fn set_leaf(
@@ -1295,7 +1297,7 @@ pub mod pallet {
         fn build(&self) {
             // TODO: Pre-create X assets to reserve the first 0-X asset IDs.
 
-            let params = WrappedCurveTreeParameters::new(MAX_CURVE_TREE_GENS)
+            let params = WrappedCurveTreeParameters::new(polymesh_dart::MAX_CURVE_TREE_GENS)
                 .expect("Curve tree parameters should be valid; qed");
             // Store the curve tree parameters in the storage.
             CachedCurveTreeParameters::<T>::put(params);
@@ -1312,50 +1314,7 @@ pub mod pallet {
         }
 
         fn on_finalize(_n: BlockNumberFor<T>) {
-            // Check if the asset curve tree has been updated.
-            if UpdatedAssetCurveTree::<T>::get() {
-                // Get the asset curve tree.
-                let tree = Self::get_asset_curve_tree()
-                    .expect("Asset curve tree should be initialized; qed");
-
-                // Get the root of the asset curve tree.
-                let root = CurveTreeRoot::new(
-                    &tree
-                        .root_node()
-                        .expect("Asset curve tree should have a root; qed"),
-                )
-                .expect("Asset curve tree root should be valid; qed");
-
-                // Store the root in the storage.
-                AssetCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
-
-                // Emit an event for the asset curve tree root update.
-                Self::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
-            }
-
-            // Check if the account curve tree has been updated.
-            if UpdatedAccountCurveTree::<T>::get() {
-                // Get the account curve tree.
-                let tree = Self::get_account_curve_tree()
-                    .expect("Account curve tree should be initialized; qed");
-
-                // Get the root of the account curve tree.
-                let root = CurveTreeRoot::new(
-                    &tree
-                        .root_node()
-                        .expect("Account curve tree should have a root; qed"),
-                )
-                .expect("Account curve tree root should be valid; qed");
-
-                // Store the root in the storage.
-                AccountCurveTreeRoots::<T>::insert(
-                    &root,
-                    frame_system::Pallet::<T>::block_number(),
-                );
-
-                // Emit an event for the account curve tree root update.
-                Self::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
-            }
+            Self::update_curve_tree_roots();
         }
     }
 
@@ -2173,5 +2132,49 @@ impl<T: Config> Pallet<T> {
         use rand_core::SeedableRng;
         // Get the random number generator.
         rand_chacha::ChaCha20Rng::from_seed(Self::get_seed(true))
+    }
+
+    pub fn update_curve_tree_roots() {
+        // Check if the asset curve tree has been updated.
+        if UpdatedAssetCurveTree::<T>::get() {
+            // Get the asset curve tree.
+            let tree =
+                Self::get_asset_curve_tree().expect("Asset curve tree should be initialized; qed");
+
+            // Get the root of the asset curve tree.
+            let root = CurveTreeRoot::new(
+                &tree
+                    .root_node()
+                    .expect("Asset curve tree should have a root; qed"),
+            )
+            .expect("Asset curve tree root should be valid; qed");
+
+            // Store the root in the storage.
+            AssetCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
+
+            // Emit an event for the asset curve tree root update.
+            Self::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
+        }
+
+        // Check if the account curve tree has been updated.
+        if UpdatedAccountCurveTree::<T>::get() {
+            // Get the account curve tree.
+            let tree = Self::get_account_curve_tree()
+                .expect("Account curve tree should be initialized; qed");
+
+            // Get the root of the account curve tree.
+            let root = CurveTreeRoot::new(
+                &tree
+                    .root_node()
+                    .expect("Account curve tree should have a root; qed"),
+            )
+            .expect("Account curve tree root should be valid; qed");
+
+            // Store the root in the storage.
+            AccountCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
+
+            // Emit an event for the account curve tree root update.
+            Self::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
+        }
     }
 }
