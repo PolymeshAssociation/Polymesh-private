@@ -32,7 +32,7 @@ use sp_std::convert::From;
 use polymesh_dart::{
     curve_tree::{
         CurveTreeBackend, CurveTreeParameters, CurveTreeRoot, CurveTreeWithBackend, Inner,
-        LeafValue, NodeLocation, ValidateCurveTreeRoot,
+        LeafValue, NodeLocation, ValidateCurveTreeRoot, WrappedCurveTreeParameters,
     },
     AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
     AssetId as DartAssetId, AssetState, AuditorOrMediator, BatchedSettlementCounts, DartLimits,
@@ -634,25 +634,27 @@ lazy_static::lazy_static! {
     );
 }
 
-#[cfg(feature = "std")]
-fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
-    &CURVE_TREE_PARAMETERS
-}
-
 #[cfg(not(feature = "std"))]
 static mut CURVE_TREE_PARAMETERS: Option<CurveTreeParameters> = None;
 
-#[allow(static_mut_refs)]
-#[cfg(not(feature = "std"))]
-fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
-    unsafe {
-        if CURVE_TREE_PARAMETERS.is_none() {
-            CURVE_TREE_PARAMETERS = Some(CurveTreeParameters::new(
-                MAX_CURVE_TREE_GENS,
-                MAX_CURVE_TREE_GENS,
-            ));
+impl<T: Config> Pallet<T> {
+    #[cfg(feature = "std")]
+    pub fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
+        &CURVE_TREE_PARAMETERS
+    }
+
+    #[allow(static_mut_refs)]
+    #[cfg(not(feature = "std"))]
+    pub fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
+        unsafe {
+            if CURVE_TREE_PARAMETERS.is_none() {
+                let parameters = CachedCurveTreeParameters::<T>::get()
+                    .and_then(|p| p.decode().ok())
+                    .expect("Failed to decode curve tree parameters");
+                CURVE_TREE_PARAMETERS = Some(parameters);
+            }
+            CURVE_TREE_PARAMETERS.as_ref().unwrap()
         }
-        CURVE_TREE_PARAMETERS.as_ref().unwrap()
     }
 }
 
@@ -674,7 +676,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
     }
 
     fn parameters(&self) -> &CurveTreeParameters {
-        get_curve_tree_parameters()
+        Pallet::<T>::get_curve_tree_parameters()
     }
 
     fn height(&self) -> NodeLevel {
@@ -752,7 +754,7 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
     }
 
     fn parameters(&self) -> &CurveTreeParameters {
-        get_curve_tree_parameters()
+        Pallet::<T>::get_curve_tree_parameters()
     }
 
     fn height(&self) -> NodeLevel {
@@ -1135,6 +1137,11 @@ pub mod pallet {
         }
     }
 
+    /// Cache wrapped curve tree parameters.
+    #[pallet::storage]
+    pub(crate) type CachedCurveTreeParameters<T: Config> =
+        StorageValue<_, WrappedCurveTreeParameters, OptionQuery>;
+
     /// Next Asset ID to be used for DART assets.
     #[pallet::storage]
     pub(crate) type NextAssetId<T: Config> = StorageValue<_, DartAssetId, ValueQuery>;
@@ -1287,6 +1294,11 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
             // TODO: Pre-create X assets to reserve the first 0-X asset IDs.
+
+            let params = WrappedCurveTreeParameters::new(MAX_CURVE_TREE_GENS)
+                .expect("Curve tree parameters should be valid; qed");
+            // Store the curve tree parameters in the storage.
+            CachedCurveTreeParameters::<T>::put(params);
         }
     }
 
