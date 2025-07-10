@@ -40,13 +40,16 @@ impl<T: Config> Pallet<T> {
     pub fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
         unsafe {
             if CURVE_TREE_PARAMETERS.is_none() {
-                let parameters = CachedCurveTreeParameters::<T>::get()
-                    .and_then(|p| p.decode().ok())
+                let parameters = Self::get_cached_curve_tree_parameters()
                     .expect("Failed to decode curve tree parameters");
                 CURVE_TREE_PARAMETERS = Some(parameters);
             }
             CURVE_TREE_PARAMETERS.as_ref().unwrap()
         }
+    }
+
+    pub fn get_cached_curve_tree_parameters() -> Option<CurveTreeParameters> {
+        CachedCurveTreeParameters::<T>::get().and_then(|p| p.decode().ok())
     }
 }
 
