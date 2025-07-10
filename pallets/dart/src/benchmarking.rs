@@ -10,14 +10,18 @@ use rand_core::SeedableRng;
 use pallet_identity::benchmarking::user;
 
 use polymesh_dart::{
-    curve_tree::{ProverCurveTree},
-    AccountKeys,
-    ACCOUNT_TREE_GENS,
+    curve_tree::ProverCurveTree, AccountKeys, PallasParameters, VestaParameters, ACCOUNT_TREE_GENS,
 };
 
 use crate::*;
 
-pub type AccountProverCurveTree<T> = ProverCurveTree<ACCOUNT_TREE_L, PallasParameters, VestaParameters, AccountCurveTreeStorage<T>, Error<T>>;
+pub type AccountProverCurveTree<T> = ProverCurveTree<
+    ACCOUNT_TREE_L,
+    PallasParameters,
+    VestaParameters,
+    AccountCurveTreeStorage<T>,
+    Error<T>,
+>;
 fn get_prover_account_curve_tree<T: Config>() -> AccountProverCurveTree<T> {
     AccountProverCurveTree::new(ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_GENS)
         .expect("Failed to create prover curve tree")
