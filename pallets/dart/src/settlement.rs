@@ -508,9 +508,13 @@ impl<T: Config> UpdateSettlementStatus<T> {
             SettlementStatus::Pending => {
                 // If the settlement is pending, check if all legs are affirmed.
                 for id in 0..T::MaxSettlementLegs::get() {
-                    let leg = self.get_leg(id as LegId)?;
-                    if leg.status != AffirmationStatus::Affirmed {
-                        return Ok(()); // Still pending
+                    if let Ok(leg) = self.get_leg(id as LegId) {
+                        if leg.status != AffirmationStatus::Affirmed {
+                            return Ok(()); // Still pending
+                        }
+                    } else {
+                        // No more legs to check
+                        break;
                     }
                 }
                 // If all legs are affirmed, update the settlement status to executed.
@@ -520,9 +524,13 @@ impl<T: Config> UpdateSettlementStatus<T> {
                 // If the settlement is in the executed or rejected state,
                 // check if all legs are finalized.
                 for id in 0..T::MaxSettlementLegs::get() {
-                    let leg = self.get_leg(id as LegId)?;
-                    if leg.status != AffirmationStatus::Finalized {
-                        return Ok(()); // Still not finalized
+                    if let Ok(leg) = self.get_leg(id as LegId) {
+                        if leg.status != AffirmationStatus::Finalized {
+                            return Ok(()); // Still not finalized
+                        }
+                    } else {
+                        // No more legs to check
+                        break;
                     }
                 }
                 // If all legs are finalized, update the settlement status to finalized.
@@ -551,9 +559,13 @@ impl<T: Config> UpdateSettlementStatus<T> {
     fn reject_all_legs(&mut self) -> DispatchResult {
         // Reject all legs in the settlement.
         for id in 0..T::MaxSettlementLegs::get() {
-            let mut leg = self.get_leg(id as LegId)?;
-            leg.reject()?;
-            self.update_leg(id as LegId, leg)?;
+            if let Ok(mut leg) = self.get_leg(id as LegId) {
+                leg.reject()?;
+                self.update_leg(id as LegId, leg)?;
+            } else {
+                // No more legs to reject
+                break;
+            }
         }
         self.status = SettlementStatus::Rejected;
         Ok(())
