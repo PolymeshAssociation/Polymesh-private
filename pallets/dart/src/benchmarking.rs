@@ -143,7 +143,11 @@ benchmarks! {
         let (settlement, _) =
             DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
 
+        // Get the first leg of the settlement.
         let leg = settlement.legs[0].clone();
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
 
         // Generate the sender's affirmation proof.
         let (proof, _) = leg.sender.sender_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, leg.asset_id, leg.amount);
@@ -162,7 +166,11 @@ benchmarks! {
         let (settlement, _) =
             DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
 
+        // Get the first leg of the settlement.
         let leg = settlement.legs[0].clone();
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
 
         // Generate the receiver's affirmation proof.
         let (proof, _) = leg.receiver.receiver_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, leg.asset_id, leg.amount);
@@ -181,6 +189,7 @@ benchmarks! {
         let (settlement, _) =
             DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
 
+        // Get the first leg of the settlement.
         let leg = &settlement.legs[0];
         let mediator = leg.mediator.as_ref().expect("Mediator should be present in the leg").clone();
 
@@ -201,6 +210,13 @@ benchmarks! {
         let (settlement, _) =
             DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
 
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
+        // Affirm all the legs in the settlement.
+        settlement.affirm_legs(&mut rng, &mut off_chain);
+
+        // Get the first leg of the settlement.
         let leg = settlement.legs[0].clone();
 
         // Generate the receiver's claim proof.

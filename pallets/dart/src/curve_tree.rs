@@ -249,7 +249,8 @@ impl<T: Config> AssetCurveTree<T> {
 
 impl<T: Config> ValidateCurveTreeRoot<ASSET_TREE_L> for &AssetCurveTree<T> {
     fn validate_root(&self, root: &CurveTreeRoot<ASSET_TREE_L>) -> bool {
-        AssetCurveTreeRoots::<T>::contains_key(root)
+        let found = AssetCurveTreeRoots::<T>::contains_key(root);
+        found
     }
 
     fn params(&self) -> &CurveTreeParameters {
@@ -293,7 +294,8 @@ impl<T: Config> AccountCurveTree<T> {
 
 impl<T: Config> ValidateCurveTreeRoot<ACCOUNT_TREE_L> for &AccountCurveTree<T> {
     fn validate_root(&self, root: &CurveTreeRoot<ACCOUNT_TREE_L>) -> bool {
-        AccountCurveTreeRoots::<T>::contains_key(root)
+        let found = AccountCurveTreeRoots::<T>::contains_key(root);
+        found
     }
 
     fn params(&self) -> &CurveTreeParameters {

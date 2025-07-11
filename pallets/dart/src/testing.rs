@@ -12,8 +12,8 @@ use polymesh_dart::{
     curve_tree::ProverCurveTree, AccountAssetRegistrationProof, AccountAssetState, AccountKeys,
     AccountPublicKeys, AssetMintingProof, AuditorOrMediator, Balance as DartBalance, LegBuilder,
     LegRole, MediatorAffirmationProof, PallasParameters, ReceiverAffirmationProof,
-    ReceiverClaimProof, SenderAffirmationProof, SettlementBuilder, VestaParameters,
-    ACCOUNT_TREE_GENS, ASSET_TREE_GENS,
+    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
+    SettlementBuilder, VestaParameters, ACCOUNT_TREE_GENS, ASSET_TREE_GENS,
 };
 
 use crate::*;
@@ -379,6 +379,104 @@ impl<T: Config> DartUserInner<T> {
             .expect("Failed to commit pending state");
     }
 
+    pub fn sender_revert_proof(
+        &mut self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) -> (SenderReversalProof, &mut AccountAssetState) {
+        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc);
+        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc);
+        let asset_id = leg.asset_id();
+        let amount = leg.amount();
+
+        // Get the account state for the asset.
+        let account_state = self
+            .assets
+            .get_mut(&asset_id)
+            .expect("Asset not registered for user");
+
+        // Generate the sender revert proof.
+        let proof = SenderReversalProof::new(
+            rng,
+            &leg_ref,
+            amount,
+            sk_e,
+            &leg_enc,
+            account_state,
+            &off_chain.account_tree,
+        )
+        .expect("Failed to generate sender revert proof");
+
+        (proof, account_state)
+    }
+
+    pub fn sender_revert(
+        &mut self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) {
+        let origin = self.origin();
+        let (proof, account_state) = self.sender_revert_proof(rng, off_chain, leg_ref);
+
+        assert_ok!(Pallet::<T>::sender_revert(origin, proof));
+
+        // Update pending state in the account state.
+        account_state
+            .commit_pending_state()
+            .expect("Failed to commit pending state");
+    }
+
+    pub fn sender_counter_update_proof(
+        &mut self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) -> (SenderCounterUpdateProof, &mut AccountAssetState) {
+        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc);
+        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc);
+        let asset_id = leg.asset_id();
+
+        // Get the account state for the asset.
+        let account_state = self
+            .assets
+            .get_mut(&asset_id)
+            .expect("Asset not registered for user");
+
+        // Generate the sender counter update proof.
+        let proof = SenderCounterUpdateProof::new(
+            rng,
+            &leg_ref,
+            sk_e,
+            &leg_enc,
+            account_state,
+            &off_chain.account_tree,
+        )
+        .expect("Failed to generate sender counter update proof");
+
+        (proof, account_state)
+    }
+
+    pub fn sender_counter_update(
+        &mut self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) {
+        let origin = self.origin();
+        let (proof, account_state) = self.sender_counter_update_proof(rng, off_chain, leg_ref);
+
+        assert_ok!(Pallet::<T>::sender_update_counter(origin, proof));
+
+        // Update pending state in the account state.
+        account_state
+            .commit_pending_state()
+            .expect("Failed to commit pending state");
+    }
+
     pub fn mediator_affirmation_proof(
         &self,
         rng: &mut StdRng,
@@ -588,6 +686,50 @@ impl<T: Config> DartUser<T> {
         inner.receiver_claim(rng, off_chain, leg_ref);
     }
 
+    pub fn sender_revert_proof(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) -> (SenderReversalProof, AccountAssetState) {
+        let mut inner = self.0.borrow_mut();
+        let (proof, account_state) = inner.sender_revert_proof(rng, off_chain, leg_ref);
+
+        (proof, account_state.clone())
+    }
+
+    pub fn sender_revert(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) {
+        let mut inner = self.0.borrow_mut();
+        inner.sender_revert(rng, off_chain, leg_ref);
+    }
+
+    pub fn sender_counter_update_proof(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) -> (SenderCounterUpdateProof, AccountAssetState) {
+        let mut inner = self.0.borrow_mut();
+        let (proof, account_state) = inner.sender_counter_update_proof(rng, off_chain, leg_ref);
+
+        (proof, account_state.clone())
+    }
+
+    pub fn sender_counter_update(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+    ) {
+        let mut inner = self.0.borrow_mut();
+        inner.sender_counter_update(rng, off_chain, leg_ref);
+    }
+
     pub fn mediator_affirmation_proof(
         &self,
         rng: &mut StdRng,
@@ -756,8 +898,14 @@ impl<T: Config> DartTestAsset<T> {
         let (settlement, investors) =
             DartSettlementState::create_investors_and_fund(rng, self, count, amount, off_chain);
 
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
         // Affirm all the legs in the settlement.
         settlement.affirm_legs(rng, off_chain);
+
+        // All investors claim their assets.
+        settlement.claim_assets(rng, off_chain);
 
         investors
     }
@@ -808,7 +956,9 @@ impl<T: Config> DartSettlementLegState<T> {
 
     pub fn affirm_leg(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
         self.sender_affirmation(rng, off_chain);
+        off_chain.apply_new_leaves();
         self.receiver_affirmation(rng, off_chain);
+        off_chain.apply_new_leaves();
         self.mediator_affirmation(rng, off_chain, true);
     }
 
@@ -886,7 +1036,9 @@ impl<T: Config> DartSettlementState<T> {
 
             off_chain.apply_new_leaves();
         }
+    }
 
+    pub fn claim_assets(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
         // All investors claim their assets.
         for leg in &self.legs {
             // Investor claims the assets.
