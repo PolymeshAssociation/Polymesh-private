@@ -38,6 +38,12 @@ use polymesh_dart::{
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
+#[cfg(feature = "testing")]
+pub mod testing;
+
 pub mod weights;
 
 mod curve_tree;
@@ -45,9 +51,6 @@ pub use curve_tree::*;
 
 mod settlement;
 pub use settlement::*;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
 
 pub trait WeightInfo {
     fn register_account() -> Weight;

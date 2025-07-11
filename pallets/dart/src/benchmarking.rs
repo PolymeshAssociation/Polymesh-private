@@ -2,45 +2,16 @@
 // Copyright (c) 2023 Polymesh
 
 use frame_benchmarking::benchmarks;
-use frame_support::assert_ok;
 
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::SeedableRng;
 
-use pallet_identity::benchmarking::user;
+use polymesh_dart::{AuditorOrMediator, LegBuilder, SettlementBuilder};
 
-use polymesh_dart::{
-    curve_tree::ProverCurveTree, AccountKeys, AuditorOrMediator, LegBuilder, PallasParameters,
-    SettlementBuilder, VestaParameters, ACCOUNT_TREE_GENS, ASSET_TREE_GENS,
-};
-
+use crate::testing::*;
 use crate::*;
 
-pub type AccountProverCurveTree<T> = ProverCurveTree<
-    ACCOUNT_TREE_L,
-    PallasParameters,
-    VestaParameters,
-    AccountCurveTreeStorage<T>,
-    Error<T>,
->;
-
-fn get_prover_account_curve_tree<T: Config>() -> AccountProverCurveTree<T> {
-    AccountProverCurveTree::new(ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_GENS)
-        .expect("Failed to create prover curve tree")
-}
-
-pub type AssetProverCurveTree<T> = ProverCurveTree<
-    ASSET_TREE_L,
-    PallasParameters,
-    VestaParameters,
-    AssetCurveTreeStorage<T>,
-    Error<T>,
->;
-
-fn get_prover_asset_curve_tree<T: Config>() -> AssetProverCurveTree<T> {
-    AssetProverCurveTree::new(ASSET_TREE_HEIGHT, ASSET_TREE_GENS)
-        .expect("Failed to create prover curve tree")
-}
+pub const MAX_LEGS: u32 = 100;
 
 benchmarks! {
     where_clause { where T: Config }
@@ -56,247 +27,106 @@ benchmarks! {
     register_account {
         let mut rng = StdRng::from_seed([42u8; 32]);
 
-        let user = user::<T>("register_account", 0);
-        let keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-    }: _(user.origin(), keys.acct.public, keys.enc.public)
+        // Create user.
+        let user = DartUser::<T>::new("User", &mut rng);
+        let keys = user.public_keys();
+
+    }: _(user.raw_origin(), keys.acct, keys.enc)
 
     create_asset {
         let mut rng = StdRng::from_seed([42u8; 32]);
 
-        let asset_issuer = user::<T>("create_asset", 0);
+        // Offchain prover state.
+        let off_chain = OffchainProverState::<T>::new();
 
-        // Generate random keys for the asset mediator.
-        let mediator_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator_keys.public_keys());
+        // Create an asset issuer and create an asset.
+        let asset_issuer = DartUser::<T>::new("AssetIssuer", &mut rng);
+
+        // Register the asset issuer's account.
+        asset_issuer.register_account();
+
+        // Create mediator user and keys.
+        let mediator = DartUser::<T>::auditor_user("Mediator", 0, 0, &mut rng);
+        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator.public_keys());
 
         // Register the mediator's keys.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            mediator_keys.acct.public,
-            mediator_keys.enc.public
-        ));
+        mediator.register_account();
 
         // Asset Data.
-        let data = b"Test Asset".to_vec().try_into().expect("Failed to convert asset data to AssetData");
-    }: _(asset_issuer.origin(), auditor_or_mediator, data)
+        let data = b"Test Asset"
+            .to_vec()
+            .try_into()
+            .expect("Failed to convert asset data to AssetData");
+    }: _(asset_issuer.raw_origin(), auditor_or_mediator, data)
 
     register_account_asset {
         let mut rng = StdRng::from_seed([42u8; 32]);
 
-        // Create an asset issuer and create an asset.
-        let asset_issuer = user::<T>("AssetIssuer", 0);
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
 
-        // Generate random keys for the asset mediator.
-        let mediator_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator_keys.public_keys());
+        // Create asset issuer and an asset.
+        let asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, None);
 
-        // Register the mediator's keys.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            mediator_keys.acct.public,
-            mediator_keys.enc.public
-        ));
+        // Asset issuer registers the asset.
+        let (proof, _) = asset.issuer.register_account_asset_proof(&mut rng, asset.id);
 
-        // Asset Data.
-        let data = b"Test Asset".to_vec().try_into().expect("Failed to convert asset data to AssetData");
-
-        // Create the asset.
-        let asset_id = Pallet::<T>::base_create_asset(
-            asset_issuer.did(),
-            auditor_or_mediator,
-            data
-        ).expect("Failed to create asset");
-
-        let user = user::<T>("register_account_asset", 0);
-        let user_did = user.did();
-        let keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-
-        // Register the account.
-        assert_ok!(Pallet::<T>::register_account(
-            user.origin().into(),
-            keys.acct.public,
-            keys.enc.public
-        ));
-
-        // Account asset registration proof.
-        let (proof, _) = polymesh_dart::AccountAssetRegistrationProof::new(&mut rng, &keys, asset_id, &user_did.0[..])
-            .expect("Failed to generate account asset registration proof");
-    }: _(user.origin(), proof)
+    }: _(asset.issuer.raw_origin(), proof)
 
     mint_asset {
         let mut rng = StdRng::from_seed([42u8; 32]);
 
-        // Create an asset issuer and create an asset.
-        let asset_issuer = user::<T>("AssetIssuer", 0);
-        let issuer_did = asset_issuer.did();
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
 
-        // Generate random keys for the asset mediator.
-        let mediator_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator_keys.public_keys());
+        // Create asset issuer and an asset.
+        let asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, None);
 
-        // Register the mediator's keys.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            mediator_keys.acct.public,
-            mediator_keys.enc.public
-        ));
-
-        // Asset Data.
-        let data = b"Test Asset".to_vec().try_into().expect("Failed to convert asset data to AssetData");
-
-        // Create the asset.
-        let asset_id = Pallet::<T>::base_create_asset(
-            asset_issuer.did(),
-            auditor_or_mediator,
-            data
-        ).expect("Failed to create asset");
-
-        let keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-
-        // Register the account.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            keys.acct.public,
-            keys.enc.public
-        ));
-
-        // Account asset registration proof.
-        let (proof, mut account_state) = polymesh_dart::AccountAssetRegistrationProof::new(&mut rng, &keys, asset_id, &issuer_did.0[..])
-            .expect("Failed to generate account asset registration proof");
-
-        // Register the account asset.
-        assert_ok!(Pallet::<T>::register_account_asset(
-            asset_issuer.origin().into(),
-            proof
-        ));
-
-        // Commit pending changes to the account state.
-        account_state.commit_pending_state()
-            .expect("Failed to commit pending state");
+        // Asset issuer registers the asset.
+        asset.issuer.register_account_asset(&mut rng, asset.id);
 
         // Update the curve tree roots.
-        Pallet::<T>::update_curve_tree_roots();
-
-        // Get the account tree.
-        let mut account_tree = get_prover_account_curve_tree::<T>();
-        account_tree.apply_new_leaves();
+        off_chain.apply_new_leaves();
 
         // Mint asset proof.
-        let amount = 1000u128;
-        let mint_proof = polymesh_dart::AssetMintingProof::new(&mut rng, &mut account_state, &account_tree, amount as _)
-            .expect("Failed to generate mint asset proof");
+        let amount = 1000;
+        let (proof, _) = asset.issuer.mint_asset_proof(&mut rng, &off_chain, asset.id, amount);
 
-    }: _(asset_issuer.origin(), mint_proof)
+    }: _(asset.issuer.raw_origin(), proof)
 
     create_settlement {
+        // Number of legs in transaction.
+        let l in 1 .. MAX_LEGS;
+
         let mut rng = StdRng::from_seed([42u8; 32]);
 
-        // Create an asset issuer and create an asset.
-        let asset_issuer = user::<T>("AssetIssuer", 0);
-        let issuer_did = asset_issuer.did();
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
 
-        // Generate random keys for the asset mediator.
-        let mediator_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator_keys.public_keys());
-
-        // Register the mediator's keys.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            mediator_keys.acct.public,
-            mediator_keys.enc.public
-        ));
-
-        // Asset Data.
-        let data = b"Test Asset".to_vec().try_into().expect("Failed to convert asset data to AssetData");
-
-        // Create the asset.
-        let asset_id = Pallet::<T>::base_create_asset(
-            asset_issuer.did(),
-            auditor_or_mediator,
-            data
-        ).expect("Failed to create asset");
-
-        // Get the asset tree.
-        let mut asset_tree = get_prover_asset_curve_tree::<T>();
-        asset_tree.apply_new_leaves();
-
-        let issuer_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-
-        // Register the account.
-        assert_ok!(Pallet::<T>::register_account(
-            asset_issuer.origin().into(),
-            issuer_keys.acct.public,
-            issuer_keys.enc.public
-        ));
-
-        // Account asset registration proof.
-        let (proof, mut issuer_account_state) = polymesh_dart::AccountAssetRegistrationProof::new(&mut rng, &issuer_keys, asset_id, &issuer_did.0[..])
-            .expect("Failed to generate account asset registration proof");
-
-        // Register the account asset.
-        assert_ok!(Pallet::<T>::register_account_asset(
-            asset_issuer.origin().into(),
-            proof
-        ));
-
-        // Commit pending changes to the account state.
-        issuer_account_state.commit_pending_state()
-            .expect("Failed to commit pending state");
-
-        let user = user::<T>("register_account_asset", 0);
-        let user_did = user.did();
-        let user_keys = AccountKeys::rand(&mut rng).expect("Failed to generate random keys");
-
-        // Register the account.
-        assert_ok!(Pallet::<T>::register_account(
-            user.origin().into(),
-            user_keys.acct.public,
-            user_keys.enc.public
-        ));
-
-        // Account asset registration proof.
-        let (proof, user_account_state) = polymesh_dart::AccountAssetRegistrationProof::new(&mut rng, &user_keys, asset_id, &user_did.0[..])
-            .expect("Failed to generate account asset registration proof");
-
-        // Register the account asset.
-        assert_ok!(Pallet::<T>::register_account_asset(
-            user.origin().into(),
-            proof
-        ));
-
-        // Update the curve tree roots.
-        Pallet::<T>::update_curve_tree_roots();
-
-        // Get the account tree.
-        let mut account_tree = get_prover_account_curve_tree::<T>();
-        account_tree.apply_new_leaves();
-
-        // Mint asset proof.
-        let amount = 1000u128;
-        let mint_proof = polymesh_dart::AssetMintingProof::new(&mut rng, &mut issuer_account_state, &account_tree, amount as _)
-            .expect("Failed to generate mint asset proof");
-
-        // Submit minting proof.
-        assert_ok!(Pallet::<T>::mint_asset(
-            asset_issuer.origin().into(),
-            mint_proof
-        ));
-
-        // Update the curve tree roots.
-        Pallet::<T>::update_curve_tree_roots();
-        account_tree.apply_new_leaves();
+        // Venue user.
+        let venue = DartUser::<T>::new("Venue", &mut rng);
 
         // Create a settlement to transfer some assets from the issuer to the investor.
-        let settlement = SettlementBuilder::new(b"Test")
-            .leg(LegBuilder {
-                sender: issuer_keys.public_keys(),
-                receiver: user_keys.public_keys(),
-                asset_id,
-                amount: 500,
-                mediator: auditor_or_mediator,
-            })
-            .encryt_and_prove(&mut rng, &asset_tree)
-            .expect("Failed to create settlement");
+        let mut settlement = SettlementBuilder::<T>::new(b"Test");
 
-    }: _(asset_issuer.origin(), settlement)
+        for asset_idx in 0..l {
+            // Create asset issuer and an asset.
+            let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", asset_idx, 0, 1, Some(1000));
+
+            // Create investor.
+            let user = asset.create_investor(&mut rng);
+
+            settlement = settlement.leg(LegBuilder {
+                sender: asset.issuer.public_keys(),
+                receiver: user.public_keys(),
+                asset_id: asset.id,
+                amount: 500,
+                mediator: asset.auditor_or_mediator,
+            })
+        }
+
+        // Generate the settlement proof.
+        let proof = settlement.encryt_and_prove(&mut rng, &off_chain.asset_tree)
+            .expect("Failed to create settlement");
+    }: _(venue.raw_origin(), proof)
 }

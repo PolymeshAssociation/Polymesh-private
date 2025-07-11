@@ -186,6 +186,9 @@ type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 
 /// Dart parameters
 type DartMaxAssetDataLength = ConstSize<8192>;
+#[cfg(feature = "runtime-benchmarks")]
+type DartMaxSettlementLegs = ConstSize<1000>;
+#[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxSettlementLegs = ConstSize<10>;
 type DartMaxSettlementMemoLength = ConstSize<256>;
 

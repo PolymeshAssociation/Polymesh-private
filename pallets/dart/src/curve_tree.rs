@@ -91,7 +91,8 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
         &self,
         leaf_index: LeafIndex,
     ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
-        Ok(AssetLeaves::<T>::get(leaf_index))
+        let leaf = AssetLeaves::<T>::get(leaf_index);
+        Ok(leaf)
     }
 
     fn set_leaf(
