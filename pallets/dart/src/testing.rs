@@ -754,16 +754,18 @@ impl<T: Config> DartTestAsset<T> {
         }
 
         let (settlement, investors) =
-            SettlementState::create_investors_and_fund(rng, self, count, amount, off_chain);
+            DartSettlementState::create_investors_and_fund(rng, self, count, amount, off_chain);
 
         // Affirm all the legs in the settlement.
-        settlement.affirm_legs(off_chain, rng);
+        settlement.affirm_legs(rng, off_chain);
 
         investors
     }
 }
 
-pub struct SettlementLegState<T: Config> {
+#[derive(Clone)]
+pub struct DartSettlementLegState<T: Config> {
+    pub leg_ref: LegRef,
     pub sender: DartUser<T>,
     pub receiver: DartUser<T>,
     pub asset_id: DartAssetId,
@@ -771,12 +773,57 @@ pub struct SettlementLegState<T: Config> {
     pub mediator: Option<DartUser<T>>,
 }
 
-pub struct SettlementState<T: Config> {
-    pub settlement_id: SettlementRef,
-    pub legs: Vec<SettlementLegState<T>>,
+impl<T: Config> DartSettlementLegState<T> {
+    pub fn sender_affirmation(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        self.sender
+            .sender_affirmation(rng, off_chain, self.leg_ref, self.asset_id, self.amount);
+    }
+
+    pub fn receiver_affirmation(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        self.receiver.receiver_affirmation(
+            rng,
+            off_chain,
+            self.leg_ref,
+            self.asset_id,
+            self.amount,
+        );
+    }
+
+    pub fn mediator_affirmation(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &mut OffchainProverState<T>,
+        accept: bool,
+    ) {
+        if let Some(mediator) = &self.mediator {
+            mediator.mediator_affirmation(
+                rng,
+                off_chain,
+                self.leg_ref,
+                accept,
+                Some((self.asset_id, self.amount)),
+            );
+        }
+    }
+
+    pub fn affirm_leg(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        self.sender_affirmation(rng, off_chain);
+        self.receiver_affirmation(rng, off_chain);
+        self.mediator_affirmation(rng, off_chain, true);
+    }
+
+    pub fn receiver_claim(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        self.receiver.receiver_claim(rng, off_chain, self.leg_ref);
+    }
 }
 
-impl<T: Config> SettlementState<T> {
+#[derive(Clone)]
+pub struct DartSettlementState<T: Config> {
+    pub settlement_id: SettlementRef,
+    pub legs: Vec<DartSettlementLegState<T>>,
+}
+
+impl<T: Config> DartSettlementState<T> {
     pub fn create_investors_and_fund(
         rng: &mut StdRng,
         asset: &mut DartTestAsset<T>,
@@ -789,13 +836,19 @@ impl<T: Config> SettlementState<T> {
         let mediator_user = asset.mediator();
         let mediator = asset.auditor_or_mediator.clone();
 
+        let settlement_id = NextSettlementId::<T>::get();
         // Create the investors.
         let mut investors = Vec::with_capacity(count);
         let mut legs = Vec::with_capacity(count);
         let mut settlement = SettlementBuilder::<T>::new(b"FundInvestors");
-        for _ in 0..count {
+        for leg_idx in 0..count {
+            let leg_ref = LegRef {
+                settlement: settlement_id.into(),
+                leg_id: leg_idx as _,
+            };
             let user = asset.create_investor(rng);
-            legs.push(SettlementLegState {
+            legs.push(DartSettlementLegState {
+                leg_ref,
                 sender: issuer.clone(),
                 receiver: user.clone(),
                 asset_id,
@@ -816,47 +869,28 @@ impl<T: Config> SettlementState<T> {
         let proof = settlement
             .encryt_and_prove(rng, &off_chain.asset_tree)
             .expect("Failed to create settlement");
-        let settlement_id = NextSettlementId::<T>::get().into();
         assert_ok!(Pallet::<T>::create_settlement(issuer.origin(), proof));
 
         let settlement = Self {
-            settlement_id,
+            settlement_id: settlement_id.into(),
             legs,
         };
 
         (settlement, investors)
     }
 
-    pub fn affirm_legs(&self, off_chain: &mut OffchainProverState<T>, rng: &mut StdRng) {
-        let settlement_id = self.settlement_id;
-
+    pub fn affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
         // Affirm all the legs in the settlement.
-        for (leg_idx, leg) in self.legs.iter().enumerate() {
-            let leg_ref = LegRef {
-                settlement: settlement_id.into(),
-                leg_id: leg_idx as _,
-            };
-
-            // Issuer affirms as Sender.
-            leg.sender
-                .sender_affirmation(rng, off_chain, leg_ref, leg.asset_id, leg.amount);
-
-            // Investor affirms as Receiver.
-            leg.receiver
-                .receiver_affirmation(rng, off_chain, leg_ref, leg.asset_id, leg.amount);
+        for leg in &self.legs {
+            leg.affirm_leg(rng, off_chain);
 
             off_chain.apply_new_leaves();
         }
 
         // All investors claim their assets.
-        for (leg_idx, leg) in self.legs.iter().enumerate() {
-            let leg_ref = LegRef {
-                settlement: settlement_id.into(),
-                leg_id: leg_idx as _,
-            };
-
+        for leg in &self.legs {
             // Investor claims the assets.
-            leg.receiver.receiver_claim(rng, off_chain, leg_ref);
+            leg.receiver_claim(rng, off_chain);
         }
         off_chain.apply_new_leaves();
     }

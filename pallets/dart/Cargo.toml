@@ -47,8 +47,17 @@ default = ["std", "equalize"]
 
 testing = ["polymesh-host-functions/runtime-benchmarks"]
 
+asm = [
+  "polymesh-dart/asm",
+]
+parallel = [
+  "polymesh-dart/parallel",
+]
+
 no_std = ["polymesh-host-functions/no_std", "polymesh-dart/no_std"]
 std = [
+  "asm",
+  "parallel",
   "lazy_static",
   "rand_core/std",
   "rand_chacha/std",

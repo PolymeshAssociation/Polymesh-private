@@ -307,6 +307,7 @@ dependencies = [
  "hashbrown 0.13.2",
  "itertools 0.10.5",
  "num-traits",
+ "rayon",
  "zeroize",
 ]
 
@@ -326,6 +327,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "paste",
+ "rayon",
  "rustc_version 0.4.1",
  "zeroize",
 ]
@@ -375,6 +377,7 @@ dependencies = [
  "ark-std",
  "derivative",
  "hashbrown 0.13.2",
+ "rayon",
 ]
 
 [[package]]
@@ -454,6 +457,7 @@ checksum = "94893f1e0c6eeab764ade8dc4c0db24caf4fe7cbbaafc0eba0a9030f447b5185"
 dependencies = [
  "num-traits",
  "rand 0.8.5",
+ "rayon",
 ]
 
 [[package]]
@@ -912,6 +916,7 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "rayon",
  "sha3 0.9.1",
  "thiserror 2.0.12",
  "zeroize",
@@ -1991,6 +1996,8 @@ dependencies = [
  "integer-sqrt",
  "itertools 0.14.0",
  "num",
+ "rayon",
+ "serde",
  "sha2 0.10.9",
  "zeroize",
 ]
@@ -4895,6 +4902,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
 dependencies = [
+ "num-bigint",
  "num-complex",
  "num-integer",
  "num-iter",
@@ -6495,6 +6503,7 @@ dependencies = [
  "polymesh-dart-common",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "rayon",
  "relations",
  "schnorr_pok",
 ]
@@ -7588,6 +7597,7 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "rand_core 0.6.4",
+ "rayon",
  "schnorr_pok",
  "sha3 0.10.8",
  "thiserror 2.0.12",
@@ -8996,6 +9006,8 @@ dependencies = [
  "cfg_eval",
  "digest 0.10.7",
  "dock_crypto_utils",
+ "rayon",
+ "serde",
  "zeroize",
 ]
 

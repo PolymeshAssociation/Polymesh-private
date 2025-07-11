@@ -11,7 +11,7 @@ use polymesh_dart::{AuditorOrMediator, LegBuilder, SettlementBuilder};
 use crate::testing::*;
 use crate::*;
 
-pub const MAX_LEGS: u32 = 100;
+pub const MAX_LEGS: u32 = 10;
 
 benchmarks! {
     where_clause { where T: Config }
@@ -129,4 +129,81 @@ benchmarks! {
         let proof = settlement.encryt_and_prove(&mut rng, &off_chain.asset_tree)
             .expect("Failed to create settlement");
     }: _(venue.raw_origin(), proof)
+
+    sender_affirmation {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        let leg = settlement.legs[0].clone();
+
+        // Generate the sender's affirmation proof.
+        let (proof, _) = leg.sender.sender_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, leg.asset_id, leg.amount);
+    }: _(leg.sender.raw_origin(), proof)
+
+    receiver_affirmation {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        let leg = settlement.legs[0].clone();
+
+        // Generate the receiver's affirmation proof.
+        let (proof, _) = leg.receiver.receiver_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, leg.asset_id, leg.amount);
+    }: _(leg.receiver.raw_origin(), proof)
+
+    mediator_affirmation {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        let leg = &settlement.legs[0];
+        let mediator = leg.mediator.as_ref().expect("Mediator should be present in the leg").clone();
+
+        // Generate the mediator's affirmation proof.
+        let proof = mediator.mediator_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, true, Some((leg.asset_id, leg.amount)));
+    }: _(mediator.raw_origin(), proof)
+
+    receiver_claim {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        let leg = settlement.legs[0].clone();
+
+        // Generate the receiver's claim proof.
+        let (proof, _) = leg.receiver.receiver_claim_proof(&mut rng, &off_chain, leg.leg_ref);
+    }: _(leg.receiver.raw_origin(), proof)
 }
