@@ -222,4 +222,65 @@ benchmarks! {
         // Generate the receiver's claim proof.
         let (proof, _) = leg.receiver.receiver_claim_proof(&mut rng, &off_chain, leg.leg_ref);
     }: _(leg.receiver.raw_origin(), proof)
+
+    sender_update_counter {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
+        // Affirm all the legs in the settlement.
+        settlement.affirm_legs(&mut rng, &mut off_chain);
+
+        // Get the first leg of the settlement.
+        let leg = settlement.legs[0].clone();
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
+        // Generate the sender's update counter proof.
+        let (proof, _) = leg.sender.sender_counter_update_proof(&mut rng, &off_chain, leg.leg_ref);
+    }: _(leg.sender.raw_origin(), proof)
+
+    sender_revert {
+        let mut rng = StdRng::from_seed([42u8; 32]);
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create asset issuer and an asset.
+        let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", 0, 0, 1, Some(1000));
+
+        // Create settlement and one investor.
+        let (settlement, _) =
+            DartSettlementState::create_investors_and_fund(&mut rng, &mut asset, 1, 500, &mut off_chain);
+
+        // Get the first leg of the settlement.
+        let leg = settlement.legs[0].clone();
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
+        // Sender affirms the leg.
+        leg.sender_affirmation(&mut rng, &mut off_chain);
+
+        // Update the curve tree roots.
+        off_chain.apply_new_leaves();
+
+        // Mediator rejects the leg.  The settlement will go into a rejected state.
+        leg.mediator_affirmation(&mut rng, &off_chain, false);
+
+        // Generate the sender's revert proof.
+        let (proof, _) = leg.sender.sender_revert_proof(&mut rng, &off_chain, leg.leg_ref);
+    }: _(leg.sender.raw_origin(), proof)
 }

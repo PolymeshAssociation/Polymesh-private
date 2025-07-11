@@ -940,7 +940,7 @@ impl<T: Config> DartSettlementLegState<T> {
     pub fn mediator_affirmation(
         &self,
         rng: &mut StdRng,
-        off_chain: &mut OffchainProverState<T>,
+        off_chain: &OffchainProverState<T>,
         accept: bool,
     ) {
         if let Some(mediator) = &self.mediator {
@@ -1027,6 +1027,35 @@ impl<T: Config> DartSettlementState<T> {
         };
 
         (settlement, investors)
+    }
+
+    pub fn senders_affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        // All senders affirm their legs.
+        for leg in &self.legs {
+            leg.sender_affirmation(rng, off_chain);
+            off_chain.apply_new_leaves();
+        }
+    }
+
+    pub fn receivers_affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+        // All receivers affirm their legs.
+        for leg in &self.legs {
+            leg.receiver_affirmation(rng, off_chain);
+            off_chain.apply_new_leaves();
+        }
+    }
+
+    pub fn mediators_affirm_legs(
+        &self,
+        rng: &mut StdRng,
+        off_chain: &mut OffchainProverState<T>,
+        accept: bool,
+    ) {
+        // All mediators affirm their legs.
+        for leg in &self.legs {
+            leg.mediator_affirmation(rng, off_chain, accept);
+            off_chain.apply_new_leaves();
+        }
     }
 
     pub fn affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {

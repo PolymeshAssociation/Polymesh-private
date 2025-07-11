@@ -193,6 +193,11 @@ pub mod pallet {
             /// Settlement Leg reference.
             leg_ref: LegRef,
         },
+        /// Mediator has rejected a leg.
+        MediatorRejected {
+            /// Settlement Leg reference.
+            leg_ref: LegRef,
+        },
         /// Sender updated counter.
         SenderCounterUpdated {
             /// Settlement Leg reference.
@@ -786,9 +791,15 @@ pub mod pallet {
             update_settlement.mediator_affirmation(&proof)?;
 
             // Emit an event for the mediator affirmation.
-            Self::deposit_event(Event::<T>::MediatorAffirmed {
-                leg_ref: proof.leg_ref,
-            });
+            if proof.accept {
+                Self::deposit_event(Event::<T>::MediatorAffirmed {
+                    leg_ref: proof.leg_ref,
+                });
+            } else {
+                Self::deposit_event(Event::<T>::MediatorRejected {
+                    leg_ref: proof.leg_ref,
+                });
+            }
 
             Ok(())
         }

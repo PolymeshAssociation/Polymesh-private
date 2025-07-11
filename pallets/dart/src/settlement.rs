@@ -18,9 +18,13 @@ use super::*;
 /// The affirmation status for each party in a DART settlement leg.
 #[derive(Copy, Clone, Encode, Decode, Debug, TypeInfo, PartialEq, Eq)]
 pub enum AffirmationStatus {
+    /// The leg is pending affirmation.
     Pending,
+    /// The leg has been affirmed by the sender, receiver, and mediator.
     Affirmed,
+    /// The leg has been rejected by one party.
     Rejected,
+    /// The leg has been finalized by all parties.
     Finalized,
 }
 
@@ -93,7 +97,7 @@ impl<T: Config> DartSettlementLeg<T> {
     }
 
     /// Try to update the status of the leg based on the current sender, receiver, and mediator statuses.
-    fn update_status(&mut self) -> Result<(), DispatchError> {
+    fn check_for_updated_status(&mut self) -> Result<(), DispatchError> {
         // Merge the sender and receiver statuses.
         let mut affirmation = self.sender.merge::<T>(self.receiver)?;
         // If there is a mediator, merge the mediator status as well.
@@ -112,7 +116,28 @@ impl<T: Config> DartSettlementLeg<T> {
             Error::<T>::CannotRejectFinalizedSettlement
         );
         self.status = AffirmationStatus::Rejected;
+
+        // If the sender is still pending, then mark their status as finalized.
+        if self.sender == AffirmationStatus::Pending {
+            self.sender = AffirmationStatus::Finalized;
+        }
+        // If the receiver is still pending, then mark their status as finalized.
+        if self.receiver == AffirmationStatus::Pending {
+            self.receiver = AffirmationStatus::Finalized;
+        }
+
+        // Mark the mediators as finalized.  Since they cannot affirm or reject anymore.
+        self.finalize_mediators();
+
         Ok(())
+    }
+
+    /// When the settlement is rejected or affirmed (all legs are affirmed), then we can finalize the mediators.
+    pub fn finalize_mediators(&mut self) {
+        // Mark the mediator as finalized, since they cannot affirm or reject anymore.
+        if let Some(mediator) = &mut self.mediator {
+            *mediator = AffirmationStatus::Finalized;
+        }
     }
 
     /// Verify a sender affirmation proof for this leg.
@@ -137,7 +162,7 @@ impl<T: Config> DartSettlementLeg<T> {
         self.sender = AffirmationStatus::Affirmed;
 
         // Update the leg status.  If the other parties have already affirmed, this will update the leg's status to `Affirmed`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -164,7 +189,7 @@ impl<T: Config> DartSettlementLeg<T> {
         self.receiver = AffirmationStatus::Affirmed;
 
         // Update the leg status.  If the other parties have already affirmed, this will update the leg's status to `Affirmed`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -194,7 +219,7 @@ impl<T: Config> DartSettlementLeg<T> {
         }
 
         // Update the leg status.  If the other parties have already affirmed, this will update the leg's status to `Affirmed`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -228,7 +253,7 @@ impl<T: Config> DartSettlementLeg<T> {
         self.sender = AffirmationStatus::Finalized;
 
         // Update the leg status.  If the other parties have finalized, this will update the leg's status to `Finalized`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -262,7 +287,7 @@ impl<T: Config> DartSettlementLeg<T> {
         self.sender = AffirmationStatus::Finalized;
 
         // Update the leg status.  If the other parties have finalized, this will update the leg's status to `Finalized`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -296,7 +321,7 @@ impl<T: Config> DartSettlementLeg<T> {
         self.receiver = AffirmationStatus::Finalized;
 
         // Update the leg status.  If the other parties have finalized, this will update the leg's status to `Finalized`.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -376,7 +401,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         self.update_leg(leg_id, leg)?;
 
         // If the sender has affirmed, update the status of the settlement.
-        self.update_status()?;
+        self.check_for_updated_status()?;
 
         Ok(())
     }
@@ -399,7 +424,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         self.update_leg(leg_id, leg)?;
 
         // If the receiver has affirmed, update the status of the settlement.
-        self.update_status()?;
+        self.check_for_updated_status()?;
         Ok(())
     }
 
@@ -417,7 +442,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
 
         if proof.accept {
             // If the mediator has accepted, update the status of the settlement.
-            self.update_status()?;
+            self.check_for_updated_status()?;
         } else {
             // If the mediator has rejected, set the settlement status to rejected.
             self.reject_all_legs()?;
@@ -447,7 +472,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         self.update_leg(leg_id, leg)?;
 
         // If the sender has finalized the leg, update the status of the settlement.
-        self.update_status()?;
+        self.check_for_updated_status()?;
         Ok(())
     }
 
@@ -473,7 +498,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         self.update_leg(leg_id, leg)?;
 
         // If the sender has finalized the leg, update the status of the settlement.
-        self.update_status()?;
+        self.check_for_updated_status()?;
         Ok(())
     }
 
@@ -499,12 +524,12 @@ impl<T: Config> UpdateSettlementStatus<T> {
         self.update_leg(leg_id, leg)?;
 
         // If the receiver has finalized the leg, update the status of the settlement.
-        self.update_status()?;
+        self.check_for_updated_status()?;
         Ok(())
     }
 
-    fn update_status(&mut self) -> DispatchResult {
-        let updated_status = match self.status {
+    fn check_for_updated_status(&mut self) -> DispatchResult {
+        match self.status {
             SettlementStatus::Pending => {
                 // If the settlement is pending, check if all legs are affirmed.
                 for id in 0..T::MaxSettlementLegs::get() {
@@ -518,7 +543,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
                     }
                 }
                 // If all legs are affirmed, update the settlement status to executed.
-                Some(SettlementStatus::Executed)
+                self.execute()
             }
             SettlementStatus::Executed | SettlementStatus::Rejected => {
                 // If the settlement is in the executed or rejected state,
@@ -534,26 +559,24 @@ impl<T: Config> UpdateSettlementStatus<T> {
                     }
                 }
                 // If all legs are finalized, update the settlement status to finalized.
-                Some(SettlementStatus::Finalized)
+                self.finalize()
             }
             SettlementStatus::Finalized => {
                 // If the settlement is already finalized, do nothing.
-                None
+                Ok(())
             }
-        };
-
-        // Store the updated status if it exists.
-        if let Some(status) = updated_status {
-            SettlementState::<T>::insert(self.settlement_ref, status);
-
-            // Emit an event for the settlement status update.
-            Pallet::<T>::deposit_event(Event::<T>::SettlementStatusUpdated {
-                settlement_ref: self.settlement_ref,
-                status,
-            });
         }
+    }
 
-        Ok(())
+    fn set_status(&self, status: SettlementStatus) {
+        // Set the settlement status in the storage.
+        SettlementState::<T>::insert(self.settlement_ref, status);
+
+        // Emit an event for the settlement status update.
+        Pallet::<T>::deposit_event(Event::<T>::SettlementStatusUpdated {
+            settlement_ref: self.settlement_ref,
+            status,
+        });
     }
 
     fn reject_all_legs(&mut self) -> DispatchResult {
@@ -567,7 +590,41 @@ impl<T: Config> UpdateSettlementStatus<T> {
                 break;
             }
         }
-        self.status = SettlementStatus::Rejected;
+        self.set_status(SettlementStatus::Rejected);
+        Ok(())
+    }
+
+    /// Execute the settlement, marking it as executed.
+    fn execute(&mut self) -> DispatchResult {
+        // Ensure the settlement is in a pending state before executing.
+        ensure!(
+            self.status == SettlementStatus::Pending,
+            Error::<T>::SettlementNotPending
+        );
+
+        // Finalize the mediators in all legs.  Mediators cannot affirm or reject anymore.
+        for id in 0..T::MaxSettlementLegs::get() {
+            if let Ok(mut leg) = self.get_leg(id as LegId) {
+                leg.finalize_mediators();
+            } else {
+                // No more legs to execute
+                break;
+            }
+        }
+
+        // Set the settlement status to executed.
+        self.set_status(SettlementStatus::Executed);
+
+        Ok(())
+    }
+
+    /// Finalize the settlement, marking it as finalized.
+    fn finalize(&mut self) -> DispatchResult {
+        // TODO: Prune all settlement state.
+
+        // Set the settlement status to finalized.
+        self.set_status(SettlementStatus::Finalized);
+
         Ok(())
     }
 }
