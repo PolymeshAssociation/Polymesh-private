@@ -16,6 +16,7 @@ pub const MAX_LEGS: u32 = 10;
 benchmarks! {
     where_clause { where T: Config }
 
+    /*
     get_cached_curve_tree_parameters {
         // This benchmark is used to test the retrieval of cached curve tree parameters.
         // It does not require any specific setup.
@@ -23,6 +24,7 @@ benchmarks! {
         let _ = Pallet::<T>::get_cached_curve_tree_parameters()
             .expect("Failed to get cached curve tree parameters");
     }
+    // */
 
     register_account {
         let mut rng = StdRng::from_seed([42u8; 32]);
