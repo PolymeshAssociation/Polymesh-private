@@ -5,7 +5,7 @@
 //!
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2025-07-12, STEPS: `10`, REPEAT: 3, LOW RANGE: `[]`, HIGH RANGE: `[]`
-//! EXECUTION: Some(Native), WASM-EXECUTION: Compiled, CHAIN: None, DB CACHE: 512
+//! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: None, DB CACHE: 512
 //! HOSTNAME: `trinity`, CPU: `AMD Ryzen 9 7950X 16-Core Processor`
 
 // Executed Command:
@@ -23,7 +23,9 @@
 // --db-cache
 // 512
 // --execution
-// native
+// wasm
+// --wasm-execution
+// compiled
 // --output
 // ./weight-dart.rs
 // --template
@@ -52,8 +54,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset AccountEncryptionKey (r:0 w:1)
     // Proof Skipped: DartAsset AccountEncryptionKey (max_values: None, max_size: None, mode: Measured)
     fn register_account() -> Weight {
-        // Minimum execution time: 21_371 nanoseconds.
-        Weight::from_ref_time(24_934_000)
+        // Minimum execution time: 39_181 nanoseconds.
+        Weight::from_ref_time(59_365_000)
             .saturating_add(DbWeight::get().reads(7))
             .saturating_add(DbWeight::get().writes(3))
     }
@@ -81,9 +83,11 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: DartAsset UpdatedAssetCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     // Storage: DartAsset DartAssetDetails (r:0 w:1)
     // Proof Skipped: DartAsset DartAssetDetails (max_values: None, max_size: None, mode: Measured)
+    // Storage: DartAsset CachedCurveTreeParameters (r:1 w:0)
+    // Proof Skipped: DartAsset CachedCurveTreeParameters (max_values: Some(1), max_size: None, mode: Measured)
     fn create_asset() -> Weight {
-        // Minimum execution time: 403_682 nanoseconds.
-        Weight::from_ref_time(407_244_000)
+        // Minimum execution time: 2_920_757 nanoseconds.
+        Weight::from_ref_time(2_965_873_000)
             .saturating_add(DbWeight::get().reads(14))
             .saturating_add(DbWeight::get().writes(9))
     }
@@ -110,8 +114,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn register_account_asset() -> Weight {
-        // Minimum execution time: 886_914 nanoseconds.
-        Weight::from_ref_time(891_663_000)
+        // Minimum execution time: 4_559_229 nanoseconds.
+        Weight::from_ref_time(7_158_227_000)
             .saturating_add(DbWeight::get().reads(14))
             .saturating_add(DbWeight::get().writes(7))
     }
@@ -146,8 +150,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn mint_asset() -> Weight {
-        // Minimum execution time: 20_363_392 nanoseconds.
-        Weight::from_ref_time(21_813_086_000)
+        // Minimum execution time: 569_480_935 nanoseconds.
+        Weight::from_ref_time(577_080_890_000)
             .saturating_add(DbWeight::get().reads(18))
             .saturating_add(DbWeight::get().writes(10))
     }
@@ -169,10 +173,10 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: DartAsset SettlementMemo (max_values: None, max_size: None, mode: Measured)
     /// The range of component `l` is `[1, 10]`.
     fn create_settlement(l: u32) -> Weight {
-        // Minimum execution time: 17_786_950 nanoseconds.
-        Weight::from_ref_time(1_165_523_533)
-            // Standard Error: 110_440_288
-            .saturating_add(Weight::from_ref_time(17_813_458_951).saturating_mul(l.into()))
+        // Minimum execution time: 339_572_240 nanoseconds.
+        Weight::from_ref_time(10_041_668_688)
+            // Standard Error: 772_064_190
+            .saturating_add(Weight::from_ref_time(335_119_819_195).saturating_mul(l.into()))
             .saturating_add(DbWeight::get().reads(5))
             .saturating_add(DbWeight::get().writes(4))
             .saturating_add(DbWeight::get().writes((1_u64).saturating_mul(l.into())))
@@ -200,8 +204,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn sender_affirmation() -> Weight {
-        // Minimum execution time: 24_757_581 nanoseconds.
-        Weight::from_ref_time(25_036_597_000)
+        // Minimum execution time: 579_757_609 nanoseconds.
+        Weight::from_ref_time(579_928_787_000)
             .saturating_add(DbWeight::get().reads(13))
             .saturating_add(DbWeight::get().writes(10))
     }
@@ -228,8 +232,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn receiver_affirmation() -> Weight {
-        // Minimum execution time: 27_523_544 nanoseconds.
-        Weight::from_ref_time(28_219_290_000)
+        // Minimum execution time: 571_588_161 nanoseconds.
+        Weight::from_ref_time(572_621_112_000)
             .saturating_add(DbWeight::get().reads(13))
             .saturating_add(DbWeight::get().writes(10))
     }
@@ -238,8 +242,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset SettlementLegs (r:1 w:1)
     // Proof Skipped: DartAsset SettlementLegs (max_values: None, max_size: None, mode: Measured)
     fn mediator_affirmation() -> Weight {
-        // Minimum execution time: 1_802_321 nanoseconds.
-        Weight::from_ref_time(1_810_632_000)
+        // Minimum execution time: 8_408_468 nanoseconds.
+        Weight::from_ref_time(8_433_401_000)
             .saturating_add(DbWeight::get().reads(2))
             .saturating_add(DbWeight::get().writes(1))
     }
@@ -266,8 +270,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn receiver_claim() -> Weight {
-        // Minimum execution time: 28_039_273 nanoseconds.
-        Weight::from_ref_time(28_076_079_000)
+        // Minimum execution time: 582_190_003 nanoseconds.
+        Weight::from_ref_time(583_305_307_000)
             .saturating_add(DbWeight::get().reads(13))
             .saturating_add(DbWeight::get().writes(10))
     }
@@ -294,8 +298,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn sender_update_counter() -> Weight {
-        // Minimum execution time: 25_759_656 nanoseconds.
-        Weight::from_ref_time(25_785_777_000)
+        // Minimum execution time: 573_853_536 nanoseconds.
+        Weight::from_ref_time(574_126_466_000)
             .saturating_add(DbWeight::get().reads(13))
             .saturating_add(DbWeight::get().writes(10))
     }
@@ -322,8 +326,8 @@ impl crate::WeightInfo for SubstrateWeight {
     // Storage: DartAsset UpdatedAccountCurveTree (r:0 w:1)
     // Proof Skipped: DartAsset UpdatedAccountCurveTree (max_values: Some(1), max_size: None, mode: Measured)
     fn sender_revert() -> Weight {
-        // Minimum execution time: 26_974_262 nanoseconds.
-        Weight::from_ref_time(27_413_564_000)
+        // Minimum execution time: 580_517_383 nanoseconds.
+        Weight::from_ref_time(582_544_119_000)
             .saturating_add(DbWeight::get().reads(14))
             .saturating_add(DbWeight::get().writes(11))
     }
