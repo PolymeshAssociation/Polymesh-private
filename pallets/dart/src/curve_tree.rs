@@ -23,7 +23,7 @@ lazy_static::lazy_static! {
     static ref CURVE_TREE_PARAMETERS: CurveTreeParameters = CurveTreeParameters::new(
         polymesh_dart::MAX_CURVE_TREE_GENS,
         polymesh_dart::MAX_CURVE_TREE_GENS,
-    );
+    ).expect("Failed to create curve tree parameters");
 }
 
 #[cfg(not(feature = "std"))]

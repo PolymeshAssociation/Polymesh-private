@@ -221,8 +221,12 @@ impl<T: Config> DartUserInner<T> {
         amount: DartBalance,
     ) -> (SenderAffirmationProof, &mut AccountAssetState) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt leg");
 
         assert!(
             asset_id == leg.asset_id(),
@@ -280,8 +284,12 @@ impl<T: Config> DartUserInner<T> {
         amount: DartBalance,
     ) -> (ReceiverAffirmationProof, &mut AccountAssetState) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Receiver, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Receiver, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Receiver, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Receiver, &self.keys.enc)
+            .expect("Failed to decrypt leg");
 
         assert!(
             asset_id == leg.asset_id(),
@@ -336,8 +344,12 @@ impl<T: Config> DartUserInner<T> {
         leg_ref: LegRef,
     ) -> (ReceiverClaimProof, &mut AccountAssetState) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Receiver, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Receiver, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Receiver, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Receiver, &self.keys.enc)
+            .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
         let amount = leg.amount();
 
@@ -386,8 +398,12 @@ impl<T: Config> DartUserInner<T> {
         leg_ref: LegRef,
     ) -> (SenderReversalProof, &mut AccountAssetState) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
         let amount = leg.amount();
 
@@ -436,8 +452,12 @@ impl<T: Config> DartUserInner<T> {
         leg_ref: LegRef,
     ) -> (SenderCounterUpdateProof, &mut AccountAssetState) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Sender, &self.keys.enc)
+            .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
 
         // Get the account state for the asset.
@@ -486,8 +506,12 @@ impl<T: Config> DartUserInner<T> {
         verify: Option<(DartAssetId, DartBalance)>,
     ) -> MediatorAffirmationProof {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let sk_e = leg_enc.decrypt_sk_e(LegRole::Mediator, &self.keys.enc);
-        let leg = leg_enc.decrypt(LegRole::Mediator, &self.keys.enc);
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Mediator, &self.keys.enc)
+            .expect("Failed to decrypt sk_e");
+        let leg = leg_enc
+            .decrypt(LegRole::Mediator, &self.keys.enc)
+            .expect("Failed to decrypt leg");
 
         if let Some((asset_id, amount)) = verify {
             assert!(

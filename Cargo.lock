@@ -6506,6 +6506,7 @@ dependencies = [
  "rayon",
  "relations",
  "schnorr_pok",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
