@@ -7,12 +7,10 @@ edition = "2021"
 [dependencies]
 # Common
 polymesh-primitives = { workspace = true, default-features = false }
-polymesh-common-utilities = { workspace = true, default-features = false }
 polymesh-runtime-common = { workspace = true, default-features = false }
 
 # Our Pallets
 pallet-identity = { workspace = true, default-features = false }
-pallet-portfolio = { workspace = true, default-features = false }
 
 # Crypto
 rand_core = { workspace = true, default-features = false }
@@ -47,12 +45,8 @@ default = ["std", "equalize"]
 
 testing = ["polymesh-host-functions/runtime-benchmarks"]
 
-asm = [
-  "polymesh-dart/asm",
-]
-parallel = [
-  "polymesh-dart/parallel",
-]
+asm = ["polymesh-dart/asm"]
+parallel = ["polymesh-dart/parallel"]
 
 no_std = ["polymesh-host-functions/no_std", "polymesh-dart/no_std"]
 std = [
@@ -67,7 +61,6 @@ std = [
   "frame-system/std",
   "frame-benchmarking?/std",
   "pallet-identity/std",
-  "polymesh-common-utilities/std",
   "polymesh-runtime-common/std",
   "polymesh-primitives/std",
   "polymesh-host-functions/std",
