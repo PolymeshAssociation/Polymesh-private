@@ -14,3 +14,5 @@ pub use polymesh_api::types::{
 pub use polymesh_api::TransactionResults;
 
 pub mod confidential_assets_helper;
+
+pub mod dart_asset_helper;

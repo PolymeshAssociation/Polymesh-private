@@ -18,6 +18,25 @@ confidential_assets = { git = "https://github.com/PolymeshAssociation/confidenti
 #polymesh-api-codegen = { git = "https://github.com/PolymeshAssociation/polymesh-api" }
 #polymesh-api-codegen-macro = { git = "https://github.com/PolymeshAssociation/polymesh-api" }
 
+# DART
+# Curve tree dependencies
+curve_tree_bulletproofs = { package = "bulletproofs", path = "../../curve-trees/bulletproofs" }
+curve_tree_relations = { package = "relations", path = "../../curve-trees/relations" }
+# If want to pull code for curve-trees from git, comment above 2 relations and uncomment below 2
+#bulletproofs = { git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+#curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+
+dock_crypto_utils = { path = "../../crypto/utils" }
+schnorr_pok = { path = "../../crypto/schnorr_pok" }
+dock_merlin = { path = "../../crypto/merlin" }
+#dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
+#schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
+#dock_merlin = { git = "https://github.com/PolymeshAssociation/crypto" }
+
+polymesh-dart = { path = "../../polymesh-dart" }
+polymesh-dart-bp = { path = "../../polymesh-dart/dart-bp" }
+polymesh-dart-common = { path = "../../polymesh-dart/dart-common" }
+
 [features]
 default = []
 
@@ -31,12 +50,16 @@ log = "0.4"
 async-trait = { version = "0.1" }
 tokio = { version = "1.44.2", features = ["full"] }
 serde_json = "1.0.140"
+lazy_static = { version = "1.5.0" }
 
 sp-core = "36.1"
 sp-runtime = "41.1"
 sp-keyring = "41.0"
 sp-weights = "31.1"
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = [
+    "derive",
+    "max-encoded-len",
+] }
 
 polymesh-api = { version = "3.11.0", features = ["download_metadata"] }
 polymesh-api-client-extras = { version = "3.6.0" }
@@ -45,3 +68,6 @@ polymesh-api-tester = { version = "0.10.0", features = ["download_metadata"] }
 # Confidential Assets
 confidential_assets = { version = "1.0.0" }
 rand = { version = "0.8" }
+
+# DART Assets
+polymesh-dart = { version = "0.1.0", features = ["backend_bp"] }
