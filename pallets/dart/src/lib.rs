@@ -367,7 +367,7 @@ pub mod pallet {
             NMapKey<Twox64Concat, AccountPublicKey>,
             NMapKey<Twox64Concat, DartAssetId>,
         ),
-        (),
+        bool,
         ValueQuery,
     >;
 
@@ -600,9 +600,10 @@ pub mod pallet {
 
             // Ensure the DART account hasn't already registered the DART asset.
             ensure!(
-                !AccountAssetRegistrations::<T>::contains_key((&proof.account, &proof.asset_id)),
+                !AccountAssetRegistrations::<T>::get((&proof.account, &proof.asset_id)),
                 Error::<T>::AccountAssetAlreadyRegistered
             );
+            AccountAssetRegistrations::<T>::insert((&proof.account, &proof.asset_id), true);
 
             // Verify the proof.
             proof
