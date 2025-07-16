@@ -4,9 +4,13 @@ use std::sync::{Arc, RwLock};
 use anyhow::Result;
 use codec::{Decode, Encode};
 
+use polymesh_dart::curve_tree::LeafPathAndRoot;
 use polymesh_dart::{
     AccountAssetRegistrationProof, AccountPublicKeys, AssetMintingProof, AuditorOrMediator,
-    LeafIndex,
+    Balance as DartBalance, LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole,
+    MediatorAffirmationProof, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof,
+    SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder, SettlementProof,
+    SettlementRef, ACCOUNT_TREE_L,
 };
 pub use polymesh_dart::{AccountAssetState, AccountKeys, AssetId as DartAssetId};
 
@@ -44,6 +48,24 @@ pub async fn get_account_leaf_inserted(
                     account_leaf,
                 }) => {
                     return Some((*leaf_index, to_scale(account_leaf)));
+                }
+                _ => (),
+            }
+        }
+        None
+    }))
+}
+
+/// Search for the created settlement in the transaction results.
+pub async fn get_settlement_ref(res: &mut TransactionResults) -> Result<Option<SettlementRef>> {
+    Ok(res.events().await?.and_then(|events| {
+        for rec in &events.0 {
+            match &rec.event {
+                RuntimeEvent::DartAsset(DartAssetEvent::SettlementCreated {
+                    settlement_ref,
+                    ..
+                }) => {
+                    return Some(to_scale(settlement_ref));
                 }
                 _ => (),
             }
@@ -111,19 +133,14 @@ impl DartUserAccountAssetState {
         Ok(())
     }
 
-    pub async fn get_path_and_root(
+    pub async fn get_path_and_root<'t>(
         &self,
-        account_tree: &AccountCurveTree,
-    ) -> Result<AccountPathAndRoot> {
+        account_tree: &'t AccountCurveTree,
+    ) -> Result<LeafPathAndRoot<'t, ACCOUNT_TREE_L>> {
         let leaf_index = self
             .leaf_index
             .ok_or_else(|| anyhow::anyhow!("Leaf index not set"))?;
-        AccountPathAndRoot::lookup(
-            account_tree,
-            leaf_index,
-            self.asset_state.current_state_commitment.as_leaf_value()?,
-        )
-        .await
+        Ok(account_tree.get_path_and_root(leaf_index).await?)
     }
 
     pub fn as_mut(&mut self) -> &mut AccountAssetState {
@@ -159,7 +176,33 @@ impl DartUserInner {
         self.user.did.unwrap_or_default()
     }
 
+    pub async fn is_account_registered(&self) -> Result<bool> {
+        let keys = self.public_keys();
+        let is_registered = self
+            .api
+            .query()
+            .dart_asset()
+            .account_did(to_scale(&keys.acct))
+            .await?
+            .is_some();
+        Ok(is_registered)
+    }
+
+    pub async fn is_account_asset_registered(&self, asset_id: DartAssetId) -> Result<bool> {
+        let keys = self.public_keys();
+        let is_registered = self
+            .api
+            .query()
+            .dart_asset()
+            .account_asset_registrations(to_scale(&keys.acct), asset_id)
+            .await?;
+        Ok(is_registered)
+    }
+
     pub async fn register_account(&mut self) -> Result<()> {
+        if self.is_account_registered().await? {
+            return Ok(());
+        }
         let keys = self.public_keys();
         self.api
             .call()
@@ -171,6 +214,11 @@ impl DartUserInner {
     }
 
     pub async fn register_account_asset(&mut self, asset_id: DartAssetId) -> Result<()> {
+        // Check if the account has already been registered for the asset.
+        if self.is_account_asset_registered(asset_id).await? {
+            return Ok(());
+        }
+
         // Generate the account asset registration proof.
         let mut rng = rand::thread_rng();
         let did = self.did();
@@ -248,6 +296,361 @@ impl DartUserInner {
 
         Ok(())
     }
+
+    pub async fn create_settlement(&mut self, proof: SettlementProof<()>) -> Result<SettlementRef> {
+        // Submit the settlement proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .create_settlement(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Get the settlement reference from the transaction results.
+        let settlement_ref = get_settlement_ref(&mut res)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement creation failed"))?;
+
+        Ok(settlement_ref)
+    }
+
+    pub async fn sender_affirmation(
+        &mut self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+        // Try to decrypt the leg as the sender
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc)?;
+        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc)?;
+
+        // Check the leg asset and amount.
+        if leg.asset_id() != asset_id || leg.amount() != amount {
+            return Err(anyhow::anyhow!(
+                "Leg asset or amount does not match: {:?} != {:?}, {} != {}",
+                leg.asset_id(),
+                asset_id,
+                leg.amount(),
+                amount
+            ));
+        }
+
+        // Get our current account asset state.
+        let asset_state = self
+            .assets
+            .get_mut(&asset_id)
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", asset_id))?;
+
+        // Lookup our current account asset state in the on-chain account tree.
+        let account_tree = tester.account_tree();
+        let account_lookup = asset_state.get_path_and_root(&account_tree).await?;
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = SenderAffirmationProof::new(
+            &mut rng,
+            &leg_ref,
+            amount,
+            sk_e,
+            &leg_enc,
+            asset_state.as_mut(),
+            account_lookup,
+        )?;
+
+        // Submit the minting proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .sender_affirmation(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Update the asset state with the new leaf index.
+        asset_state.update_leaf_index(&mut res).await?;
+
+        Ok(())
+    }
+
+    pub async fn receiver_affirmation(
+        &mut self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+        // Try to decrypt the leg as the receiver
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Receiver, &self.keys.enc)?;
+        let leg = leg_enc.decrypt(LegRole::Receiver, &self.keys.enc)?;
+
+        // Check the leg asset and amount.
+        if leg.asset_id() != asset_id || leg.amount() != amount {
+            return Err(anyhow::anyhow!(
+                "Leg asset or amount does not match: {:?} != {:?}, {} != {}",
+                leg.asset_id(),
+                asset_id,
+                leg.amount(),
+                amount
+            ));
+        }
+
+        // Get our current account asset state.
+        let asset_state = self
+            .assets
+            .get_mut(&asset_id)
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", asset_id))?;
+
+        // Lookup our current account asset state in the on-chain account tree.
+        let account_tree = tester.account_tree();
+        let account_lookup = asset_state.get_path_and_root(&account_tree).await?;
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = ReceiverAffirmationProof::new(
+            &mut rng,
+            &leg_ref,
+            sk_e,
+            &leg_enc,
+            asset_state.as_mut(),
+            account_lookup,
+        )?;
+
+        // Submit the minting proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .receiver_affirmation(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Update the asset state with the new leaf index.
+        asset_state.update_leaf_index(&mut res).await?;
+
+        Ok(())
+    }
+
+    pub async fn mediator_affirmation(
+        &mut self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        accept: bool,
+        asset_and_amount: Option<(DartAssetId, DartBalance)>,
+    ) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+
+        // Try to decrypt the leg as the mediator
+        let sk_e = leg_enc
+            .decrypt_sk_e(LegRole::Mediator, &self.keys.enc)
+            .unwrap();
+        let leg = leg_enc.decrypt(LegRole::Mediator, &self.keys.enc).unwrap();
+
+        // Check the leg asset and amount if provided.
+        if let Some((asset_id, amount)) = asset_and_amount {
+            if leg.asset_id() != asset_id || leg.amount() != amount {
+                return Err(anyhow::anyhow!(
+                    "Leg asset or amount does not match: {:?} != {:?}, {} != {}",
+                    leg.asset_id(),
+                    asset_id,
+                    leg.amount(),
+                    amount
+                ));
+            }
+        }
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = MediatorAffirmationProof::new(
+            &mut rng,
+            &leg_ref,
+            sk_e,
+            &leg_enc,
+            &self.keys.acct,
+            accept,
+        )?;
+
+        // Submit the minting proof.
+        self.api
+            .call()
+            .dart_asset()
+            .mediator_affirmation(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await
+            .expect("Failed to submit mediator affirmation");
+
+        Ok(())
+    }
+
+    pub async fn receiver_claim(
+        &mut self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+    ) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+
+        // Try to decrypt the leg as the receiver
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Receiver, &self.keys.enc)?;
+        let leg = leg_enc.decrypt(LegRole::Receiver, &self.keys.enc)?;
+        let asset_id = leg.asset_id();
+        let amount = leg.amount();
+
+        // Get our current account asset state.
+        let asset_state = self
+            .assets
+            .get_mut(&asset_id)
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", leg.asset_id()))?;
+
+        // Lookup our current account asset state in the on-chain account tree.
+        let account_tree = tester.account_tree();
+        let account_lookup = asset_state.get_path_and_root(&account_tree).await?;
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = ReceiverClaimProof::new(
+            &mut rng,
+            &leg_ref,
+            amount,
+            sk_e,
+            &leg_enc,
+            asset_state.as_mut(),
+            account_lookup,
+        )?;
+
+        // Submit the minting proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .receiver_claim(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Update the asset state with the new leaf index.
+        asset_state.update_leaf_index(&mut res).await?;
+
+        Ok(())
+    }
+
+    pub async fn sender_counter_update(
+        &mut self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+    ) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+
+        // Try to decrypt the leg as the sender
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc)?;
+        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc)?;
+
+        // Get our current account asset state.
+        let asset_state = self
+            .assets
+            .get_mut(&leg.asset_id())
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", leg.asset_id()))?;
+
+        // Lookup our current account asset state in the on-chain account tree.
+        let account_tree = tester.account_tree();
+        let account_lookup = asset_state.get_path_and_root(&account_tree).await?;
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = SenderCounterUpdateProof::new(
+            &mut rng,
+            &leg_ref,
+            sk_e,
+            &leg_enc,
+            asset_state.as_mut(),
+            account_lookup,
+        )?;
+
+        // Submit the minting proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .sender_update_counter(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Update the asset state with the new leaf index.
+        asset_state.update_leaf_index(&mut res).await?;
+
+        Ok(())
+    }
+
+    pub async fn sender_revert(&mut self, tester: &DartAssetTester, leg_ref: LegRef) -> Result<()> {
+        // Get the encrypted settlement leg from the chain.
+        let leg_enc = tester
+            .get_settlement_leg(leg_ref)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
+
+        // Try to decrypt the leg as the sender
+        let sk_e = leg_enc.decrypt_sk_e(LegRole::Sender, &self.keys.enc)?;
+        let leg = leg_enc.decrypt(LegRole::Sender, &self.keys.enc)?;
+        let asset_id = leg.asset_id();
+        let amount = leg.amount();
+
+        // Get our current account asset state.
+        let asset_state = self
+            .assets
+            .get_mut(&asset_id)
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", leg.asset_id()))?;
+
+        // Lookup our current account asset state in the on-chain account tree.
+        let account_tree = tester.account_tree();
+        let account_lookup = asset_state.get_path_and_root(&account_tree).await?;
+
+        // Generate minting proof.
+        let mut rng = rand::thread_rng();
+        let proof = SenderReversalProof::new(
+            &mut rng,
+            &leg_ref,
+            amount,
+            sk_e,
+            &leg_enc,
+            asset_state.as_mut(),
+            account_lookup,
+        )?;
+
+        // Submit the minting proof.
+        let mut res = self
+            .api
+            .call()
+            .dart_asset()
+            .sender_revert(to_scale(&proof))?
+            .submit_and_watch(&mut self.user)
+            .await?;
+
+        // Update the asset state with the new leaf index.
+        asset_state.update_leaf_index(&mut res).await?;
+
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -302,52 +705,611 @@ impl DartUser {
             .mint_asset(account_tree, asset_id, amount)
             .await
     }
+
+    pub async fn create_settlement(&self, proof: SettlementProof<()>) -> Result<SettlementRef> {
+        self.0.write().unwrap().create_settlement(proof).await
+    }
+
+    pub async fn sender_affirmation(
+        &self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) -> Result<()> {
+        self.0
+            .write()
+            .unwrap()
+            .sender_affirmation(tester, leg_ref, asset_id, amount)
+            .await
+    }
+
+    pub async fn receiver_affirmation(
+        &self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) -> Result<()> {
+        self.0
+            .write()
+            .unwrap()
+            .receiver_affirmation(tester, leg_ref, asset_id, amount)
+            .await
+    }
+
+    pub async fn mediator_affirmation(
+        &self,
+        tester: &DartAssetTester,
+        leg_ref: LegRef,
+        accept: bool,
+        asset_and_amount: Option<(DartAssetId, DartBalance)>,
+    ) -> Result<()> {
+        self.0
+            .write()
+            .unwrap()
+            .mediator_affirmation(tester, leg_ref, accept, asset_and_amount)
+            .await
+    }
+
+    pub async fn receiver_claim(&self, tester: &DartAssetTester, leg_ref: LegRef) -> Result<()> {
+        self.0
+            .write()
+            .unwrap()
+            .receiver_claim(tester, leg_ref)
+            .await
+    }
 }
 
-pub struct DartAssetTester {
+pub struct DartAssetTesterInner {
     pub tester: PolymeshTester,
-    pub investors: BTreeMap<String, DartUser>,
-    pub auditors: BTreeMap<String, DartUser>,
+    pub users: BTreeMap<String, DartUser>,
+    pub account_tree: AccountCurveTree,
+    pub asset_tree: AssetCurveTree,
+    pub asset_lookup: BTreeMap<String, DartAssetId>,
+    pub assets: BTreeMap<DartAssetId, DartTestAsset>,
 }
 
-impl DartAssetTester {
-    pub async fn init(investors: &[&str], auditors: &[&str]) -> Result<Self> {
+impl DartAssetTesterInner {
+    pub async fn init(user_names: &[&str]) -> Result<Self> {
         let mut tester = PolymeshTester::new().await?;
 
+        let account_tree = AccountCurveTree::new(&tester.api).await?;
+        let asset_tree = AssetCurveTree::new(&tester.api).await?;
+
         // Merge names to create all users in a batch.
-        let names: Vec<&str> = investors
-            .iter()
-            .chain(auditors.iter())
-            .map(|s| *s)
-            .collect();
-        let mut investor_users = tester.users(names.as_slice()).await?;
-        // Split users into investors and auditors.
-        let auditor_users = investor_users.split_off(investors.len());
+        let users = tester.users(user_names).await?;
 
         Ok(Self {
-            investors: investors
+            users: user_names
                 .into_iter()
-                .zip(investor_users.into_iter())
-                .map(|(n, u)| (n.to_string(), DartUser::new(u)))
-                .collect(),
-            auditors: auditors
-                .into_iter()
-                .zip(auditor_users.into_iter())
+                .zip(users.into_iter())
                 .map(|(n, u)| (n.to_string(), DartUser::new(u)))
                 .collect(),
             tester,
+            account_tree,
+            asset_tree,
+            asset_lookup: BTreeMap::new(),
+            assets: BTreeMap::new(),
         })
     }
 
-    pub fn investor(&self, name: &str) -> DartUser {
-        self.investors.get(name).expect("Investor").clone()
-    }
-
-    pub fn auditor(&self, name: &str) -> DartUser {
-        self.auditors.get(name).expect("Auditor").clone()
+    pub fn user(&self, name: &str) -> DartUser {
+        self.users.get(name).expect("Missing Investor").clone()
     }
 
     pub fn api(&self) -> Api {
         self.tester.api.clone()
+    }
+
+    pub async fn get_settlement_leg(&self, leg_ref: LegRef) -> Result<Option<LegEncrypted>> {
+        let leg = self
+            .api()
+            .query()
+            .dart_asset()
+            .settlement_legs(to_scale(&leg_ref.settlement), leg_ref.leg_id)
+            .await?;
+
+        Ok(leg.map(|l| to_scale(&l)))
+    }
+
+    pub fn get_named_asset(&self, name: &str) -> Option<DartTestAsset> {
+        self.asset_lookup
+            .get(name)
+            .and_then(|id| self.assets.get(id))
+            .cloned()
+    }
+
+    pub fn get_asset(&self, asset_id: DartAssetId) -> Option<DartTestAsset> {
+        self.assets.get(&asset_id).cloned()
+    }
+
+    pub fn register_asset(&mut self, name: &str, asset_id: DartAssetId, asset: DartTestAsset) {
+        // Store the asset in the lookup map.
+        self.asset_lookup.insert(name.to_string(), asset_id);
+        self.assets.insert(asset_id, asset);
+    }
+}
+
+#[derive(Clone)]
+pub struct DartAssetTester(Arc<RwLock<DartAssetTesterInner>>);
+
+impl DartAssetTester {
+    pub async fn init(user_names: &[&str]) -> Result<Self> {
+        let inner = DartAssetTesterInner::init(user_names).await?;
+        Ok(Self(Arc::new(RwLock::new(inner))))
+    }
+
+    pub fn user(&self, name: &str) -> DartUser {
+        self.0.read().unwrap().user(name)
+    }
+
+    pub fn api(&self) -> Api {
+        self.0.read().unwrap().api()
+    }
+
+    pub fn account_tree(&self) -> AccountCurveTree {
+        self.0.read().unwrap().account_tree.clone()
+    }
+
+    pub fn asset_tree(&self) -> AssetCurveTree {
+        self.0.read().unwrap().asset_tree.clone()
+    }
+
+    pub async fn get_settlement_leg(&self, leg_ref: LegRef) -> Result<Option<LegEncrypted>> {
+        self.0.read().unwrap().get_settlement_leg(leg_ref).await
+    }
+
+    pub fn get_named_asset(&self, name: &str) -> Option<DartTestAsset> {
+        self.0.read().unwrap().get_named_asset(name)
+    }
+
+    pub fn get_asset(&self, asset_id: DartAssetId) -> Option<DartTestAsset> {
+        self.0.read().unwrap().get_asset(asset_id)
+    }
+
+    pub async fn create_asset(
+        &self,
+        asset_issuer: &DartUser,
+        name: &'static str,
+        auditors: &[&DartUser],
+        mediators: &[&DartUser],
+        mint_amount: Option<DartBalance>,
+    ) -> Result<DartTestAsset> {
+        // Check if the asset already exists.
+        if let Some(asset) = self.0.read().unwrap().get_named_asset(name) {
+            // mint more if needed.
+            if let Some(amount) = mint_amount {
+                asset.mint_more(self, amount).await?;
+            }
+            return Ok(asset);
+        }
+
+        // Create a new asset.
+        let asset =
+            DartTestAsset::new(self, asset_issuer, name, auditors, mediators, mint_amount).await?;
+
+        // Register the asset in the tester.
+        self.0
+            .write()
+            .unwrap()
+            .register_asset(name, asset.id(), asset.clone());
+
+        Ok(asset)
+    }
+}
+
+pub struct DartTestAssetInner {
+    pub id: DartAssetId,
+    pub issuer: DartUser,
+    issuer_balance: DartBalance,
+    pub auditors: Vec<DartUser>,
+    pub mediators: Vec<DartUser>,
+    pub auditor_or_mediator: AuditorOrMediator,
+    pub total_supply: DartBalance,
+}
+
+impl DartTestAssetInner {
+    async fn new(
+        tester: &DartAssetTester,
+        asset_issuer: &DartUser,
+        name: &'static str,
+        auditors: &[&DartUser],
+        mediators: &[&DartUser],
+        mint_amount: Option<DartBalance>,
+    ) -> Result<Self> {
+        // For now we only support one auditor or mediator.
+        assert!(
+            (auditors.len() + mediators.len()) == 1,
+            "At least one auditor or mediator is required"
+        );
+
+        // Asset issuer register their account.
+        asset_issuer.register_account().await?;
+
+        // Create mediator user and keys.
+        let auditor_or_mediator = match (auditors, mediators) {
+            ([], [m]) => {
+                // Register the mediator's keys.
+                m.register_account().await?;
+                AuditorOrMediator::mediator(&m.public_keys())
+            }
+            ([a], []) => {
+                // Register the auditor's keys.
+                a.register_account().await?;
+                AuditorOrMediator::auditor(&a.public_keys().enc)
+            }
+            _ => unreachable!("Only one auditor or mediator is allowed"),
+        };
+
+        // Create the asset.
+        let asset_id = asset_issuer
+            .create_asset(name, auditor_or_mediator.clone())
+            .await?;
+
+        let mint_amount = mint_amount.unwrap_or(0);
+        if mint_amount > 0 {
+            // Asset issuer registers the asset.
+            asset_issuer.register_account_asset(asset_id).await?;
+
+            // Mint asset proof.
+            let account_tree = tester.account_tree();
+            asset_issuer
+                .mint_asset(&account_tree, asset_id, mint_amount)
+                .await?;
+        }
+
+        Ok(Self {
+            id: asset_id,
+            issuer: asset_issuer.clone(),
+            issuer_balance: mint_amount,
+            auditors: auditors.into_iter().copied().cloned().collect(),
+            mediators: mediators.into_iter().copied().cloned().collect(),
+            auditor_or_mediator,
+            total_supply: mint_amount,
+        })
+    }
+
+    pub fn has_mediator(&self) -> bool {
+        match &self.auditor_or_mediator {
+            AuditorOrMediator::Mediator(_) => true,
+            AuditorOrMediator::Auditor(_) => false,
+        }
+    }
+
+    pub fn mediator(&self) -> Option<DartUser> {
+        if self.has_mediator() {
+            Some(self.mediators[0].clone())
+        } else {
+            None
+        }
+    }
+
+    pub async fn mint_more(&mut self, tester: &DartAssetTester, amount: DartBalance) -> Result<()> {
+        // Mint asset proof.
+        self.issuer
+            .mint_asset(&tester.account_tree(), self.id, amount)
+            .await?;
+
+        // Update the total supply and issuer balance.
+        self.total_supply += amount;
+        self.issuer_balance += amount;
+
+        Ok(())
+    }
+
+    pub async fn take_issuer_funds(
+        &mut self,
+        tester: &DartAssetTester,
+        amount: DartBalance,
+    ) -> Result<()> {
+        if amount > self.issuer_balance {
+            self.mint_more(tester, amount).await?;
+        }
+
+        self.issuer_balance -= amount;
+
+        Ok(())
+    }
+
+    pub async fn register_investor(&mut self, user: &DartUser) -> Result<()> {
+        // Register the account.
+        user.register_account().await?;
+
+        // Account asset registration proof.
+        user.register_account_asset(self.id).await?;
+
+        Ok(())
+    }
+
+    pub async fn register_investors(&mut self, investors: &[&DartUser]) -> Result<()> {
+        // Register each investor.
+        for user in investors {
+            self.register_investor(user).await?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct DartTestAsset(Arc<RwLock<DartTestAssetInner>>);
+
+impl DartTestAsset {
+    async fn new(
+        tester: &DartAssetTester,
+        asset_issuer: &DartUser,
+        name: &'static str,
+        auditors: &[&DartUser],
+        mediators: &[&DartUser],
+        mint_amount: Option<DartBalance>,
+    ) -> Result<Self> {
+        let inner =
+            DartTestAssetInner::new(tester, asset_issuer, name, auditors, mediators, mint_amount)
+                .await?;
+
+        Ok(Self(Arc::new(RwLock::new(inner))))
+    }
+
+    pub fn id(&self) -> DartAssetId {
+        self.0.read().unwrap().id
+    }
+
+    pub fn issuer(&self) -> DartUser {
+        self.0.read().unwrap().issuer.clone()
+    }
+
+    pub fn mediator(&self) -> Option<DartUser> {
+        self.0.read().unwrap().mediator()
+    }
+
+    pub fn auditor_or_mediator(&self) -> AuditorOrMediator {
+        self.0.read().unwrap().auditor_or_mediator.clone()
+    }
+
+    pub async fn register_investor(&self, user: &DartUser) -> Result<()> {
+        self.0.write().unwrap().register_investor(user).await
+    }
+
+    pub async fn register_investors(&self, investors: &[&DartUser]) -> Result<()> {
+        self.0.write().unwrap().register_investors(investors).await
+    }
+
+    pub async fn mint_more(&self, tester: &DartAssetTester, amount: DartBalance) -> Result<()> {
+        self.0.write().unwrap().mint_more(tester, amount).await
+    }
+
+    pub async fn register_and_fund_investors(
+        &self,
+        tester: &DartAssetTester,
+        investors: &[&DartUser],
+        amount: DartBalance,
+    ) -> Result<()> {
+        // Get funds from the issuer.
+        {
+            let mut inner = self.0.write().unwrap();
+
+            let total_amount = amount * investors.len() as DartBalance;
+            inner.take_issuer_funds(tester, total_amount).await?;
+        }
+
+        let asset_id = self.id();
+        let settlement =
+            DartSettlementState::register_and_fund_investors(tester, investors, asset_id, amount)
+                .await?;
+
+        // Affirm all the legs in the settlement.
+        settlement.affirm_legs(tester).await?;
+
+        // All investors claim their assets.
+        settlement.claim_assets(tester).await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct DartSettlementLegState {
+    pub leg_ref: LegRef,
+    pub sender: DartUser,
+    pub receiver: DartUser,
+    pub asset_id: DartAssetId,
+    pub amount: DartBalance,
+    pub mediator: Option<DartUser>,
+}
+
+impl DartSettlementLegState {
+    pub async fn sender_affirmation(&self, tester: &DartAssetTester) -> Result<()> {
+        self.sender
+            .sender_affirmation(tester, self.leg_ref, self.asset_id, self.amount)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn receiver_affirmation(&self, tester: &DartAssetTester) -> Result<()> {
+        self.receiver
+            .receiver_affirmation(tester, self.leg_ref, self.asset_id, self.amount)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn mediator_affirmation(&self, tester: &DartAssetTester, accept: bool) -> Result<()> {
+        if let Some(mediator) = &self.mediator {
+            mediator
+                .mediator_affirmation(
+                    tester,
+                    self.leg_ref,
+                    accept,
+                    Some((self.asset_id, self.amount)),
+                )
+                .await?;
+        }
+        Ok(())
+    }
+
+    pub async fn affirm_leg(&self, tester: &DartAssetTester) -> Result<()> {
+        self.sender_affirmation(tester).await?;
+        self.receiver_affirmation(tester).await?;
+        self.mediator_affirmation(tester, true).await?;
+        Ok(())
+    }
+
+    pub async fn receiver_claim(&self, tester: &DartAssetTester) -> Result<()> {
+        self.receiver.receiver_claim(tester, self.leg_ref).await?;
+        Ok(())
+    }
+}
+
+pub struct DartLeg {
+    pub sender: DartUser,
+    pub receiver: DartUser,
+    pub asset_id: DartAssetId,
+    pub amount: DartBalance,
+}
+
+#[derive(Clone)]
+pub struct DartSettlementState {
+    pub settlement_ref: SettlementRef,
+    pub legs: Vec<DartSettlementLegState>,
+}
+
+impl DartSettlementState {
+    pub async fn new(
+        tester: &DartAssetTester,
+        venue: &DartUser,
+        legs: &[DartLeg],
+        memo: Option<&[u8]>,
+    ) -> Result<Self> {
+        let asset_tree = tester.asset_tree();
+        let mut asset_paths = AssetLeafPaths::new(&asset_tree).await?;
+
+        // Create the investors and setup settlement legs.
+        let mut leg_states = Vec::with_capacity(legs.len());
+        let mut settlement = SettlementBuilder::<()>::new(memo.unwrap_or(b"NewSettlement"));
+        for (leg_idx, leg) in legs.into_iter().enumerate() {
+            let asset_id = leg.asset_id;
+            let amount = leg.amount;
+
+            let leg_ref = LegRef {
+                settlement: 0.into(),
+                leg_id: leg_idx as _,
+            };
+            // Get the asset details.
+            let asset = tester
+                .get_asset(asset_id)
+                .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", asset_id))?;
+
+            // Track the asset's leaf path.
+            let asset_tree = tester.asset_tree();
+            asset_paths.track_asset(asset_id, &asset_tree).await?;
+
+            settlement = settlement.leg(LegBuilder {
+                sender: leg.sender.public_keys(),
+                receiver: leg.receiver.public_keys(),
+                asset_id,
+                amount,
+                mediator: asset.auditor_or_mediator(),
+            });
+            leg_states.push(DartSettlementLegState {
+                leg_ref,
+                sender: leg.sender.clone(),
+                receiver: leg.receiver.clone(),
+                asset_id,
+                amount,
+                mediator: asset.mediator(),
+            });
+        }
+
+        // Create the settlement to transfer assets to all investors.
+        let mut rng = rand::thread_rng();
+        let proof = settlement
+            .encryt_and_prove(&mut rng, asset_paths)
+            .expect("Failed to create settlement");
+        // Submit the settlement proof.
+        let settlement_ref = venue.create_settlement(proof).await?;
+
+        // Correct the settlement reference in the legs.
+        for leg in &mut leg_states {
+            leg.leg_ref.settlement = settlement_ref;
+        }
+
+        let settlement = Self {
+            settlement_ref,
+            legs: leg_states,
+        };
+
+        Ok(settlement)
+    }
+
+    pub async fn register_and_fund_investors(
+        tester: &DartAssetTester,
+        investors: &[&DartUser],
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) -> Result<Self> {
+        let asset = tester
+            .get_asset(asset_id)
+            .ok_or_else(|| anyhow::anyhow!("Asset not registered: {}", asset_id))?;
+        let issuer = asset.issuer();
+
+        // Register all investors for the asset.
+        asset.register_investors(investors).await?;
+
+        let legs = investors
+            .into_iter()
+            .map(|&investor| DartLeg {
+                sender: issuer.clone(),
+                receiver: investor.clone(),
+                asset_id,
+                amount,
+            })
+            .collect::<Vec<_>>();
+
+        Ok(Self::new(tester, &issuer, &legs, Some(b"FundInvestors")).await?)
+    }
+
+    pub async fn senders_affirm_legs(&self, tester: &DartAssetTester) -> Result<()> {
+        // All senders affirm their legs.
+        for leg in &self.legs {
+            leg.sender_affirmation(tester).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn receivers_affirm_legs(&self, tester: &DartAssetTester) -> Result<()> {
+        // All receivers affirm their legs.
+        for leg in &self.legs {
+            leg.receiver_affirmation(tester).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn mediators_affirm_legs(
+        &self,
+        tester: &DartAssetTester,
+        accept: bool,
+    ) -> Result<()> {
+        // All mediators affirm their legs.
+        for leg in &self.legs {
+            leg.mediator_affirmation(tester, accept).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn affirm_legs(&self, tester: &DartAssetTester) -> Result<()> {
+        // Affirm all the legs in the settlement.
+        for leg in &self.legs {
+            leg.affirm_leg(tester).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn claim_assets(&self, tester: &DartAssetTester) -> Result<()> {
+        // All investors claim their assets.
+        for leg in &self.legs {
+            // Investor claims the assets.
+            leg.receiver_claim(tester).await?;
+        }
+        Ok(())
     }
 }

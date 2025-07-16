@@ -1,4 +1,5 @@
 use core::ops::{Deref, DerefMut};
+use std::collections::BTreeSet;
 
 use anyhow::{Error, Result};
 
@@ -150,6 +151,7 @@ pub type AssetCurveTreeType = AsyncCurveTreeWithBackend<
     anyhow::Error,
 >;
 
+#[derive(Clone)]
 pub struct AssetCurveTree(AssetCurveTreeType);
 
 impl Deref for AssetCurveTree {
@@ -172,6 +174,93 @@ impl AssetCurveTree {
         Ok(Self(
             AsyncCurveTreeWithBackend::new_with_backend(backend).await?,
         ))
+    }
+}
+
+/// A syncronous holder for multiple asset leaf paths.
+///
+/// This is used for creating multi-leg settlements that have different assets.
+pub struct AssetLeafPaths {
+    pub track_assets: BTreeSet<DartAssetId>,
+    pub leaf_index: BTreeMap<Vec<u8>, LeafIndex>,
+    pub paths: BTreeMap<LeafIndex, CurveTreePath<ASSET_TREE_L>>,
+    pub root: CurveTreeRoot<ASSET_TREE_L>,
+}
+
+impl AssetLeafPaths {
+    pub async fn new(asset_tree: &AssetCurveTreeType) -> Result<Self> {
+        let root = CurveTreeRoot::new(&asset_tree.root_node().await?)?;
+        Ok(Self {
+            track_assets: BTreeSet::new(),
+            leaf_index: BTreeMap::new(),
+            paths: BTreeMap::new(),
+            root,
+        })
+    }
+
+    async fn update_asset_path(
+        &mut self,
+        asset_id: DartAssetId,
+        asset_tree: &AssetCurveTreeType,
+    ) -> Result<()> {
+        let leaf_index = asset_id as _;
+        let leaf = asset_tree
+            .get_leaf(leaf_index)
+            .await?
+            .ok_or_else(|| DartError::LeafIndexNotFound(leaf_index))?;
+        let path = asset_tree.get_path_to_leaf(leaf_index, 0).await?;
+        self.leaf_index.insert(leaf.encode(), leaf_index);
+        self.paths.insert(leaf_index, path);
+        Ok(())
+    }
+
+    pub async fn update_root(&mut self, asset_tree: &AssetCurveTreeType) -> Result<()> {
+        self.root = CurveTreeRoot::new(&asset_tree.root_node().await?)?;
+        Ok(())
+    }
+
+    pub async fn track_asset(
+        &mut self,
+        asset_id: DartAssetId,
+        asset_tree: &AssetCurveTreeType,
+    ) -> Result<()> {
+        if self.track_assets.insert(asset_id) {
+            self.update_asset_path(asset_id, asset_tree).await?;
+        }
+        Ok(())
+    }
+}
+
+impl CurveTreeLookup<ASSET_TREE_L> for AssetLeafPaths {
+    fn get_path_to_leaf_index(
+        &self,
+        leaf_index: LeafIndex,
+    ) -> Result<CurveTreePath<ASSET_TREE_L>, DartError> {
+        if let Some(path) = self.paths.get(&leaf_index) {
+            Ok(path.clone())
+        } else {
+            Err(DartError::LeafIndexNotFound(leaf_index))
+        }
+    }
+
+    fn get_path_to_leaf(
+        &self,
+        leaf: LeafValue<PallasParameters>,
+    ) -> Result<CurveTreePath<ASSET_TREE_L>, DartError> {
+        let leaf_buf = leaf.encode();
+        let leaf_index = self
+            .leaf_index
+            .get(&leaf_buf)
+            .ok_or(DartError::LeafNotFound(leaf))?;
+        self.get_path_to_leaf_index(*leaf_index)
+    }
+
+    fn params(&self) -> &CurveTreeParameters {
+        &CURVE_TREE_PARAMETERS
+    }
+
+    fn root_node(&self) -> Result<CurveTreeRoot<ASSET_TREE_L>, DartError> {
+        Ok(self.root.clone())
     }
 }
 
@@ -285,6 +374,7 @@ pub type AccountCurveTreeType = AsyncCurveTreeWithBackend<
     anyhow::Error,
 >;
 
+#[derive(Clone)]
 pub struct AccountCurveTree(AccountCurveTreeType);
 
 impl Deref for AccountCurveTree {
@@ -307,70 +397,5 @@ impl AccountCurveTree {
         Ok(Self(
             AsyncCurveTreeWithBackend::new_with_backend(backend).await?,
         ))
-    }
-}
-
-pub struct AccountPathAndRoot {
-    pub account: AccountLeaf,
-    pub leaf_index: LeafIndex,
-    pub path: CurveTreePath<ACCOUNT_TREE_L>,
-    pub root: CurveTreeRoot<ACCOUNT_TREE_L>,
-}
-
-impl AccountPathAndRoot {
-    pub async fn lookup(
-        account_tree: &AccountCurveTree,
-        leaf_index: LeafIndex,
-        account: AccountLeaf,
-    ) -> Result<Self> {
-        // Get the leaf and path for the given leaf index.
-        let leaf = account_tree
-            .get_leaf(leaf_index)
-            .await?
-            .ok_or_else(|| DartError::LeafIndexNotFound(leaf_index))?;
-        // Check if the leaf matches the provided account.
-        if leaf != account {
-            return Err(DartError::LeafNotFound(account).into());
-        }
-        let path = account_tree.get_path_to_leaf(leaf_index, 0).await?;
-        let root = CurveTreeRoot::new(&account_tree.root_node().await?)?;
-        Ok(Self {
-            account,
-            leaf_index,
-            path,
-            root,
-        })
-    }
-}
-
-impl CurveTreeLookup<ACCOUNT_TREE_L> for AccountPathAndRoot {
-    fn get_path_to_leaf_index(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<CurveTreePath<ACCOUNT_TREE_L>, DartError> {
-        if self.leaf_index == leaf_index {
-            Ok(self.path.clone())
-        } else {
-            Err(DartError::LeafIndexNotFound(leaf_index))
-        }
-    }
-
-    fn get_path_to_leaf(
-        &self,
-        leaf: LeafValue<PallasParameters>,
-    ) -> Result<CurveTreePath<ACCOUNT_TREE_L>, DartError> {
-        if self.account == leaf {
-            Ok(self.path.clone())
-        } else {
-            Err(DartError::LeafNotFound(leaf))
-        }
-    }
-
-    fn params(&self) -> &CurveTreeParameters {
-        &CURVE_TREE_PARAMETERS
-    }
-
-    fn root_node(&self) -> Result<CurveTreeRoot<ACCOUNT_TREE_L>, DartError> {
-        Ok(self.root.clone())
     }
 }
