@@ -77,59 +77,74 @@ async fn atomic_swap_test() -> Result<()> {
     let asset1_id = asset1.id;
     let asset2_id = asset2.id;
 
+    let mut tasks = Vec::new();
     // Register the investors for all assets.
-    let task1 = {
+    {
+        let investor1 = investor1.clone();
+        tasks.push(tokio::spawn(async move {
+            investor1.register_account().await?;
+            investor1.register_account_asset(asset2_id).await
+        }));
+        let investor2 = investor2.clone();
+        tasks.push(tokio::spawn(async move {
+            investor2.register_account().await?;
+            investor2.register_account_asset(asset1_id).await
+        }));
+    }
+    // Fund investors by sending them some assets from the issuers.
+    {
         let tester = tester.clone();
         let investor1 = investor1.clone();
-        let investor2 = investor2.clone();
-        tokio::spawn(async move {
-            // Register investors for asset1.
-            asset1.register_investors(&[&investor1, &investor2]).await?;
-
-            // Fund investors by sending them some assets from the issuers.
+        tasks.push(tokio::spawn(async move {
             asset1
                 .register_and_fund_investors(&tester, &[&investor1], 500)
                 .await
-        })
-    };
-    let task2 = {
+        }));
+    }
+    {
         let tester = tester.clone();
-        let investor1 = investor1.clone();
         let investor2 = investor2.clone();
-        tokio::spawn(async move {
-            // Register investors for asset2.
-            asset2.register_investors(&[&investor1, &investor2]).await?;
-
-            // Fund investors by sending them some assets from the issuers.
+        tasks.push(tokio::spawn(async move {
             asset2
                 .register_and_fund_investors(&tester, &[&investor2], 20_000)
                 .await
-        })
-    };
-    task1.await??;
-    task2.await??;
+        }));
+    }
 
     // Create atomic swap settlement.
-    let swap = DartSettlementState::new(
-        &tester,
-        &venue,
-        &[
-            DartLeg {
-                sender: investor1.clone(),
-                receiver: investor2.clone(),
-                asset_id: asset1_id,
-                amount: 250,
-            },
-            DartLeg {
-                sender: investor2.clone(),
-                receiver: investor1.clone(),
-                asset_id: asset2_id,
-                amount: 3_000,
-            },
-        ],
-        Some(b"Test atomic swap"),
-    )
-    .await?;
+    let swap_task = {
+        let tester = tester.clone();
+        let venue = venue.clone();
+        let investor1 = investor1.clone();
+        let investor2 = investor2.clone();
+        tokio::spawn(async move {
+            DartSettlementState::new(
+                &tester,
+                &venue,
+                &[
+                    DartLeg {
+                        sender: investor1.clone(),
+                        receiver: investor2.clone(),
+                        asset_id: asset1_id,
+                        amount: 250,
+                    },
+                    DartLeg {
+                        sender: investor2.clone(),
+                        receiver: investor1.clone(),
+                        asset_id: asset2_id,
+                        amount: 3_000,
+                    },
+                ],
+                Some(b"Test atomic swap"),
+            )
+            .await
+        })
+    };
+    // Wait for all tasks to complete.
+    for task in tasks {
+        task.await??;
+    }
+    let swap = swap_task.await??;
 
     // All parties affirm all legs.
     swap.affirm_legs(&tester).await?;

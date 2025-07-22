@@ -154,6 +154,7 @@ pub struct DartUserInner {
     api: Api,
     pub user: User,
     pub keys: AccountKeys,
+    pub registered: bool,
     pub assets: BTreeMap<DartAssetId, DartUserAccountAssetState>,
 }
 
@@ -165,6 +166,7 @@ impl DartUserInner {
             api,
             user,
             keys,
+            registered: false,
             assets: BTreeMap::new(),
         }
     }
@@ -177,31 +179,12 @@ impl DartUserInner {
         self.user.did.unwrap_or_default()
     }
 
-    pub async fn is_account_registered(&self) -> Result<bool> {
-        let keys = self.public_keys();
-        let is_registered = self
-            .api
-            .query()
-            .dart_asset()
-            .account_did(to_scale(&keys.acct))
-            .await?
-            .is_some();
-        Ok(is_registered)
-    }
-
-    pub async fn is_account_asset_registered(&self, asset_id: DartAssetId) -> Result<bool> {
-        let keys = self.public_keys();
-        let is_registered = self
-            .api
-            .query()
-            .dart_asset()
-            .account_asset_registrations(to_scale(&keys.acct), asset_id)
-            .await?;
-        Ok(is_registered)
+    pub fn is_account_asset_registered(&self, asset_id: DartAssetId) -> bool {
+        self.assets.contains_key(&asset_id)
     }
 
     pub async fn register_account(&mut self) -> Result<()> {
-        if self.is_account_registered().await? {
+        if self.registered {
             return Ok(());
         }
         let keys = self.public_keys();
@@ -211,12 +194,13 @@ impl DartUserInner {
             .register_account(to_scale(&keys.acct), to_scale(&keys.enc))?
             .submit_and_watch(&mut self.user)
             .await?;
+        self.registered = true;
         Ok(())
     }
 
     pub async fn register_account_asset(&mut self, asset_id: DartAssetId) -> Result<()> {
         // Check if the account has already been registered for the asset.
-        if self.is_account_asset_registered(asset_id).await? {
+        if self.is_account_asset_registered(asset_id) {
             return Ok(());
         }
 
@@ -1055,9 +1039,22 @@ impl DartTestAssetInner {
     }
 
     pub async fn register_investors(&mut self, investors: &[&DartUser]) -> Result<()> {
+        let asset_id = self.id;
         // Register each investor.
-        for user in investors {
-            self.register_investor(user).await?;
+        let mut tasks = Vec::with_capacity(investors.len());
+        for &user in investors {
+            let user = user.clone();
+            tasks.push(tokio::spawn(async move {
+                // Register the account.
+                user.register_account().await?;
+
+                // Account asset registration proof.
+                user.register_account_asset(asset_id).await
+            }));
+        }
+        // Wait for all registrations to complete.
+        for task in tasks {
+            task.await??; // Propagate any errors.
         }
 
         Ok(())
