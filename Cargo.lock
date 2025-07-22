@@ -5413,7 +5413,7 @@ dependencies = [
  "pallet-identity",
  "parity-scale-codec",
  "polymesh-dart",
- "polymesh-host-functions",
+ "polymesh-dart-host-functions",
  "polymesh-primitives",
  "polymesh-runtime-common 1.0.0",
  "rand_chacha 0.3.1",
@@ -6510,6 +6510,25 @@ dependencies = [
 [[package]]
 name = "polymesh-dart-common"
 version = "0.1.0"
+
+[[package]]
+name = "polymesh-dart-host-functions"
+version = "0.1.0"
+dependencies = [
+ "crossbeam",
+ "lazy_static",
+ "log",
+ "parity-scale-codec",
+ "polymesh-dart",
+ "polymesh-primitives",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "rayon",
+ "scale-info",
+ "sp-core",
+ "sp-runtime-interface",
+ "sp-std",
+]
 
 [[package]]
 name = "polymesh-host-functions"

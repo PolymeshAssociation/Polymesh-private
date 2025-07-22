@@ -15,7 +15,7 @@ pallet-identity = { workspace = true, default-features = false }
 # Crypto
 rand_core = { workspace = true, default-features = false }
 rand_chacha = { workspace = true, default-features = false }
-polymesh-host-functions = { workspace = true, default-features = false }
+polymesh-dart-host-functions = { workspace = true, default-features = false }
 
 # DART
 polymesh-dart = { workspace = true, default-features = false, features = [
@@ -43,12 +43,12 @@ log = { version = "0.4", default-features = false }
 equalize = []
 default = ["std", "equalize"]
 
-testing = ["polymesh-host-functions/runtime-benchmarks"]
+testing = ["polymesh-dart-host-functions/testing"]
 
 asm = ["polymesh-dart/asm"]
 parallel = ["polymesh-dart/parallel"]
 
-no_std = ["polymesh-host-functions/no_std", "polymesh-dart/no_std"]
+no_std = ["polymesh-dart-host-functions/no_std", "polymesh-dart/no_std"]
 std = [
   "asm",
   "parallel",
@@ -63,7 +63,7 @@ std = [
   "pallet-identity/std",
   "polymesh-runtime-common/std",
   "polymesh-primitives/std",
-  "polymesh-host-functions/std",
+  "polymesh-dart-host-functions/std",
   "sp-runtime/std",
   "sp-std/std",
   "sp-io/std",
@@ -72,7 +72,7 @@ runtime-benchmarks = [
   "testing",
   "frame-benchmarking/runtime-benchmarks",
   "polymesh-primitives/runtime-benchmarks",
-  "polymesh-host-functions/runtime-benchmarks",
+  "polymesh-dart-host-functions/runtime-benchmarks",
   "sp-runtime/runtime-benchmarks",
 ]
 try-runtime = []
