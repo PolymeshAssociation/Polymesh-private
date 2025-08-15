@@ -3,7 +3,7 @@ use core::ops::{Deref, DerefMut};
 use polymesh_dart::{
     curve_tree::{
         CurveTreeBackend, CurveTreeParameters, CurveTreeRoot, CurveTreeWithBackend, Inner,
-        LeafValue, NodeLocation, ValidateCurveTreeRoot,
+        LeafValue, NodeLocation, Root, ValidateCurveTreeRoot,
     },
     LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
     ASSET_TREE_HEIGHT, ASSET_TREE_L,
@@ -53,6 +53,10 @@ impl<T: Config> Pallet<T> {
     }
 }
 
+fn get_block_number<T: Config>() -> Result<BlockNumberFor<T>, Error<T>> {
+    Ok(frame_system::Pallet::<T>::block_number())
+}
+
 /// Asset Curve Tree Storage backend.
 #[derive(Clone)]
 pub struct AssetCurveTreeStorage<T: Config> {
@@ -63,6 +67,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
     for AssetCurveTreeStorage<T>
 {
     type Error = Error<T>;
+    type BlockNumber = BlockNumberFor<T>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -72,6 +77,41 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
 
     fn parameters(&self) -> &CurveTreeParameters {
         Pallet::<T>::get_curve_tree_parameters()
+    }
+
+    fn get_block_number(&self) -> Result<Self::BlockNumber, Self::Error> {
+        // Return the current block number from the storage.
+        get_block_number::<T>()
+    }
+
+    fn store_root(
+        &mut self,
+        root: Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>,
+    ) -> Result<Self::BlockNumber, Self::Error> {
+        let block_number = get_block_number::<T>()?;
+
+        // Store the root in the storage.
+        let root = CurveTreeRoot::new(&root)?;
+        AssetCurveTreeRoots::<T>::insert(block_number, &root);
+
+        // Store the block number for the asset curve tree update.
+        AssetCurveTreeLastUpdate::<T>::put(block_number);
+
+        // Emit an event for the asset curve tree root update.
+        Pallet::<T>::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
+
+        Ok(block_number)
+    }
+
+    fn fetch_root(
+        &self,
+        block_number: Self::BlockNumber,
+    ) -> Result<Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>, Self::Error> {
+        let block_number: BlockNumberFor<T> = block_number.into();
+        // Fetch the root from the storage.
+        let root =
+            AssetCurveTreeRoots::<T>::get(block_number).ok_or(Error::<T>::CurveTreeRootNotFound)?;
+        Ok(root.decode()?)
     }
 
     fn height(&self) -> NodeLevel {
@@ -142,6 +182,7 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
     for AccountCurveTreeStorage<T>
 {
     type Error = Error<T>;
+    type BlockNumber = BlockNumberFor<T>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -151,6 +192,40 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
 
     fn parameters(&self) -> &CurveTreeParameters {
         Pallet::<T>::get_curve_tree_parameters()
+    }
+
+    fn get_block_number(&self) -> Result<Self::BlockNumber, Self::Error> {
+        // Return the current block number from the storage.
+        get_block_number::<T>()
+    }
+
+    fn store_root(
+        &mut self,
+        root: Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>,
+    ) -> Result<Self::BlockNumber, Self::Error> {
+        let block_number = get_block_number::<T>()?;
+        // Store the root in the storage.
+        let root = CurveTreeRoot::new(&root)?;
+        AccountCurveTreeRoots::<T>::insert(block_number, &root);
+
+        // Store the block number for the account curve tree update.
+        AccountCurveTreeLastUpdate::<T>::put(block_number);
+
+        // Emit an event for the account curve tree root update.
+        Pallet::<T>::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
+
+        Ok(block_number)
+    }
+
+    fn fetch_root(
+        &self,
+        block_number: Self::BlockNumber,
+    ) -> Result<Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>, Self::Error> {
+        let block_number: BlockNumberFor<T> = block_number.into();
+        // Fetch the root from the storage.
+        let root = AccountCurveTreeRoots::<T>::get(block_number)
+            .ok_or(Error::<T>::CurveTreeRootNotFound)?;
+        Ok(root.decode()?)
     }
 
     fn height(&self) -> NodeLevel {
@@ -248,9 +323,10 @@ impl<T: Config> AssetCurveTree<T> {
 }
 
 impl<T: Config> ValidateCurveTreeRoot<ASSET_TREE_L> for &AssetCurveTree<T> {
-    fn validate_root(&self, root: &CurveTreeRoot<ASSET_TREE_L>) -> bool {
-        let found = AssetCurveTreeRoots::<T>::contains_key(root);
-        found
+    type BlockNumber = BlockNumberFor<T>;
+
+    fn get_block_root(&self, block: BlockNumberFor<T>) -> Option<CurveTreeRoot<ASSET_TREE_L>> {
+        AssetCurveTreeRoots::<T>::get(block)
     }
 
     fn params(&self) -> &CurveTreeParameters {
@@ -293,9 +369,10 @@ impl<T: Config> AccountCurveTree<T> {
 }
 
 impl<T: Config> ValidateCurveTreeRoot<ACCOUNT_TREE_L> for &AccountCurveTree<T> {
-    fn validate_root(&self, root: &CurveTreeRoot<ACCOUNT_TREE_L>) -> bool {
-        let found = AccountCurveTreeRoots::<T>::contains_key(root);
-        found
+    type BlockNumber = BlockNumberFor<T>;
+
+    fn get_block_root(&self, block: BlockNumberFor<T>) -> Option<CurveTreeRoot<ACCOUNT_TREE_L>> {
+        AccountCurveTreeRoots::<T>::get(block)
     }
 
     fn params(&self) -> &CurveTreeParameters {

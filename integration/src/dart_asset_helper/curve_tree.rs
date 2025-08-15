@@ -6,9 +6,9 @@ use anyhow::{Error, Result};
 use polymesh_dart::{
     curve_tree::{
         AsyncCurveTreeBackend, AsyncCurveTreeWithBackend, CurveTreeLookup, CurveTreeParameters,
-        CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation, SelRerandParameters,
+        CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation, Root, SelRerandParameters,
     },
-    Error as DartError, LeafIndex, NodeLevel, PallasParameters, VestaParameters,
+    BlockNumber, Error as DartError, LeafIndex, NodeLevel, PallasParameters, VestaParameters,
     ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ASSET_TREE_HEIGHT, ASSET_TREE_L,
 };
 
@@ -57,6 +57,7 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
     for AssetCurveTreeChainStorage
 {
     type Error = anyhow::Error;
+    type BlockNumber = BlockNumber;
 
     async fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Err(anyhow::anyhow!(
@@ -68,14 +69,39 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
         &CURVE_TREE_PARAMETERS
     }
 
-    async fn height(&self) -> NodeLevel {
-        ASSET_TREE_HEIGHT
+    async fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
+        let last_block_number = self
+            .api
+            .query()
+            .dart_asset()
+            .asset_curve_tree_last_update()
+            .await?;
+        Ok(last_block_number)
     }
 
-    async fn set_height(&mut self, _height: NodeLevel) -> Result<(), Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_height()"
-        ))
+    async fn fetch_root(
+        &self,
+        block_number: Self::BlockNumber,
+    ) -> Result<Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>> {
+        let root = self
+            .api
+            .query()
+            .dart_asset()
+            .asset_curve_tree_roots(block_number)
+            .await?;
+        if let Some(root) = root {
+            let root: CurveTreeRoot<ASSET_TREE_L> = to_scale(&root);
+            Ok(root.decode()?)
+        } else {
+            Err(anyhow::anyhow!(
+                "Root not found for block number {}",
+                block_number
+            ))
+        }
+    }
+
+    async fn height(&self) -> NodeLevel {
+        ASSET_TREE_HEIGHT
     }
 
     async fn allocate_leaf_index(&mut self) -> LeafIndex {
@@ -99,16 +125,6 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
         }
     }
 
-    async fn set_leaf(
-        &mut self,
-        _leaf_index: LeafIndex,
-        _new_leaf_value: LeafValue<PallasParameters>,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_leaf()"
-        ))
-    }
-
     async fn leaf_count(&self) -> LeafIndex {
         0
     }
@@ -129,16 +145,6 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
         } else {
             Ok(None)
         }
-    }
-
-    async fn set_inner_node(
-        &mut self,
-        _location: NodeLocation<ASSET_TREE_L>,
-        _new_node: Inner<1, PallasParameters, VestaParameters>,
-    ) -> Result<(), Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_inner_node()"
-        ))
     }
 }
 
@@ -184,16 +190,19 @@ pub struct AssetLeafPaths {
     pub track_assets: BTreeSet<DartAssetId>,
     pub leaf_index: BTreeMap<Vec<u8>, LeafIndex>,
     pub paths: BTreeMap<LeafIndex, CurveTreePath<ASSET_TREE_L>>,
+    pub block_number: BlockNumber,
     pub root: CurveTreeRoot<ASSET_TREE_L>,
 }
 
 impl AssetLeafPaths {
     pub async fn new(asset_tree: &AssetCurveTreeType) -> Result<Self> {
-        let root = CurveTreeRoot::new(&asset_tree.root_node().await?)?;
+        let block_number = asset_tree.get_block_number().await?;
+        let root = CurveTreeRoot::new(&asset_tree.fetch_root(block_number).await?)?;
         Ok(Self {
             track_assets: BTreeSet::new(),
             leaf_index: BTreeMap::new(),
             paths: BTreeMap::new(),
+            block_number,
             root,
         })
     }
@@ -215,7 +224,8 @@ impl AssetLeafPaths {
     }
 
     pub async fn update_root(&mut self, asset_tree: &AssetCurveTreeType) -> Result<()> {
-        self.root = CurveTreeRoot::new(&asset_tree.root_node().await?)?;
+        self.block_number = asset_tree.get_block_number().await?;
+        self.root = CurveTreeRoot::new(&asset_tree.fetch_root(self.block_number).await?)?;
         Ok(())
     }
 
@@ -232,6 +242,8 @@ impl AssetLeafPaths {
 }
 
 impl CurveTreeLookup<ASSET_TREE_L> for AssetLeafPaths {
+    type BlockNumber = BlockNumber;
+
     fn get_path_to_leaf_index(
         &self,
         leaf_index: LeafIndex,
@@ -259,6 +271,10 @@ impl CurveTreeLookup<ASSET_TREE_L> for AssetLeafPaths {
         &CURVE_TREE_PARAMETERS
     }
 
+    fn get_block_number(&self) -> Result<BlockNumber, DartError> {
+        Ok(self.block_number)
+    }
+
     fn root_node(&self) -> Result<CurveTreeRoot<ASSET_TREE_L>, DartError> {
         Ok(self.root.clone())
     }
@@ -280,6 +296,7 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
     for AccountCurveTreeChainStorage
 {
     type Error = anyhow::Error;
+    type BlockNumber = BlockNumber;
 
     async fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Err(anyhow::anyhow!(
@@ -291,14 +308,39 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
         &CURVE_TREE_PARAMETERS
     }
 
-    async fn height(&self) -> NodeLevel {
-        ACCOUNT_TREE_HEIGHT
+    async fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
+        let last_block_number = self
+            .api
+            .query()
+            .dart_asset()
+            .account_curve_tree_last_update()
+            .await?;
+        Ok(last_block_number)
     }
 
-    async fn set_height(&mut self, _height: NodeLevel) -> Result<(), Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_height()"
-        ))
+    async fn fetch_root(
+        &self,
+        block_number: Self::BlockNumber,
+    ) -> Result<Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>> {
+        let root = self
+            .api
+            .query()
+            .dart_asset()
+            .account_curve_tree_roots(block_number)
+            .await?;
+        if let Some(root) = root {
+            let root: CurveTreeRoot<ACCOUNT_TREE_L> = to_scale(&root);
+            Ok(root.decode()?)
+        } else {
+            Err(anyhow::anyhow!(
+                "Root not found for block number {}",
+                block_number
+            ))
+        }
+    }
+
+    async fn height(&self) -> NodeLevel {
+        ACCOUNT_TREE_HEIGHT
     }
 
     async fn allocate_leaf_index(&mut self) -> LeafIndex {
@@ -322,16 +364,6 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
         }
     }
 
-    async fn set_leaf(
-        &mut self,
-        _leaf_index: LeafIndex,
-        _new_leaf_value: LeafValue<PallasParameters>,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_leaf()"
-        ))
-    }
-
     async fn leaf_count(&self) -> LeafIndex {
         0
     }
@@ -352,16 +384,6 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
         } else {
             Ok(None)
         }
-    }
-
-    async fn set_inner_node(
-        &mut self,
-        _location: NodeLocation<ACCOUNT_TREE_L>,
-        _new_node: Inner<1, PallasParameters, VestaParameters>,
-    ) -> Result<(), Error> {
-        Err(anyhow::anyhow!(
-            "Read-only storage does not support set_inner_node()"
-        ))
     }
 }
 

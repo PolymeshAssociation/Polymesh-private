@@ -260,6 +260,8 @@ pub mod pallet {
         AccountAssetAlreadyRegistered,
         /// CurveTree error.
         CurveTreeError,
+        /// CurveTree root not found.
+        CurveTreeRootNotFound,
         /// Leaf not found in the curve tree.
         LeafNotFound,
         /// Invalid proof provided.
@@ -386,10 +388,17 @@ pub mod pallet {
     /// CurveTree Roots for DART assets curve tree.
     ///
     /// At the end of each block we will store the root of the assets curve tree.
-    /// The map key is the root and the value is the block number when the root was last updated.
+    /// The map key is the block number and the value is the root of the assets curve tree.
     #[pallet::storage]
     pub(super) type AssetCurveTreeRoots<T: Config> =
-        StorageMap<_, Twox64Concat, CurveTreeRoot<ASSET_TREE_L>, T::BlockNumber, OptionQuery>;
+        StorageMap<_, Identity, T::BlockNumber, CurveTreeRoot<ASSET_TREE_L>, OptionQuery>;
+
+    /// The block number of the last asset curve tree root update.
+    ///
+    /// This is used to track the last time the asset curve tree was updated.
+    #[pallet::storage]
+    pub(crate) type AssetCurveTreeLastUpdate<T: Config> =
+        StorageValue<_, T::BlockNumber, ValueQuery>;
 
     /// Update flag for the asset curve tree.
     ///
@@ -418,10 +427,17 @@ pub mod pallet {
     /// CurveTree Roots for DART accounts curve tree.
     ///
     /// At the end of each block we will store the root of the accounts curve tree.
-    /// The map key is the root and the value is the block number when the root was last updated.
+    /// The map key is the block number and the value is the root of the accounts curve tree.
     #[pallet::storage]
     pub(super) type AccountCurveTreeRoots<T: Config> =
-        StorageMap<_, Twox64Concat, CurveTreeRoot<ACCOUNT_TREE_L>, T::BlockNumber, OptionQuery>;
+        StorageMap<_, Identity, T::BlockNumber, CurveTreeRoot<ACCOUNT_TREE_L>, OptionQuery>;
+
+    /// The block number of the last account curve tree root update.
+    ///
+    /// This is used to track the last time the account curve tree was updated.
+    #[pallet::storage]
+    pub(crate) type AccountCurveTreeLastUpdate<T: Config> =
+        StorageValue<_, T::BlockNumber, ValueQuery>;
 
     /// Nullifiers for DART account state commitments.
     ///
@@ -1322,43 +1338,23 @@ impl<T: Config> Pallet<T> {
         // Check if the asset curve tree has been updated.
         if UpdatedAssetCurveTree::<T>::get() {
             // Get the asset curve tree.
-            let tree =
+            let mut tree =
                 Self::get_asset_curve_tree().expect("Asset curve tree should be initialized; qed");
 
-            // Get the root of the asset curve tree.
-            let root = CurveTreeRoot::new(
-                &tree
-                    .root_node()
-                    .expect("Asset curve tree should have a root; qed"),
-            )
-            .expect("Asset curve tree root should be valid; qed");
-
-            // Store the root in the storage.
-            AssetCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
-
-            // Emit an event for the asset curve tree root update.
-            Self::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
+            // Store the new asset curve tree root.
+            tree.store_root()
+                .expect("Asset curve tree should be able to store root; qed");
         }
 
         // Check if the account curve tree has been updated.
         if UpdatedAccountCurveTree::<T>::get() {
             // Get the account curve tree.
-            let tree = Self::get_account_curve_tree()
+            let mut tree = Self::get_account_curve_tree()
                 .expect("Account curve tree should be initialized; qed");
 
-            // Get the root of the account curve tree.
-            let root = CurveTreeRoot::new(
-                &tree
-                    .root_node()
-                    .expect("Account curve tree should have a root; qed"),
-            )
-            .expect("Account curve tree root should be valid; qed");
-
-            // Store the root in the storage.
-            AccountCurveTreeRoots::<T>::insert(&root, frame_system::Pallet::<T>::block_number());
-
-            // Emit an event for the account curve tree root update.
-            Self::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
+            // Store the new account curve tree root.
+            tree.store_root()
+                .expect("Account curve tree should be able to store root; qed");
         }
     }
 }

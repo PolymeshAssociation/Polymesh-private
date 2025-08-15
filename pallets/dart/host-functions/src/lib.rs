@@ -17,7 +17,7 @@ pub type BatchSeed = [u8; 32];
 pub type BatchReqId = u32;
 
 /// Verify DART asset proof request.
-#[derive(PassByCodec, Encode, Decode, Clone, Debug, PartialEq, Eq)]
+#[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum VerifyDartAssetRequest {
     AccountAssetRegistration {
         did: IdentityId,
