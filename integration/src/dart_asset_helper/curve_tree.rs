@@ -5,11 +5,13 @@ use anyhow::{Error, Result};
 
 use polymesh_dart::{
     curve_tree::{
-        AsyncCurveTreeBackend, AsyncCurveTreeWithBackend, CurveTreeLookup, CurveTreeParameters,
-        CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation, Root, SelRerandParameters,
+        get_account_curve_tree_parameters, get_asset_curve_tree_parameters, AccountTreeConfig,
+        AssetTreeConfig, AsyncCurveTreeBackend, AsyncCurveTreeWithBackend, CurveTreeLookup,
+        CurveTreeParameters, CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation, Root,
     },
     BlockNumber, Error as DartError, LeafIndex, NodeLevel, PallasParameters, VestaParameters,
-    ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ASSET_TREE_HEIGHT, ASSET_TREE_L,
+    ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L,
+    ASSET_TREE_M,
 };
 
 pub use polymesh_api::types::polymesh_dart::curve_tree::common::NodeLocation as ChainNodeLocation;
@@ -18,19 +20,12 @@ pub use polymesh_api::{Api, TransactionResults};
 use super::*;
 
 pub type AssetLeaf = LeafValue<PallasParameters>;
-pub type AssetInnerNode = Inner<1, PallasParameters, VestaParameters>;
+pub type AssetInnerNode = Inner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
 
 pub type AccountLeaf = LeafValue<PallasParameters>;
-pub type AccountInnerNode = Inner<1, PallasParameters, VestaParameters>;
+pub type AccountInnerNode = Inner<ACCOUNT_TREE_M, AccountTreeConfig>;
 pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
-
-lazy_static::lazy_static! {
-    static ref CURVE_TREE_PARAMETERS: CurveTreeParameters = CurveTreeParameters::new(
-        polymesh_dart::MAX_CURVE_TREE_GENS,
-        polymesh_dart::MAX_CURVE_TREE_GENS,
-    ).expect("Failed to create curve tree parameters");
-}
 
 /// Convert off-chain `NodeLocation` to on-chain `NodeLocation`.
 pub fn node_location_to_chain<const L: usize>(location: NodeLocation<L>) -> ChainNodeLocation {
@@ -53,11 +48,10 @@ impl AssetCurveTreeChainStorage {
     }
 }
 
-impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
+impl AsyncCurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     for AssetCurveTreeChainStorage
 {
     type Error = anyhow::Error;
-    type BlockNumber = BlockNumber;
 
     async fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Err(anyhow::anyhow!(
@@ -65,8 +59,8 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
         ))
     }
 
-    async fn parameters(&self) -> &SelRerandParameters<PallasParameters, VestaParameters> {
-        &CURVE_TREE_PARAMETERS
+    async fn parameters(&self) -> &CurveTreeParameters<AssetTreeConfig> {
+        get_asset_curve_tree_parameters()
     }
 
     async fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
@@ -81,8 +75,8 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
 
     async fn fetch_root(
         &self,
-        block_number: Self::BlockNumber,
-    ) -> Result<Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>> {
+        block_number: BlockNumber,
+    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>> {
         let root = self
             .api
             .query()
@@ -90,7 +84,7 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
             .asset_curve_tree_roots(block_number)
             .await?;
         if let Some(root) = root {
-            let root: CurveTreeRoot<ASSET_TREE_L> = to_scale(&root);
+            let root: CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig> = to_scale(&root);
             Ok(root.decode()?)
         } else {
             Err(anyhow::anyhow!(
@@ -132,7 +126,7 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
     async fn get_inner_node(
         &self,
         location: NodeLocation<ASSET_TREE_L>,
-    ) -> Result<Option<Inner<1, PallasParameters, VestaParameters>>, Error> {
+    ) -> Result<Option<Inner<ASSET_TREE_M, AssetTreeConfig>>, Error> {
         let location = node_location_to_chain(location);
         if let Some(node) = self
             .api
@@ -150,9 +144,8 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
 
 pub type AssetCurveTreeType = AsyncCurveTreeWithBackend<
     ASSET_TREE_L,
-    1,
-    PallasParameters,
-    VestaParameters,
+    ASSET_TREE_M,
+    AssetTreeConfig,
     AssetCurveTreeChainStorage,
     anyhow::Error,
 >;
@@ -189,9 +182,9 @@ impl AssetCurveTree {
 pub struct AssetLeafPaths {
     pub track_assets: BTreeSet<DartAssetId>,
     pub leaf_index: BTreeMap<Vec<u8>, LeafIndex>,
-    pub paths: BTreeMap<LeafIndex, CurveTreePath<ASSET_TREE_L>>,
+    pub paths: BTreeMap<LeafIndex, CurveTreePath<ASSET_TREE_L, AssetTreeConfig>>,
     pub block_number: BlockNumber,
-    pub root: CurveTreeRoot<ASSET_TREE_L>,
+    pub root: CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>,
 }
 
 impl AssetLeafPaths {
@@ -241,13 +234,11 @@ impl AssetLeafPaths {
     }
 }
 
-impl CurveTreeLookup<ASSET_TREE_L> for AssetLeafPaths {
-    type BlockNumber = BlockNumber;
-
+impl CurveTreeLookup<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig> for AssetLeafPaths {
     fn get_path_to_leaf_index(
         &self,
         leaf_index: LeafIndex,
-    ) -> Result<CurveTreePath<ASSET_TREE_L>, DartError> {
+    ) -> Result<CurveTreePath<ASSET_TREE_L, AssetTreeConfig>, DartError> {
         if let Some(path) = self.paths.get(&leaf_index) {
             Ok(path.clone())
         } else {
@@ -258,24 +249,26 @@ impl CurveTreeLookup<ASSET_TREE_L> for AssetLeafPaths {
     fn get_path_to_leaf(
         &self,
         leaf: LeafValue<PallasParameters>,
-    ) -> Result<CurveTreePath<ASSET_TREE_L>, DartError> {
+    ) -> Result<CurveTreePath<ASSET_TREE_L, AssetTreeConfig>, DartError> {
         let leaf_buf = leaf.encode();
         let leaf_index = self
             .leaf_index
             .get(&leaf_buf)
-            .ok_or(DartError::LeafNotFound(leaf))?;
+            .ok_or(DartError::LeafNotFound)?;
         self.get_path_to_leaf_index(*leaf_index)
     }
 
-    fn params(&self) -> &CurveTreeParameters {
-        &CURVE_TREE_PARAMETERS
+    fn params(&self) -> &CurveTreeParameters<AssetTreeConfig> {
+        get_asset_curve_tree_parameters()
     }
 
     fn get_block_number(&self) -> Result<BlockNumber, DartError> {
         Ok(self.block_number)
     }
 
-    fn root_node(&self) -> Result<CurveTreeRoot<ASSET_TREE_L>, DartError> {
+    fn root_node(
+        &self,
+    ) -> Result<CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>, DartError> {
         Ok(self.root.clone())
     }
 }
@@ -292,11 +285,10 @@ impl AccountCurveTreeChainStorage {
     }
 }
 
-impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
+impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>
     for AccountCurveTreeChainStorage
 {
     type Error = anyhow::Error;
-    type BlockNumber = BlockNumber;
 
     async fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Err(anyhow::anyhow!(
@@ -304,8 +296,8 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
         ))
     }
 
-    async fn parameters(&self) -> &SelRerandParameters<PallasParameters, VestaParameters> {
-        &CURVE_TREE_PARAMETERS
+    async fn parameters(&self) -> &CurveTreeParameters<AccountTreeConfig> {
+        get_account_curve_tree_parameters()
     }
 
     async fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
@@ -320,8 +312,8 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
 
     async fn fetch_root(
         &self,
-        block_number: Self::BlockNumber,
-    ) -> Result<Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>> {
+        block_number: BlockNumber,
+    ) -> Result<Root<ACCOUNT_TREE_L, ACCOUNT_TREE_M, PallasParameters, VestaParameters>> {
         let root = self
             .api
             .query()
@@ -329,7 +321,8 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
             .account_curve_tree_roots(block_number)
             .await?;
         if let Some(root) = root {
-            let root: CurveTreeRoot<ACCOUNT_TREE_L> = to_scale(&root);
+            let root: CurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig> =
+                to_scale(&root);
             Ok(root.decode()?)
         } else {
             Err(anyhow::anyhow!(
@@ -371,7 +364,7 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
     async fn get_inner_node(
         &self,
         location: NodeLocation<ACCOUNT_TREE_L>,
-    ) -> Result<Option<Inner<1, PallasParameters, VestaParameters>>, Error> {
+    ) -> Result<Option<Inner<ACCOUNT_TREE_M, AccountTreeConfig>>, Error> {
         let location = node_location_to_chain(location);
         if let Some(node) = self
             .api
@@ -389,9 +382,8 @@ impl AsyncCurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
 
 pub type AccountCurveTreeType = AsyncCurveTreeWithBackend<
     ACCOUNT_TREE_L,
-    1,
-    PallasParameters,
-    VestaParameters,
+    ACCOUNT_TREE_M,
+    AccountTreeConfig,
     AccountCurveTreeChainStorage,
     anyhow::Error,
 >;

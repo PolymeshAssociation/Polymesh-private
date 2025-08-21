@@ -29,8 +29,8 @@ async fn atomic_swap_test() -> Result<()> {
         "Asset1_Issuer",
         "Asset2_Issuer",
         "Venue",
-        "Investor1",
-        "Investor2",
+        "SwapInvestor1",
+        "SwapInvestor2",
         "Asset1_Auditor",
         "Asset2_Mediator",
     ])
@@ -38,8 +38,8 @@ async fn atomic_swap_test() -> Result<()> {
     let asset1_issuer = tester.user("Asset1_Issuer").await;
     let asset2_issuer = tester.user("Asset2_Issuer").await;
     let venue = tester.user("Venue").await;
-    let investor1 = tester.user("Investor1").await;
-    let investor2 = tester.user("Investor2").await;
+    let investor1 = tester.user("SwapInvestor1").await;
+    let investor2 = tester.user("SwapInvestor2").await;
     let asset1_auditor = tester.user("Asset1_Auditor").await;
     let asset2_mediator = tester.user("Asset2_Mediator").await;
 

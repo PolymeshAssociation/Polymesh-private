@@ -28,12 +28,11 @@ use scale_info::TypeInfo;
 use sp_std::convert::From;
 
 use polymesh_dart::{
-    curve_tree::{CurveTreeRoot, WrappedCurveTreeParameters},
-    AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
-    AssetId as DartAssetId, AssetState, AuditorOrMediator, BatchedSettlementCounts, DartLimits,
-    EncryptionPublicKey, Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, SettlementId,
-    SettlementRef, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ASSET_TREE_HEIGHT, ASSET_TREE_L,
-    MAX_CURVE_TREE_GENS,
+    curve_tree::WrappedCurveTreeParameters, AccountPublicKey, AccountStateCommitment,
+    AccountStateNullifier, AccountStateUpdate, AssetId as DartAssetId, AssetState,
+    AuditorOrMediator, BatchedSettlementCounts, DartLimits, EncryptionPublicKey,
+    Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, SettlementId, SettlementRef,
+    ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
@@ -241,12 +240,12 @@ pub mod pallet {
         /// Asset curve tree root updated.
         AssetCurveTreeRootUpdated {
             /// The new root.
-            root: CurveTreeRoot<ASSET_TREE_L>,
+            root: AssetTreeRoot,
         },
         /// Account curve tree root updated.
         AccountCurveTreeRootUpdated {
             /// The new root.
-            root: CurveTreeRoot<ACCOUNT_TREE_L>,
+            root: AccountTreeRoot,
         },
     }
 
@@ -328,9 +327,14 @@ pub mod pallet {
         }
     }
 
-    /// Cache wrapped curve tree parameters.
+    /// Cache wrapped asset curve tree parameters.
     #[pallet::storage]
-    pub(crate) type CachedCurveTreeParameters<T: Config> =
+    pub(crate) type CachedAssetCurveTreeParameters<T: Config> =
+        StorageValue<_, WrappedCurveTreeParameters, OptionQuery>;
+
+    /// Cache wrapped account curve tree parameters.
+    #[pallet::storage]
+    pub(crate) type CachedAccountCurveTreeParameters<T: Config> =
         StorageValue<_, WrappedCurveTreeParameters, OptionQuery>;
 
     /// Next Asset ID to be used for DART assets.
@@ -391,7 +395,7 @@ pub mod pallet {
     /// The map key is the block number and the value is the root of the assets curve tree.
     #[pallet::storage]
     pub(super) type AssetCurveTreeRoots<T: Config> =
-        StorageMap<_, Identity, T::BlockNumber, CurveTreeRoot<ASSET_TREE_L>, OptionQuery>;
+        StorageMap<_, Identity, T::BlockNumber, AssetTreeRoot, OptionQuery>;
 
     /// The block number of the last asset curve tree root update.
     ///
@@ -430,7 +434,7 @@ pub mod pallet {
     /// The map key is the block number and the value is the root of the accounts curve tree.
     #[pallet::storage]
     pub(super) type AccountCurveTreeRoots<T: Config> =
-        StorageMap<_, Identity, T::BlockNumber, CurveTreeRoot<ACCOUNT_TREE_L>, OptionQuery>;
+        StorageMap<_, Identity, T::BlockNumber, AccountTreeRoot, OptionQuery>;
 
     /// The block number of the last account curve tree root update.
     ///
@@ -500,10 +504,21 @@ pub mod pallet {
         fn build(&self) {
             // TODO: Pre-create X assets to reserve the first 0-X asset IDs.
 
-            let params = WrappedCurveTreeParameters::new(polymesh_dart::MAX_CURVE_TREE_GENS)
-                .expect("Curve tree parameters should be valid; qed");
-            // Store the curve tree parameters in the storage.
-            CachedCurveTreeParameters::<T>::put(params);
+            // Generate the asset curve tree parameters.
+            let params = WrappedCurveTreeParameters::new::<AssetTreeConfig>(
+                polymesh_dart::MAX_CURVE_TREE_GENS,
+            )
+            .expect("Asset curve tree parameters should be valid; qed");
+            // Store the asset curve tree parameters in the storage.
+            CachedAssetCurveTreeParameters::<T>::put(params);
+
+            // Generate the account curve tree parameters.
+            let params = WrappedCurveTreeParameters::new::<AccountTreeConfig>(
+                polymesh_dart::MAX_CURVE_TREE_GENS,
+            )
+            .expect("Account curve tree parameters should be valid; qed");
+            // Store the account curve tree parameters in the storage.
+            CachedAccountCurveTreeParameters::<T>::put(params);
         }
     }
 
@@ -664,7 +679,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::mint_asset())]
         pub fn mint_asset(
             origin: OriginFor<T>,
-            proof: polymesh_dart::AssetMintingProof,
+            proof: polymesh_dart::AssetMintingProof<AccountTreeConfig>,
         ) -> DispatchResult {
             // Ensure the caller has the required permissions to mint the asset.
             let caller_did = Self::ensure_dart_account_permissions(origin, &proof.pk)?;
@@ -722,7 +737,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_settlement(proof.legs.len() as u32))]
         pub fn create_settlement(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SettlementProof<T>,
+            proof: polymesh_dart::SettlementProof<T, AssetTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -750,7 +765,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_affirmation())]
         pub fn sender_affirmation(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderAffirmationProof,
+            proof: polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -773,7 +788,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::receiver_affirmation())]
         pub fn receiver_affirmation(
             origin: OriginFor<T>,
-            proof: polymesh_dart::ReceiverAffirmationProof,
+            proof: polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -837,7 +852,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_update_counter())]
         pub fn sender_update_counter(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderCounterUpdateProof,
+            proof: polymesh_dart::SenderCounterUpdateProof<AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -874,7 +889,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_revert())]
         pub fn sender_revert(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderReversalProof,
+            proof: polymesh_dart::SenderReversalProof<AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -911,7 +926,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::receiver_claim())]
         pub fn receiver_claim(
             origin: OriginFor<T>,
-            proof: polymesh_dart::ReceiverClaimProof,
+            proof: polymesh_dart::ReceiverClaimProof<AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -947,7 +962,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::batched_settlement(proof.count_leg_affirmations()))]
         pub fn batched_settlement(
             origin: OriginFor<T>,
-            proof: polymesh_dart::BatchedSettlementProof<T>,
+            proof: polymesh_dart::BatchedSettlementProof<T, AssetTreeConfig, AccountTreeConfig>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -1020,7 +1035,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn base_create_settlement(
         settlement_ref: SettlementRef,
-        proof: &polymesh_dart::SettlementProof<T>,
+        proof: &polymesh_dart::SettlementProof<T, AssetTreeConfig>,
     ) -> DispatchResult {
         let leg_count = proof.legs.len();
         // Ensure the settlement has at least one leg.
@@ -1073,7 +1088,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn base_sender_affirmation(
-        proof: &polymesh_dart::SenderAffirmationProof,
+        proof: &polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
     ) -> DispatchResult {
         // Handle the account state update proof and verify the nullifier.
         Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {
@@ -1093,7 +1108,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn base_receiver_affirmation(
-        proof: &polymesh_dart::ReceiverAffirmationProof,
+        proof: &polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
     ) -> DispatchResult {
         // Handle the account state update proof and verify the nullifier.
         Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {

@@ -11,9 +11,9 @@ use pallet_identity::benchmarking::{user, User};
 use polymesh_dart::{
     curve_tree::ProverCurveTree, AccountAssetRegistrationProof, AccountAssetState, AccountKeys,
     AccountPublicKeys, AssetMintingProof, AuditorOrMediator, Balance as DartBalance, LegBuilder,
-    LegRole, MediatorAffirmationProof, PallasParameters, ReceiverAffirmationProof,
-    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
-    SettlementBuilder, VestaParameters, ACCOUNT_TREE_GENS, ASSET_TREE_GENS,
+    LegRole, MediatorAffirmationProof, ReceiverAffirmationProof, ReceiverClaimProof,
+    SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder,
+    ACCOUNT_TREE_GENS, ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_GENS, ASSET_TREE_L, ASSET_TREE_M,
 };
 
 use crate::*;
@@ -24,8 +24,8 @@ pub(crate) const AUDITOR_SEED: u32 = 10_000;
 
 pub type AccountProverCurveTree<T> = ProverCurveTree<
     ACCOUNT_TREE_L,
-    PallasParameters,
-    VestaParameters,
+    ACCOUNT_TREE_M,
+    AccountTreeConfig,
     AccountCurveTreeStorage<T>,
     Error<T>,
 >;
@@ -37,8 +37,8 @@ pub fn get_prover_account_curve_tree<T: Config>() -> AccountProverCurveTree<T> {
 
 pub type AssetProverCurveTree<T> = ProverCurveTree<
     ASSET_TREE_L,
-    PallasParameters,
-    VestaParameters,
+    ASSET_TREE_M,
+    AssetTreeConfig,
     AssetCurveTreeStorage<T>,
     Error<T>,
 >;
@@ -183,7 +183,7 @@ impl<T: Config> DartUserInner<T> {
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (AssetMintingProof, &mut AccountAssetState) {
+    ) -> (AssetMintingProof<AccountTreeConfig>, &mut AccountAssetState) {
         let account_state = self
             .assets
             .get_mut(&asset_id)
@@ -219,7 +219,10 @@ impl<T: Config> DartUserInner<T> {
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (SenderAffirmationProof, &mut AccountAssetState) {
+    ) -> (
+        SenderAffirmationProof<AccountTreeConfig>,
+        &mut AccountAssetState,
+    ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let sk_e = leg_enc
             .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
@@ -282,7 +285,10 @@ impl<T: Config> DartUserInner<T> {
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (ReceiverAffirmationProof, &mut AccountAssetState) {
+    ) -> (
+        ReceiverAffirmationProof<AccountTreeConfig>,
+        &mut AccountAssetState,
+    ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let sk_e = leg_enc
             .decrypt_sk_e(LegRole::Receiver, &self.keys.enc)
@@ -342,7 +348,10 @@ impl<T: Config> DartUserInner<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (ReceiverClaimProof, &mut AccountAssetState) {
+    ) -> (
+        ReceiverClaimProof<AccountTreeConfig>,
+        &mut AccountAssetState,
+    ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let sk_e = leg_enc
             .decrypt_sk_e(LegRole::Receiver, &self.keys.enc)
@@ -396,7 +405,10 @@ impl<T: Config> DartUserInner<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (SenderReversalProof, &mut AccountAssetState) {
+    ) -> (
+        SenderReversalProof<AccountTreeConfig>,
+        &mut AccountAssetState,
+    ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let sk_e = leg_enc
             .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
@@ -450,7 +462,10 @@ impl<T: Config> DartUserInner<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (SenderCounterUpdateProof, &mut AccountAssetState) {
+    ) -> (
+        SenderCounterUpdateProof<AccountTreeConfig>,
+        &mut AccountAssetState,
+    ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let sk_e = leg_enc
             .decrypt_sk_e(LegRole::Sender, &self.keys.enc)
@@ -618,7 +633,7 @@ impl<T: Config> DartUser<T> {
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (AssetMintingProof, AccountAssetState) {
+    ) -> (AssetMintingProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) = inner.mint_asset_proof(rng, off_chain, asset_id, amount);
 
@@ -643,7 +658,7 @@ impl<T: Config> DartUser<T> {
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (SenderAffirmationProof, AccountAssetState) {
+    ) -> (SenderAffirmationProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) =
             inner.sender_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
@@ -669,7 +684,10 @@ impl<T: Config> DartUser<T> {
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
-    ) -> (ReceiverAffirmationProof, AccountAssetState) {
+    ) -> (
+        ReceiverAffirmationProof<AccountTreeConfig>,
+        AccountAssetState,
+    ) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) =
             inner.receiver_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
@@ -693,7 +711,7 @@ impl<T: Config> DartUser<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (ReceiverClaimProof, AccountAssetState) {
+    ) -> (ReceiverClaimProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) = inner.receiver_claim_proof(rng, off_chain, leg_ref);
 
@@ -715,7 +733,7 @@ impl<T: Config> DartUser<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (SenderReversalProof, AccountAssetState) {
+    ) -> (SenderReversalProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) = inner.sender_revert_proof(rng, off_chain, leg_ref);
 
@@ -737,7 +755,10 @@ impl<T: Config> DartUser<T> {
         rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
-    ) -> (SenderCounterUpdateProof, AccountAssetState) {
+    ) -> (
+        SenderCounterUpdateProof<AccountTreeConfig>,
+        AccountAssetState,
+    ) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) = inner.sender_counter_update_proof(rng, off_chain, leg_ref);
 

@@ -143,8 +143,8 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify a sender affirmation proof for this leg.
     pub fn sender_affirmation<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderAffirmationProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderAffirmationProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The sender can only affirm if the sender affirmation status is `Pending`.
@@ -170,8 +170,8 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify a receiver affirmation proof for this leg.
     pub fn receiver_affirmation<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &ReceiverAffirmationProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &ReceiverAffirmationProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The receiver can only affirm if the receiver affirmation status is `Pending`.
@@ -229,8 +229,8 @@ impl<T: Config> DartSettlementLeg<T> {
     /// The sender is only allowed to submit this proof if the settlement has been executed.
     pub fn sender_counter_update<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderCounterUpdateProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderCounterUpdateProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The sender is only allowed to submit this proof if the settlement has been executed.
@@ -263,8 +263,8 @@ impl<T: Config> DartSettlementLeg<T> {
     /// The sender is only allowed to submit this proof if the settlement has been rejected.
     pub fn sender_reversal<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderReversalProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderReversalProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The sender is only allowed to submit this proof if the settlement has been rejected and they have affirmed.
@@ -297,8 +297,8 @@ impl<T: Config> DartSettlementLeg<T> {
     /// The receiver is only allowed to submit this proof if the settlement has been executed.
     pub fn receiver_claim<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &ReceiverClaimProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &ReceiverClaimProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The receiver is only allowed to submit this proof if the settlement has been executed and they have affirmed.
@@ -386,8 +386,8 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Verify a sender affirmation proof for a specific leg in the settlement.
     pub fn sender_affirmation<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderAffirmationProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderAffirmationProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         self.ensure_pending()?;
@@ -409,8 +409,8 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Verify a receiver affirmation proof for a specific leg in the settlement.
     pub fn receiver_affirmation<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &ReceiverAffirmationProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &ReceiverAffirmationProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         self.ensure_pending()?;
@@ -453,8 +453,8 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Verify the sender's counter update proof for a specific leg in the settlement.
     pub fn sender_counter_update<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderCounterUpdateProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderCounterUpdateProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The sender can only update the counter if the settlement has been executed.
@@ -479,8 +479,8 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Verify the sender's reversal proof for a specific leg in the settlement.
     pub fn sender_reversal<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &SenderReversalProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &SenderReversalProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The sender can only reverse if the settlement has been rejected.
@@ -505,8 +505,8 @@ impl<T: Config> UpdateSettlementStatus<T> {
     /// Verify the receiver's claim proof for a specific leg in the settlement.
     pub fn receiver_claim<R: RngCore + CryptoRng>(
         &mut self,
-        proof: &ReceiverClaimProof,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L>,
+        proof: &ReceiverClaimProof<AccountTreeConfig>,
+        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         rng: &mut R,
     ) -> DispatchResult {
         // The receiver can only claim if the settlement has been executed.

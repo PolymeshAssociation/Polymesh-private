@@ -5,13 +5,13 @@ use tokio::sync::RwLock;
 use anyhow::Result;
 use codec::{Decode, Encode};
 
-use polymesh_dart::curve_tree::LeafPathAndRoot;
+use polymesh_dart::curve_tree::{AccountTreeConfig, LeafPathAndRoot};
 use polymesh_dart::{
     AccountAssetRegistrationProof, AccountPublicKeys, AssetMintingProof, AuditorOrMediator,
-    Balance as DartBalance, BlockNumber, LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole,
+    Balance as DartBalance, LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole,
     MediatorAffirmationProof, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof,
     SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder, SettlementProof,
-    SettlementRef, ACCOUNT_TREE_L,
+    SettlementRef, ACCOUNT_TREE_L, ACCOUNT_TREE_M,
 };
 pub use polymesh_dart::{AccountAssetState, AccountKeys, AssetId as DartAssetId};
 
@@ -137,7 +137,7 @@ impl DartUserAccountAssetState {
     pub async fn get_path_and_root<'t>(
         &self,
         account_tree: &'t AccountCurveTree,
-    ) -> Result<LeafPathAndRoot<'t, ACCOUNT_TREE_L, BlockNumber>> {
+    ) -> Result<LeafPathAndRoot<'t, ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>> {
         let leaf_index = self
             .leaf_index
             .ok_or_else(|| anyhow::anyhow!("Leaf index not set"))?;

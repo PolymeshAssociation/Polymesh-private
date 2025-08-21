@@ -2,55 +2,115 @@ use core::ops::{Deref, DerefMut};
 
 use polymesh_dart::{
     curve_tree::{
-        CurveTreeBackend, CurveTreeParameters, CurveTreeRoot, CurveTreeWithBackend, Inner,
-        LeafValue, NodeLocation, Root, ValidateCurveTreeRoot,
+        CurveConfig, CurveTreeBackend, CurveTreeConfig, CurveTreeParameters, CurveTreeRoot,
+        CurveTreeWithBackend, Inner, LeafValue, NodeLocation, Root, ValidateCurveTreeRoot,
     },
-    LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L,
-    ASSET_TREE_HEIGHT, ASSET_TREE_L,
+    BlockNumber, LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT,
+    ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L, ASSET_TREE_M,
 };
 pub type AssetLeaf = LeafValue<PallasParameters>;
-pub type AssetInnerNode = Inner<1, PallasParameters, VestaParameters>;
+pub type AssetInnerNode = Inner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
+pub type AssetTreeRoot = CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
 
 pub type AccountLeaf = LeafValue<PallasParameters>;
-pub type AccountInnerNode = Inner<1, PallasParameters, VestaParameters>;
+pub type AccountInnerNode = Inner<ACCOUNT_TREE_M, AccountTreeConfig>;
 pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
+pub type AccountTreeRoot = CurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
 
 use super::*;
 
 #[cfg(feature = "std")]
 lazy_static::lazy_static! {
-    static ref CURVE_TREE_PARAMETERS: CurveTreeParameters = CurveTreeParameters::new(
-        polymesh_dart::MAX_CURVE_TREE_GENS,
-        polymesh_dart::MAX_CURVE_TREE_GENS,
-    ).expect("Failed to create curve tree parameters");
+    static ref ASSET_CURVE_TREE_PARAMETERS: CurveTreeParameters<AssetTreeConfig> = AssetTreeConfig::build_parameters();
+    static ref ACCOUNT_CURVE_TREE_PARAMETERS: CurveTreeParameters<AccountTreeConfig> = AccountTreeConfig::build_parameters();
 }
 
 #[cfg(not(feature = "std"))]
-static mut CURVE_TREE_PARAMETERS: Option<CurveTreeParameters> = None;
+static mut ASSET_CURVE_TREE_PARAMETERS: Option<CurveTreeParameters<AssetTreeConfig>> = None;
+#[cfg(not(feature = "std"))]
+static mut ACCOUNT_CURVE_TREE_PARAMETERS: Option<CurveTreeParameters<AccountTreeConfig>> = None;
 
 impl<T: Config> Pallet<T> {
     #[cfg(feature = "std")]
-    pub fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
-        &CURVE_TREE_PARAMETERS
+    pub fn get_asset_curve_tree_parameters() -> &'static CurveTreeParameters<AssetTreeConfig> {
+        &ASSET_CURVE_TREE_PARAMETERS
     }
 
     #[allow(static_mut_refs)]
     #[cfg(not(feature = "std"))]
-    pub fn get_curve_tree_parameters() -> &'static CurveTreeParameters {
+    pub fn get_asset_curve_tree_parameters() -> &'static CurveTreeParameters<AssetTreeConfig> {
         unsafe {
-            if CURVE_TREE_PARAMETERS.is_none() {
-                let parameters = Self::get_cached_curve_tree_parameters()
+            if ASSET_CURVE_TREE_PARAMETERS.is_none() {
+                let parameters = Self::get_cached_asset_curve_tree_parameters()
                     .expect("Failed to decode curve tree parameters");
-                CURVE_TREE_PARAMETERS = Some(parameters);
+                ASSET_CURVE_TREE_PARAMETERS = Some(parameters);
             }
-            CURVE_TREE_PARAMETERS.as_ref().unwrap()
+            ASSET_CURVE_TREE_PARAMETERS.as_ref().unwrap()
         }
     }
 
-    pub fn get_cached_curve_tree_parameters() -> Option<CurveTreeParameters> {
-        CachedCurveTreeParameters::<T>::get().and_then(|p| p.decode().ok())
+    #[cfg(feature = "std")]
+    pub fn get_account_curve_tree_parameters() -> &'static CurveTreeParameters<AccountTreeConfig> {
+        &ACCOUNT_CURVE_TREE_PARAMETERS
     }
+
+    #[allow(static_mut_refs)]
+    #[cfg(not(feature = "std"))]
+    pub fn get_account_curve_tree_parameters() -> &'static CurveTreeParameters<AccountTreeConfig> {
+        unsafe {
+            if ACCOUNT_CURVE_TREE_PARAMETERS.is_none() {
+                let parameters = AccountTreeConfig::build_parameters();
+                ACCOUNT_CURVE_TREE_PARAMETERS = Some(parameters);
+            }
+            ACCOUNT_CURVE_TREE_PARAMETERS.as_ref().unwrap()
+        }
+    }
+
+    pub fn get_cached_asset_curve_tree_parameters() -> Option<CurveTreeParameters<AssetTreeConfig>>
+    {
+        CachedAssetCurveTreeParameters::<T>::get().and_then(|p| p.decode::<AssetTreeConfig>().ok())
+    }
+
+    pub fn get_cached_account_curve_tree_parameters(
+    ) -> Option<CurveTreeParameters<AccountTreeConfig>> {
+        CachedAccountCurveTreeParameters::<T>::get()
+            .and_then(|p| p.decode::<AccountTreeConfig>().ok())
+    }
+}
+
+#[derive(Debug, Clone, Copy, Encode, Decode, TypeInfo, PartialEq, Eq)]
+pub struct AssetTreeConfig;
+
+impl CurveTreeConfig for AssetTreeConfig {
+    const L: usize = ASSET_TREE_L;
+    const M: usize = ASSET_TREE_M;
+    const EVEN_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
+    const ODD_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
+
+    type F0 = <PallasParameters as CurveConfig>::ScalarField;
+    type F1 = <VestaParameters as CurveConfig>::ScalarField;
+    type P0 = PallasParameters;
+    type P1 = VestaParameters;
+
+    type BlockNumber = BlockNumber;
+}
+
+#[derive(Debug, Clone, Copy, Encode, Decode, TypeInfo, PartialEq, Eq)]
+pub struct AccountTreeConfig;
+
+impl CurveTreeConfig for AccountTreeConfig {
+    const L: usize = ACCOUNT_TREE_L;
+    const M: usize = ACCOUNT_TREE_M;
+    const EVEN_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
+    const ODD_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
+
+    type F0 = <PallasParameters as CurveConfig>::ScalarField;
+    type F1 = <VestaParameters as CurveConfig>::ScalarField;
+    type P0 = PallasParameters;
+    type P1 = VestaParameters;
+
+    type BlockNumber = BlockNumber;
 }
 
 fn get_block_number<T: Config>() -> Result<BlockNumberFor<T>, Error<T>> {
@@ -63,11 +123,10 @@ pub struct AssetCurveTreeStorage<T: Config> {
     _marker: core::marker::PhantomData<T>,
 }
 
-impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParameters>
+impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     for AssetCurveTreeStorage<T>
 {
     type Error = Error<T>;
-    type BlockNumber = BlockNumberFor<T>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -75,19 +134,19 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
         })
     }
 
-    fn parameters(&self) -> &CurveTreeParameters {
-        Pallet::<T>::get_curve_tree_parameters()
+    fn parameters(&self) -> &CurveTreeParameters<AssetTreeConfig> {
+        Pallet::<T>::get_asset_curve_tree_parameters()
     }
 
-    fn get_block_number(&self) -> Result<Self::BlockNumber, Self::Error> {
+    fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
         // Return the current block number from the storage.
-        get_block_number::<T>()
+        Ok(get_block_number::<T>()?.try_into().unwrap_or_default())
     }
 
     fn store_root(
         &mut self,
-        root: Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>,
-    ) -> Result<Self::BlockNumber, Self::Error> {
+        root: Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>,
+    ) -> Result<BlockNumber, Self::Error> {
         let block_number = get_block_number::<T>()?;
 
         // Store the root in the storage.
@@ -100,13 +159,14 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
         // Emit an event for the asset curve tree root update.
         Pallet::<T>::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
 
-        Ok(block_number)
+        Ok(block_number.try_into().unwrap_or_default())
     }
 
     fn fetch_root(
         &self,
-        block_number: Self::BlockNumber,
-    ) -> Result<Root<ASSET_TREE_L, 1, PallasParameters, VestaParameters>, Self::Error> {
+        block_number: BlockNumber,
+    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>, Self::Error>
+    {
         let block_number: BlockNumberFor<T> = block_number.into();
         // Fetch the root from the storage.
         let root =
@@ -157,14 +217,14 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, 1, PallasParameters, VestaParamet
     fn get_inner_node(
         &self,
         location: NodeLocation<ASSET_TREE_L>,
-    ) -> Result<Option<Inner<1, PallasParameters, VestaParameters>>, Self::Error> {
+    ) -> Result<Option<AssetInnerNode>, Self::Error> {
         Ok(AssetInnerNodes::<T>::get(location))
     }
 
     fn set_inner_node(
         &mut self,
         location: NodeLocation<ASSET_TREE_L>,
-        new_node: Inner<1, PallasParameters, VestaParameters>,
+        new_node: AssetInnerNode,
     ) -> Result<(), Self::Error> {
         // set the inner node in the storage.
         AssetInnerNodes::<T>::insert(location, new_node);
@@ -178,11 +238,10 @@ pub struct AccountCurveTreeStorage<T: Config> {
     _marker: core::marker::PhantomData<T>,
 }
 
-impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>
+impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>
     for AccountCurveTreeStorage<T>
 {
     type Error = Error<T>;
-    type BlockNumber = BlockNumberFor<T>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -190,20 +249,20 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
         })
     }
 
-    fn parameters(&self) -> &CurveTreeParameters {
-        Pallet::<T>::get_curve_tree_parameters()
+    fn parameters(&self) -> &CurveTreeParameters<AccountTreeConfig> {
+        Pallet::<T>::get_account_curve_tree_parameters()
     }
 
-    fn get_block_number(&self) -> Result<Self::BlockNumber, Self::Error> {
+    fn get_block_number(&self) -> Result<BlockNumber, Self::Error> {
         // Return the current block number from the storage.
-        get_block_number::<T>()
+        Ok(get_block_number::<T>()?.try_into().unwrap_or_default())
     }
 
     fn store_root(
         &mut self,
-        root: Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>,
-    ) -> Result<Self::BlockNumber, Self::Error> {
-        let block_number = get_block_number::<T>()?;
+        root: Root<ACCOUNT_TREE_L, ACCOUNT_TREE_M, PallasParameters, VestaParameters>,
+    ) -> Result<BlockNumber, Self::Error> {
+        let block_number: BlockNumberFor<T> = get_block_number::<T>()?.into();
         // Store the root in the storage.
         let root = CurveTreeRoot::new(&root)?;
         AccountCurveTreeRoots::<T>::insert(block_number, &root);
@@ -214,13 +273,14 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
         // Emit an event for the account curve tree root update.
         Pallet::<T>::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
 
-        Ok(block_number)
+        Ok(block_number.try_into().unwrap_or_default())
     }
 
     fn fetch_root(
         &self,
-        block_number: Self::BlockNumber,
-    ) -> Result<Root<ACCOUNT_TREE_L, 1, PallasParameters, VestaParameters>, Self::Error> {
+        block_number: BlockNumber,
+    ) -> Result<Root<ACCOUNT_TREE_L, ACCOUNT_TREE_M, PallasParameters, VestaParameters>, Self::Error>
+    {
         let block_number: BlockNumberFor<T> = block_number.into();
         // Fetch the root from the storage.
         let root = AccountCurveTreeRoots::<T>::get(block_number)
@@ -273,14 +333,14 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
     fn get_inner_node(
         &self,
         location: NodeLocation<ACCOUNT_TREE_L>,
-    ) -> Result<Option<Inner<1, PallasParameters, VestaParameters>>, Self::Error> {
+    ) -> Result<Option<AccountInnerNode>, Self::Error> {
         Ok(AccountInnerNodes::<T>::get(location))
     }
 
     fn set_inner_node(
         &mut self,
         location: NodeLocation<ACCOUNT_TREE_L>,
-        new_node: Inner<1, PallasParameters, VestaParameters>,
+        new_node: AccountInnerNode,
     ) -> Result<(), Self::Error> {
         // set the inner node in the storage.
         AccountInnerNodes::<T>::insert(location, new_node);
@@ -290,9 +350,8 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, 1, PallasParameters, VestaParam
 
 pub type AssetCurveTreeType<T> = CurveTreeWithBackend<
     ASSET_TREE_L,
-    1,
-    PallasParameters,
-    VestaParameters,
+    ASSET_TREE_M,
+    AssetTreeConfig,
     AssetCurveTreeStorage<T>,
     Error<T>,
 >;
@@ -322,23 +381,23 @@ impl<T: Config> AssetCurveTree<T> {
     }
 }
 
-impl<T: Config> ValidateCurveTreeRoot<ASSET_TREE_L> for &AssetCurveTree<T> {
-    type BlockNumber = BlockNumberFor<T>;
-
-    fn get_block_root(&self, block: BlockNumberFor<T>) -> Option<CurveTreeRoot<ASSET_TREE_L>> {
+impl<T: Config> ValidateCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
+    for &AssetCurveTree<T>
+{
+    fn get_block_root(&self, block: BlockNumber) -> Option<AssetTreeRoot> {
+        let block: BlockNumberFor<T> = block.into();
         AssetCurveTreeRoots::<T>::get(block)
     }
 
-    fn params(&self) -> &CurveTreeParameters {
-        self.parameters()
+    fn params(&self) -> &CurveTreeParameters<AssetTreeConfig> {
+        self.0.parameters()
     }
 }
 
 pub type AccountCurveTreeType<T> = CurveTreeWithBackend<
     ACCOUNT_TREE_L,
-    1,
-    PallasParameters,
-    VestaParameters,
+    ACCOUNT_TREE_M,
+    AccountTreeConfig,
     AccountCurveTreeStorage<T>,
     Error<T>,
 >;
@@ -368,14 +427,15 @@ impl<T: Config> AccountCurveTree<T> {
     }
 }
 
-impl<T: Config> ValidateCurveTreeRoot<ACCOUNT_TREE_L> for &AccountCurveTree<T> {
-    type BlockNumber = BlockNumberFor<T>;
-
-    fn get_block_root(&self, block: BlockNumberFor<T>) -> Option<CurveTreeRoot<ACCOUNT_TREE_L>> {
+impl<T: Config> ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>
+    for &AccountCurveTree<T>
+{
+    fn get_block_root(&self, block: BlockNumber) -> Option<AccountTreeRoot> {
+        let block: BlockNumberFor<T> = block.into();
         AccountCurveTreeRoots::<T>::get(block)
     }
 
-    fn params(&self) -> &CurveTreeParameters {
+    fn params(&self) -> &CurveTreeParameters<AccountTreeConfig> {
         self.parameters()
     }
 }
