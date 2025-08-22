@@ -19,7 +19,7 @@ pub use polymesh_api::{Api, TransactionResults};
 
 use super::*;
 
-pub type AssetLeaf = LeafValue<PallasParameters>;
+pub type AssetLeaf = LeafValue<VestaParameters>;
 pub type AssetInnerNode = Inner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
 
@@ -76,7 +76,7 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     async fn fetch_root(
         &self,
         block_number: BlockNumber,
-    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>> {
+    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, VestaParameters, PallasParameters>> {
         let root = self
             .api
             .query()
@@ -102,10 +102,7 @@ impl AsyncCurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         Default::default()
     }
 
-    async fn get_leaf(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Error> {
+    async fn get_leaf(&self, leaf_index: LeafIndex) -> Result<Option<AssetLeaf>, Error> {
         if let Some(leaf) = self
             .api
             .query()
@@ -248,7 +245,7 @@ impl CurveTreeLookup<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig> for AssetLeafP
 
     fn get_path_to_leaf(
         &self,
-        leaf: LeafValue<PallasParameters>,
+        leaf: AssetLeaf,
     ) -> Result<CurveTreePath<ASSET_TREE_L, AssetTreeConfig>, DartError> {
         let leaf_buf = leaf.encode();
         let leaf_index = self

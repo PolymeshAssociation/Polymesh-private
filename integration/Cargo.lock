@@ -164,6 +164,7 @@ checksum = "1f3a13b34da09176a8baba701233fdffbaa7c1b1192ce031a3da4e55ce1f1a56"
 dependencies = [
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
+ "ark-r1cs-std",
  "ark-relations",
  "ark-serialize 0.4.2",
  "ark-snark",
@@ -171,7 +172,9 @@ dependencies = [
  "blake2",
  "derivative",
  "digest 0.10.7",
+ "rayon",
  "sha2 0.10.9",
+ "tracing",
 ]
 
 [[package]]
@@ -353,6 +356,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-r1cs-std"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de1d1472e5cb020cb3405ce2567c91c8d43f21b674aef37b0202f5c3304761db"
+dependencies = [
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-relations",
+ "ark-std 0.4.0",
+ "derivative",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "tracing",
+]
+
+[[package]]
 name = "ark-relations"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -361,6 +381,7 @@ dependencies = [
  "ark-ff 0.4.2",
  "ark-std 0.4.0",
  "tracing",
+ "tracing-subscriber 0.2.25",
 ]
 
 [[package]]
@@ -3575,8 +3596,11 @@ dependencies = [
 name = "polymesh-dart-bp"
 version = "0.1.0"
 dependencies = [
+ "ark-crypto-primitives",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
+ "ark-r1cs-std",
+ "ark-relations",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "blake2",
@@ -4836,7 +4860,7 @@ dependencies = [
  "parity-scale-codec",
  "tracing",
  "tracing-core",
- "tracing-subscriber",
+ "tracing-subscriber 0.3.19",
 ]
 
 [[package]]
@@ -5465,6 +5489,15 @@ checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
 dependencies = [
  "log",
  "once_cell",
+ "tracing-core",
+]
+
+[[package]]
+name = "tracing-subscriber"
+version = "0.2.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e0d2eaa99c3c2e41547cfa109e910a68ea03823cccad4a0525dcbc9b01e8c71"
+dependencies = [
  "tracing-core",
 ]
 
