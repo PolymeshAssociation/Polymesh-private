@@ -6,7 +6,15 @@
 use codec::{Decode, Encode};
 use sp_runtime_interface::pass_by::PassByCodec;
 use sp_runtime_interface::runtime_interface;
-use sp_std::prelude::Vec;
+
+#[cfg(feature = "std")]
+use rand_chacha::ChaCha20Rng as Rng;
+#[cfg(feature = "std")]
+use rand_core::SeedableRng;
+
+use polymesh_dart::AccountAssetRegistrationProof;
+#[cfg(feature = "std")]
+use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 
 use polymesh_primitives::IdentityId;
 
@@ -21,16 +29,20 @@ pub type BatchReqId = u32;
 pub enum VerifyDartAssetRequest {
     AccountAssetRegistration {
         did: IdentityId,
-        proof: polymesh_dart::AccountAssetRegistrationProof,
+        proof: AccountAssetRegistrationProof,
     },
 }
 
 #[cfg(feature = "std")]
 impl VerifyDartAssetRequest {
-    pub fn verify(&self, _seed: BatchSeed) -> Result<(), Error> {
+    pub fn verify(&self, seed: BatchSeed) -> Result<(), Error> {
+        let mut rng = Rng::from_seed(seed);
         match self {
             Self::AccountAssetRegistration { did, proof } => {
-                proof.verify(&did.0[..]).map_err(|_| Error::VerifyFailed)?;
+                let params = get_account_curve_tree_parameters();
+                proof
+                    .verify(&did.0[..], &params, &mut rng)
+                    .map_err(|_| Error::VerifyFailed)?;
             }
         }
         Ok(())
@@ -43,6 +55,7 @@ impl VerifyDartAssetRequest {
         native_dart_assets::verify_proof(self, seed)
     }
 }
+
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     VerifyFailed,

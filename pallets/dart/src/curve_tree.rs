@@ -8,7 +8,7 @@ use polymesh_dart::{
     BlockNumber, LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT,
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L, ASSET_TREE_M,
 };
-pub type AssetLeaf = LeafValue<PallasParameters>;
+pub type AssetLeaf = LeafValue<VestaParameters>;
 pub type AssetInnerNode = Inner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
 pub type AssetTreeRoot = CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
@@ -88,10 +88,10 @@ impl CurveTreeConfig for AssetTreeConfig {
     const EVEN_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
     const ODD_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
 
-    type F0 = <PallasParameters as CurveConfig>::ScalarField;
-    type F1 = <VestaParameters as CurveConfig>::ScalarField;
-    type P0 = PallasParameters;
-    type P1 = VestaParameters;
+    type F0 = <VestaParameters as CurveConfig>::ScalarField;
+    type F1 = <PallasParameters as CurveConfig>::ScalarField;
+    type P0 = VestaParameters;
+    type P1 = PallasParameters;
 
     type BlockNumber = BlockNumber;
 }
@@ -145,7 +145,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
 
     fn store_root(
         &mut self,
-        root: Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>,
+        root: Root<ASSET_TREE_L, ASSET_TREE_M, VestaParameters, PallasParameters>,
     ) -> Result<BlockNumber, Self::Error> {
         let block_number = get_block_number::<T>()?;
 
@@ -165,7 +165,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     fn fetch_root(
         &self,
         block_number: BlockNumber,
-    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, PallasParameters, VestaParameters>, Self::Error>
+    ) -> Result<Root<ASSET_TREE_L, ASSET_TREE_M, VestaParameters, PallasParameters>, Self::Error>
     {
         let block_number: BlockNumberFor<T> = block_number.into();
         // Fetch the root from the storage.
@@ -190,7 +190,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     fn get_leaf(
         &self,
         leaf_index: LeafIndex,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
+    ) -> Result<Option<LeafValue<VestaParameters>>, Self::Error> {
         let leaf = AssetLeaves::<T>::get(leaf_index);
         Ok(leaf)
     }
@@ -198,8 +198,8 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     fn set_leaf(
         &mut self,
         leaf_index: LeafIndex,
-        new_leaf_value: LeafValue<PallasParameters>,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
+        new_leaf_value: LeafValue<VestaParameters>,
+    ) -> Result<Option<LeafValue<VestaParameters>>, Self::Error> {
         // Use `mutate` to update the leaf value in the storage and return the previous value.
         Ok(AssetLeaves::<T>::mutate(leaf_index, |leaf| {
             // Get the old value, if it exists.

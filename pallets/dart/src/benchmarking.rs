@@ -2,11 +2,12 @@
 // Copyright (c) 2023 Polymesh
 
 use frame_benchmarking::benchmarks;
+use sp_std::vec::Vec;
 
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::SeedableRng;
 
-use polymesh_dart::{AuditorOrMediator, LegBuilder, SettlementBuilder};
+use polymesh_dart::{LegBuilder, SettlementBuilder};
 
 use crate::testing::*;
 use crate::*;
@@ -47,19 +48,35 @@ benchmarks! {
         // Register the asset issuer's account.
         asset_issuer.register_account();
 
-        // Create mediator user and keys.
-        let mediator = DartUser::<T>::auditor_user("Mediator", 0, 0, &mut rng);
-        let auditor_or_mediator = AuditorOrMediator::Mediator(mediator.public_keys());
-
-        // Register the mediator's keys.
-        mediator.register_account();
+        // Create the maximum number of auditors.
+        let mut auditors = Vec::with_capacity(T::MaxAssetAuditors::get() as usize);
+        let mut auditor_keys = BoundedVec::new();
+        for i in 0..T::MaxAssetAuditors::get() {
+            let auditor = DartUser::<T>::auditor_user("Auditor", 0, i, &mut rng);
+            auditor.register_account();
+            auditor_keys
+                .try_push(auditor.public_keys().enc)
+                .expect("Failed to push auditor keys");
+            auditors.push(auditor);
+        }
+        // Create the maximum number of mediators.
+        let mut mediators = Vec::with_capacity(T::MaxAssetMediators::get() as usize);
+        let mut mediator_keys = BoundedVec::new();
+        for i in 0..T::MaxAssetMediators::get() {
+            let mediator = DartUser::<T>::auditor_user("Mediator", 0, i, &mut rng);
+            mediator.register_account();
+            mediator_keys
+                .try_push(mediator.public_keys().enc)
+                .expect("Failed to push mediator keys");
+            mediators.push(mediator);
+        }
 
         // Asset Data.
         let data = b"Test Asset"
             .to_vec()
             .try_into()
             .expect("Failed to convert asset data to AssetData");
-    }: _(asset_issuer.raw_origin(), auditor_or_mediator, data)
+    }: _(asset_issuer.raw_origin(), auditor_keys, mediator_keys, data)
 
     register_account_asset {
         let mut rng = StdRng::from_seed([42u8; 32]);
@@ -114,6 +131,7 @@ benchmarks! {
         for asset_idx in 0..l {
             // Create asset issuer and an asset.
             let mut asset = DartTestAsset::<T>::new(&mut rng, &mut off_chain, "Test Asset", asset_idx, 0, 1, Some(1000));
+            let asset_state = asset.asset_state();
 
             // Create investor.
             let user = asset.create_investor(&mut rng);
@@ -121,9 +139,8 @@ benchmarks! {
             settlement = settlement.leg(LegBuilder {
                 sender: asset.issuer.public_keys(),
                 receiver: user.public_keys(),
-                asset_id: asset.id,
+                asset: asset_state,
                 amount: 500,
-                mediator: asset.auditor_or_mediator,
             })
         }
 
@@ -193,7 +210,7 @@ benchmarks! {
 
         // Get the first leg of the settlement.
         let leg = &settlement.legs[0];
-        let mediator = leg.mediator.as_ref().expect("Mediator should be present in the leg").clone();
+        let mediator = leg.mediators[0].clone();
 
         // Generate the mediator's affirmation proof.
         let proof = mediator.mediator_affirmation_proof(&mut rng, &off_chain, leg.leg_ref, true, Some((leg.asset_id, leg.amount)));

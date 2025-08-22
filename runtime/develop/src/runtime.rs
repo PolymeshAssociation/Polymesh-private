@@ -191,6 +191,8 @@ type DartMaxSettlementLegs = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxSettlementLegs = ConstSize<10>;
 type DartMaxSettlementMemoLength = ConstSize<256>;
+type DartMaxAssetAuditors = ConstSize<2>;
+type DartMaxAssetMediators = ConstSize<2>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -333,6 +335,8 @@ impl pallet_dart::Config for Runtime {
 impl polymesh_dart::DartLimits for Runtime {
     type MaxSettlementLegs = DartMaxSettlementLegs;
     type MaxSettlementMemoLength = DartMaxSettlementMemoLength;
+    type MaxAssetAuditors = DartMaxAssetAuditors;
+    type MaxAssetMediators = DartMaxAssetMediators;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
