@@ -2,12 +2,15 @@ use core::ops::{Deref, DerefMut};
 
 use polymesh_dart::{
     curve_tree::{
-        CurveConfig, CurveTreeBackend, CurveTreeConfig, CurveTreeParameters, CurveTreeRoot,
+        CurveTreeBackend, CurveTreeConfig, CurveTreeParameters, CurveTreeRoot,
         CurveTreeWithBackend, Inner, LeafValue, NodeLocation, Root, ValidateCurveTreeRoot,
     },
     BlockNumber, LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT,
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L, ASSET_TREE_M,
 };
+
+pub use polymesh_dart::curve_tree::{AccountTreeConfig, AssetTreeConfig};
+
 pub type AssetLeaf = LeafValue<VestaParameters>;
 pub type AssetInnerNode = Inner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
@@ -77,40 +80,6 @@ impl<T: Config> Pallet<T> {
         CachedAccountCurveTreeParameters::<T>::get()
             .and_then(|p| p.decode::<AccountTreeConfig>().ok())
     }
-}
-
-#[derive(Debug, Clone, Copy, Encode, Decode, TypeInfo, PartialEq, Eq)]
-pub struct AssetTreeConfig;
-
-impl CurveTreeConfig for AssetTreeConfig {
-    const L: usize = ASSET_TREE_L;
-    const M: usize = ASSET_TREE_M;
-    const EVEN_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
-    const ODD_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
-
-    type F0 = <VestaParameters as CurveConfig>::ScalarField;
-    type F1 = <PallasParameters as CurveConfig>::ScalarField;
-    type P0 = VestaParameters;
-    type P1 = PallasParameters;
-
-    type BlockNumber = BlockNumber;
-}
-
-#[derive(Debug, Clone, Copy, Encode, Decode, TypeInfo, PartialEq, Eq)]
-pub struct AccountTreeConfig;
-
-impl CurveTreeConfig for AccountTreeConfig {
-    const L: usize = ACCOUNT_TREE_L;
-    const M: usize = ACCOUNT_TREE_M;
-    const EVEN_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
-    const ODD_GEN_LENGTH: usize = crate::MAX_CURVE_TREE_GENS;
-
-    type F0 = <PallasParameters as CurveConfig>::ScalarField;
-    type F1 = <VestaParameters as CurveConfig>::ScalarField;
-    type P0 = PallasParameters;
-    type P1 = VestaParameters;
-
-    type BlockNumber = BlockNumber;
 }
 
 fn get_block_number<T: Config>() -> Result<BlockNumberFor<T>, Error<T>> {

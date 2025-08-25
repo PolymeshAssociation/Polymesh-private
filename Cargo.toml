@@ -260,6 +260,7 @@ pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-grandpa = { workspace = true, default-features = false }
 polymesh-host-functions = { workspace = true, default-features = false }
+polymesh-dart-host-functions = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -383,6 +384,7 @@ runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "polymesh-private-runtime-develop/runtime-benchmarks",
   "polymesh-host-functions/runtime-benchmarks",
+  "polymesh-dart-host-functions/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.
@@ -391,5 +393,6 @@ ci-runtime = ["polymesh-private-runtime-develop/ci-runtime"]
 std = [
   "polymesh-common-utilities/std",
   "polymesh-host-functions/std",
+  "polymesh-dart-host-functions/std",
   "serde/std",
 ]

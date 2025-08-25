@@ -4,13 +4,13 @@ use frame_support::{
     ensure,
     traits::Get,
 };
-use rand_core::{CryptoRng, RngCore};
+use polymesh_dart_host_functions::VerifyMediatorRequest;
 use scale_info::TypeInfo;
 
 use polymesh_dart::{
-    curve_tree::ValidateCurveTreeRoot, LegEncrypted, LegId, LegRef, MediatorAffirmationProof,
-    ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
-    SenderReversalProof, SettlementRef, ACCOUNT_TREE_L,
+    LegEncrypted, LegId, LegRef, MediatorAffirmationProof, ReceiverAffirmationProof,
+    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
+    SettlementRef,
 };
 
 use super::*;
@@ -141,11 +141,11 @@ impl<T: Config> DartSettlementLeg<T> {
     }
 
     /// Verify a sender affirmation proof for this leg.
-    pub fn sender_affirmation<R: RngCore + CryptoRng>(
+    pub fn sender_affirmation(
         &mut self,
-        proof: &SenderAffirmationProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderAffirmationProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender can only affirm if the sender affirmation status is `Pending`.
         ensure!(
@@ -154,9 +154,12 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc, tree_roots, rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let req = VerifyDartAssetRequest::SenderAffirmation {
+            leg_enc: self.enc.clone(),
+            root,
+            proof,
+        };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's status.
         self.sender = AffirmationStatus::Affirmed;
@@ -168,11 +171,11 @@ impl<T: Config> DartSettlementLeg<T> {
     }
 
     /// Verify a receiver affirmation proof for this leg.
-    pub fn receiver_affirmation<R: RngCore + CryptoRng>(
+    pub fn receiver_affirmation(
         &mut self,
-        proof: &ReceiverAffirmationProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: ReceiverAffirmationProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The receiver can only affirm if the receiver affirmation status is `Pending`.
         ensure!(
@@ -181,9 +184,12 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc, tree_roots, rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let req = VerifyDartAssetRequest::ReceiverAffirmation {
+            leg_enc: self.enc.clone(),
+            root,
+            proof: proof.clone(),
+        };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's status.
         self.receiver = AffirmationStatus::Affirmed;
@@ -195,7 +201,7 @@ impl<T: Config> DartSettlementLeg<T> {
     }
 
     /// Verify a mediator affirmation proof for this leg.
-    pub fn mediator_affirmation(&mut self, proof: &MediatorAffirmationProof) -> DispatchResult {
+    pub fn mediator_affirmation(&mut self, proof: MediatorAffirmationProof) -> DispatchResult {
         // A mediator can only affirm if the leg has a mediator.
         ensure!(self.mediator.is_some(), Error::<T>::NoMediatorForThisLeg,);
         // The mediator can only affirm if the mediator affirmation status is `Pending`.
@@ -205,12 +211,15 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let accept = proof.accept;
+        let req = VerifyMediatorRequest {
+            leg_enc: self.enc.clone(),
+            proof,
+        };
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's mediator status based on the proof.
-        if proof.accept {
+        if accept {
             // The mediator is affirming the leg.
             self.mediator = Some(AffirmationStatus::Affirmed);
         } else {
@@ -227,11 +236,11 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify the sender's counter update proof for this leg.
     ///
     /// The sender is only allowed to submit this proof if the settlement has been executed.
-    pub fn sender_counter_update<R: RngCore + CryptoRng>(
+    pub fn sender_counter_update(
         &mut self,
-        proof: &SenderCounterUpdateProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderCounterUpdateProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender is only allowed to submit this proof if the settlement has been executed.
         ensure!(
@@ -245,9 +254,12 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc, tree_roots, rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let req = VerifyDartAssetRequest::SenderCounterUpdate {
+            leg_enc: self.enc.clone(),
+            root,
+            proof: proof.clone(),
+        };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's status.
         self.sender = AffirmationStatus::Finalized;
@@ -261,11 +273,11 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify the sender's Reversal proof for this leg.
     ///
     /// The sender is only allowed to submit this proof if the settlement has been rejected.
-    pub fn sender_reversal<R: RngCore + CryptoRng>(
+    pub fn sender_reversal(
         &mut self,
-        proof: &SenderReversalProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderReversalProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender is only allowed to submit this proof if the settlement has been rejected and they have affirmed.
         ensure!(
@@ -279,9 +291,12 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc, tree_roots, rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let req = VerifyDartAssetRequest::SenderReversal {
+            leg_enc: self.enc.clone(),
+            root,
+            proof: proof.clone(),
+        };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's status.
         self.sender = AffirmationStatus::Finalized;
@@ -295,11 +310,11 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify the receiver's claim proof for this leg.
     ///
     /// The receiver is only allowed to submit this proof if the settlement has been executed.
-    pub fn receiver_claim<R: RngCore + CryptoRng>(
+    pub fn receiver_claim(
         &mut self,
-        proof: &ReceiverClaimProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: ReceiverClaimProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The receiver is only allowed to submit this proof if the settlement has been executed and they have affirmed.
         ensure!(
@@ -313,9 +328,12 @@ impl<T: Config> DartSettlementLeg<T> {
         );
 
         // verify the proof.
-        proof
-            .verify(&self.enc, tree_roots, rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let req = VerifyDartAssetRequest::ReceiverClaim {
+            leg_enc: self.enc.clone(),
+            root,
+            proof: proof.clone(),
+        };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Update the leg's status.
         self.receiver = AffirmationStatus::Finalized;
@@ -384,18 +402,18 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify a sender affirmation proof for a specific leg in the settlement.
-    pub fn sender_affirmation<R: RngCore + CryptoRng>(
+    pub fn sender_affirmation(
         &mut self,
-        proof: &SenderAffirmationProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderAffirmationProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         self.ensure_pending()?;
 
         let leg_id = proof.leg_ref.leg_id();
         let mut leg = self.get_leg(leg_id)?;
 
-        leg.sender_affirmation(proof, tree_roots, rng)?;
+        leg.sender_affirmation(proof, root, seed)?;
 
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;
@@ -407,18 +425,18 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify a receiver affirmation proof for a specific leg in the settlement.
-    pub fn receiver_affirmation<R: RngCore + CryptoRng>(
+    pub fn receiver_affirmation(
         &mut self,
-        proof: &ReceiverAffirmationProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: ReceiverAffirmationProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         self.ensure_pending()?;
 
         let leg_id = proof.leg_ref.leg_id();
         let mut leg = self.get_leg(leg_id)?;
 
-        leg.receiver_affirmation(proof, tree_roots, rng)?;
+        leg.receiver_affirmation(proof, root, seed)?;
 
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;
@@ -429,10 +447,11 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify a mediator affirmation proof for a specific leg in the settlement.
-    pub fn mediator_affirmation(&mut self, proof: &MediatorAffirmationProof) -> DispatchResult {
+    pub fn mediator_affirmation(&mut self, proof: MediatorAffirmationProof) -> DispatchResult {
         self.ensure_pending()?;
 
         let leg_id = proof.leg_ref.leg_id();
+        let accept = proof.accept;
         let mut leg = self.get_leg(leg_id)?;
 
         leg.mediator_affirmation(proof)?;
@@ -440,7 +459,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;
 
-        if proof.accept {
+        if accept {
             // If the mediator has accepted, update the status of the settlement.
             self.check_for_updated_status()?;
         } else {
@@ -451,11 +470,11 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify the sender's counter update proof for a specific leg in the settlement.
-    pub fn sender_counter_update<R: RngCore + CryptoRng>(
+    pub fn sender_counter_update(
         &mut self,
-        proof: &SenderCounterUpdateProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderCounterUpdateProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender can only update the counter if the settlement has been executed.
         ensure!(
@@ -466,7 +485,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         let leg_id = proof.leg_ref.leg_id();
         let mut leg = self.get_leg(leg_id)?;
 
-        leg.sender_counter_update(proof, tree_roots, rng)?;
+        leg.sender_counter_update(proof, root, seed)?;
 
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;
@@ -477,11 +496,11 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify the sender's reversal proof for a specific leg in the settlement.
-    pub fn sender_reversal<R: RngCore + CryptoRng>(
+    pub fn sender_reversal(
         &mut self,
-        proof: &SenderReversalProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: SenderReversalProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender can only reverse if the settlement has been rejected.
         ensure!(
@@ -492,7 +511,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         let leg_id = proof.leg_ref.leg_id();
         let mut leg = self.get_leg(leg_id)?;
 
-        leg.sender_reversal(proof, tree_roots, rng)?;
+        leg.sender_reversal(proof, root, seed)?;
 
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;
@@ -503,11 +522,11 @@ impl<T: Config> UpdateSettlementStatus<T> {
     }
 
     /// Verify the receiver's claim proof for a specific leg in the settlement.
-    pub fn receiver_claim<R: RngCore + CryptoRng>(
+    pub fn receiver_claim(
         &mut self,
-        proof: &ReceiverClaimProof<AccountTreeConfig>,
-        tree_roots: impl ValidateCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
-        rng: &mut R,
+        proof: ReceiverClaimProof<AccountTreeConfig>,
+        root: AccountTreeRoot,
+        seed: BatchSeed,
     ) -> DispatchResult {
         // The receiver can only claim if the settlement has been executed.
         ensure!(
@@ -518,7 +537,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         let leg_id = proof.leg_ref.leg_id();
         let mut leg = self.get_leg(leg_id)?;
 
-        leg.receiver_claim(proof, tree_roots, rng)?;
+        leg.receiver_claim(proof, root, seed)?;
 
         // Update the leg in the settlement.
         self.update_leg(leg_id, leg)?;

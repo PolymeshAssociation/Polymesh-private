@@ -28,12 +28,14 @@ use scale_info::TypeInfo;
 use sp_std::convert::From;
 
 use polymesh_dart::{
-    curve_tree::WrappedCurveTreeParameters, AccountPublicKey, AccountStateCommitment,
-    AccountStateNullifier, AccountStateUpdate, AssetId as DartAssetId, AssetState,
-    BatchedSettlementCounts, DartLimits, EncryptionPublicKey, Error as DartError, LeafIndex,
-    LegEncrypted, LegId, LegRef, SettlementId, SettlementRef, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_M,
-    ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
+    curve_tree::{ValidateCurveTreeRoot, WrappedCurveTreeParameters},
+    AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
+    AssetId as DartAssetId, AssetState, BatchedSettlementCounts, DartLimits, EncryptionPublicKey,
+    Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, SettlementId, SettlementRef,
+    ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
+
+use polymesh_dart_host_functions::{BatchSeed, VerifyDartAssetRequest};
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
@@ -643,26 +645,29 @@ pub mod pallet {
             );
             AccountAssetRegistrations::<T>::insert((&proof.account, &proof.asset_id), true);
 
+            let asset_id = proof.asset_id;
+            let account = proof.account;
+            let account_state_commitment = proof.account_state_commitment;
+
             // Get the account curve tree.
             let mut account_curve_tree = Self::get_account_curve_tree()?;
 
             // Verify the proof.
-            let mut rng = Self::get_rng();
-            proof
-                .verify(&caller_did.0[..], account_curve_tree.parameters(), &mut rng)
-                .map_err(|_| Error::<T>::InvalidProof)?;
+            let req = VerifyDartAssetRequest::AccountAssetRegistration {
+                did: caller_did,
+                proof,
+            };
+            let seed = Self::get_seed(true);
+            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
             // Insert the new account state commitment from the proof into the account curve tree.
-            Self::insert_account_leaf(
-                &mut &mut account_curve_tree,
-                proof.account_state_commitment,
-            )?;
+            Self::insert_account_leaf(&mut &mut account_curve_tree, account_state_commitment)?;
 
             // Emit an event for the account asset registration.
             Self::deposit_event(Event::<T>::AccountAssetRegistered {
                 caller_did,
-                asset_id: proof.asset_id,
-                account: proof.account,
+                asset_id,
+                account,
             });
 
             Ok(())
@@ -706,25 +711,32 @@ pub mod pallet {
                 Error::<T>::MaxTotalSupplyExceeded
             );
 
+            let asset_id = proof.asset_id;
+            let account = proof.pk;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, _rng| {
                 // Verify the proof.
-                proof
-                    .verify(account_curve_tree, rng)
-                    .map_err(|_| Error::<T>::InvalidProof)?;
+                let req = VerifyDartAssetRequest::MintAsset {
+                    root: account_curve_tree
+                        .get_block_root(proof.root_block)
+                        .ok_or(Error::<T>::CurveTreeRootNotFound)?,
+                    proof,
+                };
+                let seed = Self::get_seed(true);
+                req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
                 Ok(())
             })?;
 
             // Store the updated asset details.
-            DartAssetDetails::<T>::insert(proof.asset_id, &asset_details);
+            DartAssetDetails::<T>::insert(asset_id, &asset_details);
 
             // Emit an event for the asset minting.
             Self::deposit_event(Event::<T>::AssetMinted {
                 caller_did,
-                asset_id: proof.asset_id,
+                asset_id,
                 amount,
                 total_supply: asset_details.total_supply,
-                account: proof.pk,
+                account,
             });
 
             Ok(())
@@ -777,7 +789,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            Self::base_sender_affirmation(&proof)
+            Self::base_sender_affirmation(proof)
         }
 
         /// Receiver affirms a settlement leg.
@@ -800,7 +812,7 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
-            Self::base_receiver_affirmation(&proof)
+            Self::base_receiver_affirmation(proof)
         }
 
         /// Mediator affirms a settlement leg.
@@ -824,21 +836,19 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
+            let leg_ref = proof.leg_ref;
+            let accept = proof.accept;
             // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+            let mut update_settlement = UpdateSettlementStatus::<T>::new(leg_ref)?;
 
             // Verify the mediator affirmation proof and update the settlement and leg status.
-            update_settlement.mediator_affirmation(&proof)?;
+            update_settlement.mediator_affirmation(proof)?;
 
             // Emit an event for the mediator affirmation.
-            if proof.accept {
-                Self::deposit_event(Event::<T>::MediatorAffirmed {
-                    leg_ref: proof.leg_ref,
-                });
+            if accept {
+                Self::deposit_event(Event::<T>::MediatorAffirmed { leg_ref });
             } else {
-                Self::deposit_event(Event::<T>::MediatorRejected {
-                    leg_ref: proof.leg_ref,
-                });
+                Self::deposit_event(Event::<T>::MediatorRejected { leg_ref });
             }
 
             Ok(())
@@ -864,19 +874,18 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
+            let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
                 let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender update proof and update the settlement and leg status.
-                update_settlement.sender_counter_update(&proof, account_curve_tree, rng)
+                update_settlement.sender_counter_update(proof, account_curve_tree, rng)
             })?;
 
             // Emit an event for the sender update counter.
-            Self::deposit_event(Event::<T>::SenderCounterUpdated {
-                leg_ref: proof.leg_ref,
-            });
+            Self::deposit_event(Event::<T>::SenderCounterUpdated { leg_ref });
 
             Ok(())
         }
@@ -901,19 +910,18 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
+            let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
                 let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender reversal proof and update the settlement and leg status.
-                update_settlement.sender_reversal(&proof, account_curve_tree, rng)
+                update_settlement.sender_reversal(proof, account_curve_tree, rng)
             })?;
 
             // Emit an event for the sender revert.
-            Self::deposit_event(Event::<T>::SenderReverted {
-                leg_ref: proof.leg_ref,
-            });
+            Self::deposit_event(Event::<T>::SenderReverted { leg_ref });
 
             Ok(())
         }
@@ -938,19 +946,18 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
+            let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(&proof, |account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
                 let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the receiver claim proof and update the settlement and leg status.
-                update_settlement.receiver_claim(&proof, account_curve_tree, rng)
+                update_settlement.receiver_claim(proof, account_curve_tree, rng)
             })?;
 
             // Emit an event for the receiver claim.
-            Self::deposit_event(Event::<T>::ReceiverClaimed {
-                leg_ref: proof.leg_ref,
-            });
+            Self::deposit_event(Event::<T>::ReceiverClaimed { leg_ref });
 
             Ok(())
         }
@@ -987,11 +994,11 @@ pub mod pallet {
             Self::base_create_settlement(settlement_ref, proof.settlement_proof())?;
 
             // Handle the leg affirmations in the proof.
-            for leg_affirmation in &proof.leg_affirmations {
-                if let Some(sender_proof) = &leg_affirmation.sender {
+            for leg_affirmation in proof.leg_affirmations {
+                if let Some(sender_proof) = leg_affirmation.sender {
                     Self::base_sender_affirmation(sender_proof)?;
                 }
-                if let Some(receiver_proof) = &leg_affirmation.receiver {
+                if let Some(receiver_proof) = leg_affirmation.receiver {
                     Self::base_receiver_affirmation(receiver_proof)?;
                 }
             }
@@ -1106,63 +1113,64 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn base_sender_affirmation(
-        proof: &polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
+        proof: polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
     ) -> DispatchResult {
+        let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
             // Create an update settlement status instance.
             let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the sender affirmation proof and update the settlement and leg status.
-            update_settlement.sender_affirmation(&proof, account_curve_tree, rng)
+            update_settlement.sender_affirmation(proof, account_curve_tree, rng)
         })?;
 
         // Emit an event for the sender affirmation.
-        Self::deposit_event(Event::<T>::SenderAffirmed {
-            leg_ref: proof.leg_ref,
-        });
+        Self::deposit_event(Event::<T>::SenderAffirmed { leg_ref });
 
         Ok(())
     }
 
     pub fn base_receiver_affirmation(
-        proof: &polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
+        proof: polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
     ) -> DispatchResult {
+        let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |account_curve_tree, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
             // Create an update settlement status instance.
             let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the receiver affirmation proof and update the settlement and leg status.
-            update_settlement.receiver_affirmation(&proof, account_curve_tree, rng)
+            update_settlement.receiver_affirmation(proof, account_curve_tree, rng)
         })?;
 
         // Emit an event for the receiver affirmation.
-        Self::deposit_event(Event::<T>::ReceiverAffirmed {
-            leg_ref: proof.leg_ref,
-        });
+        Self::deposit_event(Event::<T>::ReceiverAffirmed { leg_ref });
 
         Ok(())
     }
 
     /// Handle account state update proof verification and insertion.
-    pub fn handle_account_state_update_proof(
-        proof: &impl AccountStateUpdate,
-        verify: impl FnOnce(&AccountCurveTree<T>, &mut rand_chacha::ChaCha20Rng) -> DispatchResult,
+    pub fn handle_account_state_update_proof<P: AccountStateUpdate>(
+        proof: P,
+        verify: impl FnOnce(P, AccountTreeRoot, BatchSeed) -> DispatchResult,
     ) -> DispatchResult {
-        // Ensure the nullifier is unique.
         let nullifier = proof.nullifier();
+        let account_commitment = proof.account_state_commitment();
+        // Ensure the nullifier is unique.
         Self::ensure_account_state_nullifier_unique(&nullifier)?;
 
         // Get account curve tree.
         let mut account_curve_tree = Self::get_account_curve_tree()?;
 
         // Verify the account state update proof.
-        let mut rng = Self::get_rng();
-        verify(&account_curve_tree, &mut rng)?;
+        let root_block: BlockNumberFor<T> = proof.root_block().into();
+        let seed = Self::get_seed(true);
+        let root =
+            AccountCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
+        verify(proof, root, seed)?;
 
         // Insert the update account state commitment into the account curve tree.
-        let account_commitment = proof.account_state_commitment();
         Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
 
         // Burn the nullifier to ensure it cannot be used again.
@@ -1332,7 +1340,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    fn get_seed(update: bool) -> [u8; 32] {
+    fn get_seed(update: bool) -> BatchSeed {
         // Increase the nonce each time.
         let nonce = RngNonce::<T>::get();
         if update {
@@ -1341,7 +1349,7 @@ impl<T: Config> Pallet<T> {
         // Use the `nonce` and chain randomness to generate a new seed.
         let (random_hash, _) = T::Randomness::random(&(b"ConfidentialAsset", nonce).encode());
         let s = random_hash.as_ref();
-        let mut seed = [0u8; 32];
+        let mut seed = [0; 32];
         let len = seed.len().min(s.len());
         seed[..len].copy_from_slice(&s[..len]);
         seed
