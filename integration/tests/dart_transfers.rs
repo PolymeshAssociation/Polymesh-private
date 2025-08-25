@@ -3,6 +3,7 @@ use anyhow::Result;
 use integration::dart_asset_helper::*;
 
 #[tokio::test]
+#[test_log::test]
 async fn simple_dart_funding() -> Result<()> {
     let mut tester = DartAssetTester::init(&["Issuer1", "Investor1", "Auditor1"]).await?;
     let investor = tester.user("Investor1").await;
@@ -24,6 +25,7 @@ async fn simple_dart_funding() -> Result<()> {
 /// Atomic swap of two assets between two investors.
 ///
 #[tokio::test]
+#[test_log::test]
 async fn atomic_swap_test() -> Result<()> {
     let tester = DartAssetTester::init(&[
         "Asset1_Issuer",

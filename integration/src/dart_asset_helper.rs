@@ -113,10 +113,6 @@ impl DartUserAccountAssetState {
             };
 
             // Check that the account leaf matches the expected state commitment.
-            eprintln!(
-                "Leaf index: {}, account leaf: {:?}, expected leaf: {:?}",
-                leaf_index, account_leaf, expected_leaf,
-            );
             if account_leaf != expected_leaf {
                 return Err(anyhow::anyhow!(
                     "Account leaf does not match the expected state commitment"
@@ -222,6 +218,11 @@ impl DartUserInner {
         };
 
         // Submit the registration proof.
+        log::debug!(
+            "Registering account {:?} asset: {}",
+            self.keys.public_keys().acct,
+            asset_id
+        );
         let mut res = self
             .api
             .call()
@@ -229,6 +230,11 @@ impl DartUserInner {
             .register_account_asset(to_scale(&proof))?
             .submit_and_watch(&mut self.user)
             .await?;
+        log::debug!(
+            "Registered account asset: {}, res: {:?}",
+            asset_id,
+            res.ok().await
+        );
 
         // Update the asset state with the new leaf index.
         asset_state.update_leaf_index(&mut res).await?;
@@ -292,6 +298,7 @@ impl DartUserInner {
             .mint_asset(to_scale(&proof))?
             .submit_and_watch(&mut self.user)
             .await?;
+        log::debug!("Mint assets: res={:?}", res.ok().await?);
 
         // Update the asset state with the new leaf index.
         asset_state.update_leaf_index(&mut res).await?;
