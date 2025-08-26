@@ -7,7 +7,8 @@ use sp_std::vec::Vec;
 use rand_chacha::ChaCha20Rng as StdRng;
 use rand_core::SeedableRng;
 
-use polymesh_dart::{LegBuilder, SettlementBuilder};
+use polymesh_dart::{curve_tree::MultiLeafPathAndRoot, LegBuilder, SettlementBuilder};
+use polymesh_dart_host_functions::{GenerateDartProofRequest, GenerateDartProofResponse};
 
 use crate::testing::*;
 use crate::*;
@@ -28,22 +29,18 @@ benchmarks! {
     // */
 
     register_account {
-        let mut rng = StdRng::from_seed([42u8; 32]);
-
         // Create user.
-        let user = DartUser::<T>::new("User", &mut rng);
+        let user = DartUser::<T>::new("User");
         let keys = user.public_keys();
 
     }: _(user.raw_origin(), keys.acct, keys.enc)
 
     create_asset {
-        let mut rng = StdRng::from_seed([42u8; 32]);
-
         // Offchain prover state.
         let off_chain = OffchainProverState::<T>::new();
 
         // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::new("AssetIssuer", &mut rng);
+        let asset_issuer = DartUser::<T>::new("AssetIssuer");
 
         // Register the asset issuer's account.
         asset_issuer.register_account();
@@ -52,7 +49,7 @@ benchmarks! {
         let mut auditors = Vec::with_capacity(T::MaxAssetAuditors::get() as usize);
         let mut auditor_keys = BoundedVec::new();
         for i in 0..T::MaxAssetAuditors::get() {
-            let auditor = DartUser::<T>::auditor_user("Auditor", 0, i, &mut rng);
+            let auditor = DartUser::<T>::auditor_user("Auditor", 0, i);
             auditor.register_account();
             auditor_keys
                 .try_push(auditor.public_keys().enc)
@@ -63,7 +60,7 @@ benchmarks! {
         let mut mediators = Vec::with_capacity(T::MaxAssetMediators::get() as usize);
         let mut mediator_keys = BoundedVec::new();
         for i in 0..T::MaxAssetMediators::get() {
-            let mediator = DartUser::<T>::auditor_user("Mediator", 0, i, &mut rng);
+            let mediator = DartUser::<T>::auditor_user("Mediator", 0, i);
             mediator.register_account();
             mediator_keys
                 .try_push(mediator.public_keys().enc)
@@ -123,7 +120,7 @@ benchmarks! {
         let mut off_chain = OffchainProverState::<T>::new();
 
         // Venue user.
-        let venue = DartUser::<T>::new("Venue", &mut rng);
+        let venue = DartUser::<T>::new("Venue");
 
         // Create a settlement to transfer some assets from the issuer to the investor.
         let mut settlement = SettlementBuilder::<PolymeshPrivateLimits>::new(b"Test");
@@ -144,9 +141,27 @@ benchmarks! {
             })
         }
 
+        let mut paths = Vec::new();
+        for leg in &settlement.legs {
+            paths.push(off_chain
+                .asset_tree
+                .get_path_and_root_by_index(leg.asset.asset_id as LeafIndex)
+                .expect("Failed to get path to leaf"));
+        }
+
         // Generate the settlement proof.
-        let proof = settlement.encryt_and_prove(&mut rng, &off_chain.asset_tree)
-            .expect("Failed to create settlement");
+        let req = GenerateDartProofRequest::CreateSettlement {
+            paths: MultiLeafPathAndRoot {
+                paths,
+            },
+            settlement,
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        let proof = if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate(seed) {
+            proof
+        } else {
+            panic!("Failed to generate create settlement proof");
+        };
     }: _(venue.raw_origin(), proof)
 
     sender_affirmation {

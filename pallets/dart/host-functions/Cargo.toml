@@ -37,7 +37,7 @@ sp-runtime-interface = { workspace = true, default-features = false }
 [features]
 default = ["std"]
 
-testing = []
+testing = ["polymesh-dart/testing"]
 
 asm = ["polymesh-dart/asm"]
 parallel = ["polymesh-dart/parallel"]

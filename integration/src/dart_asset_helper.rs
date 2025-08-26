@@ -130,10 +130,10 @@ impl DartUserAccountAssetState {
         Ok(())
     }
 
-    pub async fn get_path_and_root<'t>(
+    pub async fn get_path_and_root(
         &self,
-        account_tree: &'t AccountCurveTree,
-    ) -> Result<LeafPathAndRoot<'t, ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>> {
+        account_tree: &AccountCurveTree,
+    ) -> Result<LeafPathAndRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>> {
         let leaf_index = self
             .leaf_index
             .ok_or_else(|| anyhow::anyhow!("Leaf index not set"))?;
@@ -1301,7 +1301,7 @@ impl DartSettlementState {
         // Create the settlement to transfer assets to all investors.
         let proof = {
             let mut rng = rand::thread_rng();
-            settlement.encryt_and_prove(&mut rng, asset_paths)?
+            settlement.encrypt_and_prove(&mut rng, asset_paths)?
         };
         // Submit the settlement proof.
         let settlement_ref = venue.create_settlement(proof).await?;

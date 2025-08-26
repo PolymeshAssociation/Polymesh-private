@@ -1,20 +1,23 @@
 use rand_chacha::ChaCha20Rng as StdRng;
 
 use frame_support::assert_ok;
+use scale_info::prelude::format;
 use sp_std::cell::RefCell;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::rc::Rc;
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
 
 use pallet_identity::benchmarking::{user, User};
 
 use polymesh_dart::{
-    curve_tree::ProverCurveTree, AccountAssetRegistrationProof, AccountAssetState, AccountKeys,
-    AccountPublicKeys, AssetMintingProof, AssetState, Balance as DartBalance, LegBuilder, LegRole,
+    curve_tree::{MultiLeafPathAndRoot, ProverCurveTree},
+    AccountAssetRegistrationProof, AccountAssetState, AccountKeys, AccountPublicKeys,
+    AssetMintingProof, AssetState, Balance as DartBalance, LegBuilder, LegRole,
     MediatorAffirmationProof, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof,
     SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder, ACCOUNT_TREE_GENS,
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_GENS, ASSET_TREE_L, ASSET_TREE_M,
 };
+use polymesh_dart_host_functions::{GenerateDartProofRequest, GenerateDartProofResponse};
 
 use crate::*;
 
@@ -82,49 +85,30 @@ pub struct DartUserInner<T: Config> {
 }
 
 impl<T: Config> DartUserInner<T> {
-    pub fn new(name: &'static str, rng: &mut StdRng) -> Self {
-        Self::new_from_seed(name, SEED, rng)
+    pub fn new(name: &'static str) -> Self {
+        Self::new_from_seed(name, SEED)
     }
 
-    pub fn asset_user(name: &'static str, asset: u32, user_idx: u32, rng: &mut StdRng) -> Self {
-        Self::new_from_seed(name, (asset + 1) * TICKER_SEED + user_idx, rng)
+    pub fn asset_user(name: &'static str, asset: u32, user_idx: u32) -> Self {
+        Self::new_from_seed(name, (asset + 1) * TICKER_SEED + user_idx)
     }
 
-    pub fn auditor_user(
-        name: &'static str,
-        asset: u32,
-        auditor_idx: u32,
-        rng: &mut StdRng,
-    ) -> Self {
+    pub fn auditor_user(name: &'static str, asset: u32, auditor_idx: u32) -> Self {
         Self::new_from_seed(
             name,
             (asset + 1) * TICKER_SEED + (auditor_idx + 1) * AUDITOR_SEED,
-            rng,
         )
     }
 
-    fn gen_keys(rng: &mut StdRng) -> AccountKeys {
-        AccountKeys::rand(rng).expect("Failed to generate random keys")
-    }
-
-    fn new_from_seed(name: &'static str, seed: u32, rng: &mut StdRng) -> Self {
+    fn new_from_seed(name: &'static str, seed: u32) -> Self {
         let user = user::<T>(name, seed);
-        let keys = Self::gen_keys(rng);
+        let key_seed = format!("{}-{}", name, seed);
+        let keys = AccountKeys::from_seed(&key_seed).expect("Failed to generate random keys");
         Self {
             user,
             keys,
             assets: BTreeMap::new(),
         }
-    }
-
-    pub fn new_account(&self, rng: &mut StdRng) -> Self {
-        let user = Self {
-            user: self.user.clone(),
-            keys: Self::gen_keys(rng),
-            assets: BTreeMap::new(),
-        };
-        user.register_account();
-        user
     }
 
     pub fn public_keys(&self) -> AccountPublicKeys {
@@ -153,23 +137,31 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn register_account_asset_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         asset_id: DartAssetId,
     ) -> (AccountAssetRegistrationProof, AccountAssetState) {
         assert!(
             !self.assets.contains_key(&asset_id),
             "Asset already registered"
         );
-        let tree_params = Pallet::<T>::get_account_curve_tree_parameters();
-        AccountAssetRegistrationProof::new(
-            rng,
-            &self.keys,
+
+        // Generate the account asset registration proof.
+        let req = GenerateDartProofRequest::AccountAssetRegistration {
+            did: self.did(),
+            keys: self.keys.clone(),
             asset_id,
-            0,
-            &self.did().0[..],
-            tree_params,
-        )
-        .expect("Failed to generate account asset registration proof")
+            counter: 0,
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::AccountAssetRegistration {
+            proof,
+            account_state,
+        }) = req.generate(seed)
+        {
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate account asset registration proof");
+        }
     }
 
     pub fn register_account_asset(&mut self, rng: &mut StdRng, asset_id: DartAssetId) {
@@ -187,7 +179,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mint_asset_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
@@ -197,9 +189,31 @@ impl<T: Config> DartUserInner<T> {
             .get_mut(&asset_id)
             .expect("Asset not registered for user");
 
-        let proof = AssetMintingProof::new(rng, account_state, &off_chain.account_tree, amount)
-            .expect("Failed to generate mint asset proof");
-        (proof, account_state)
+        // Generate the mint asset proof.
+        let req = GenerateDartProofRequest::MintAsset {
+            amount,
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::MintAsset {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate mint asset proof");
+        }
     }
 
     pub fn mint_asset(
@@ -222,7 +236,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_affirmation_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -251,18 +265,33 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender affirmation proof.
-        let proof = SenderAffirmationProof::new(
-            rng,
-            &leg_ref,
+        let req = GenerateDartProofRequest::SenderAffirmation {
+            leg_ref,
             amount,
-            &leg_enc,
-            &leg_enc_rand,
-            account_state,
-            &off_chain.account_tree,
-        )
-        .expect("Failed to generate sender affirmation proof");
-
-        (proof, account_state)
+            leg_enc: leg_enc.clone(),
+            leg_enc_rand: leg_enc_rand.clone(),
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::SenderAffirmation {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate sender affirmation proof");
+        }
     }
 
     pub fn sender_affirmation(
@@ -287,7 +316,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn receiver_affirmation_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -315,17 +344,32 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the receiver affirmation proof.
-        let proof = ReceiverAffirmationProof::new(
-            rng,
-            &leg_ref,
-            &leg_enc,
-            &leg_enc_rand,
-            account_state,
-            &off_chain.account_tree,
-        )
-        .expect("Failed to generate receiver affirmation proof");
-
-        (proof, account_state)
+        let req = GenerateDartProofRequest::ReceiverAffirmation {
+            leg_ref,
+            leg_enc: leg_enc.clone(),
+            leg_enc_rand: leg_enc_rand.clone(),
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::ReceiverAffirmation {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate receiver affirmation proof");
+        }
     }
 
     pub fn receiver_affirmation(
@@ -350,7 +394,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn receiver_claim_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -371,18 +415,33 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the receiver claim proof.
-        let proof = ReceiverClaimProof::new(
-            rng,
-            &leg_ref,
+        let req = GenerateDartProofRequest::ReceiverClaim {
+            leg_ref,
             amount,
-            &leg_enc,
-            &leg_enc_rand,
-            account_state,
-            &off_chain.account_tree,
-        )
-        .expect("Failed to generate receiver claim proof");
-
-        (proof, account_state)
+            leg_enc: leg_enc.clone(),
+            leg_enc_rand: leg_enc_rand.clone(),
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::ReceiverClaim {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate receiver claim proof");
+        }
     }
 
     pub fn receiver_claim(
@@ -404,7 +463,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_revert_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -425,18 +484,33 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender revert proof.
-        let proof = SenderReversalProof::new(
-            rng,
-            &leg_ref,
+        let req = GenerateDartProofRequest::SenderRevert {
+            leg_ref,
             amount,
-            &leg_enc,
-            &leg_enc_rand,
-            account_state,
-            &off_chain.account_tree,
-        )
-        .expect("Failed to generate sender revert proof");
-
-        (proof, account_state)
+            leg_enc: leg_enc.clone(),
+            leg_enc_rand: leg_enc_rand.clone(),
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::SenderRevert {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate sender revert proof");
+        }
     }
 
     pub fn sender_revert(
@@ -458,7 +532,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_counter_update_proof(
         &mut self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -478,17 +552,32 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender counter update proof.
-        let proof = SenderCounterUpdateProof::new(
-            rng,
-            &leg_ref,
-            &leg_enc,
-            &leg_enc_rand,
-            account_state,
-            &off_chain.account_tree,
-        )
-        .expect("Failed to generate sender counter update proof");
-
-        (proof, account_state)
+        let req = GenerateDartProofRequest::SenderCounterUpdate {
+            leg_ref,
+            leg_enc: leg_enc.clone(),
+            leg_enc_rand: leg_enc_rand.clone(),
+            path: off_chain
+                .account_tree
+                .get_path_and_root(
+                    account_state
+                        .current_state_commitment
+                        .as_leaf_value()
+                        .expect("leaf path"),
+                )
+                .expect("Failed to get path to leaf"),
+            account_state: account_state.clone(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::SenderCounterUpdate {
+            proof,
+            account_state: new_state,
+        }) = req.generate(seed)
+        {
+            *account_state = new_state;
+            return (proof, account_state);
+        } else {
+            panic!("Failed to generate sender counter update proof");
+        }
     }
 
     pub fn sender_counter_update(
@@ -510,7 +599,7 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mediator_affirmation_proof(
         &self,
-        rng: &mut StdRng,
+        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         accept: bool,
@@ -530,16 +619,20 @@ impl<T: Config> DartUserInner<T> {
         }
 
         // Generate the mediator affirmation proof.
-        MediatorAffirmationProof::new(
-            rng,
-            &leg_ref,
-            leg.asset_id,
-            &leg_enc,
-            &self.keys.enc,
-            0,
+        let req = GenerateDartProofRequest::MediatorAffirmation {
+            leg_ref,
+            leg_enc: leg_enc.clone(),
+            asset_id: leg.asset_id,
+            key: self.keys.enc.clone(),
+            key_index: 0,
             accept,
-        )
-        .expect("Failed to generate mediator affirmation proof")
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::MediatorAffirmation { proof }) = req.generate(seed) {
+            return proof;
+        } else {
+            panic!("Failed to generate mediator affirmation proof");
+        }
     }
 
     pub fn mediator_affirmation(
@@ -561,27 +654,21 @@ impl<T: Config> DartUserInner<T> {
 pub struct DartUser<T: Config>(Rc<RefCell<DartUserInner<T>>>);
 
 impl<T: Config> DartUser<T> {
-    pub fn new(name: &'static str, rng: &mut StdRng) -> Self {
-        Self(Rc::new(RefCell::new(DartUserInner::new(name, rng))))
+    pub fn new(name: &'static str) -> Self {
+        Self(Rc::new(RefCell::new(DartUserInner::new(name))))
     }
 
-    pub fn asset_user(name: &'static str, asset: u32, user_idx: u32, rng: &mut StdRng) -> Self {
+    pub fn asset_user(name: &'static str, asset: u32, user_idx: u32) -> Self {
         Self(Rc::new(RefCell::new(DartUserInner::asset_user(
-            name, asset, user_idx, rng,
+            name, asset, user_idx,
         ))))
     }
 
-    pub fn auditor_user(
-        name: &'static str,
-        asset: u32,
-        auditor_idx: u32,
-        rng: &mut StdRng,
-    ) -> Self {
+    pub fn auditor_user(name: &'static str, asset: u32, auditor_idx: u32) -> Self {
         Self(Rc::new(RefCell::new(DartUserInner::auditor_user(
             name,
             asset,
             auditor_idx,
-            rng,
         ))))
     }
 
@@ -828,7 +915,7 @@ impl<T: Config> DartTestAsset<T> {
         );
 
         // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::asset_user(name, asset_idx, 0, rng);
+        let asset_issuer = DartUser::<T>::asset_user(name, asset_idx, 0);
 
         // Register the asset issuer's account.
         asset_issuer.register_account();
@@ -837,7 +924,7 @@ impl<T: Config> DartTestAsset<T> {
         let mut auditors = Vec::new();
         let mut auditor_keys = BoundedVec::new();
         for i in 0..auditor_count {
-            let auditor = DartUser::<T>::auditor_user("Auditor", asset_idx, i, rng);
+            let auditor = DartUser::<T>::auditor_user("Auditor", asset_idx, i);
             // Register the auditor's keys.
             auditor.register_account();
             auditor_keys
@@ -848,7 +935,7 @@ impl<T: Config> DartTestAsset<T> {
         let mut mediators = Vec::new();
         let mut mediator_keys = BoundedVec::new();
         for i in 0..mediator_count {
-            let mediator = DartUser::<T>::auditor_user("Mediator", asset_idx, i, rng);
+            let mediator = DartUser::<T>::auditor_user("Mediator", asset_idx, i);
             // Register the mediator's keys.
             mediator.register_account();
             mediator_keys
@@ -941,7 +1028,7 @@ impl<T: Config> DartTestAsset<T> {
         let idx = self.idx + 1;
         self.idx = idx;
         // Create a user to invest in the asset.
-        let user = DartUser::<T>::asset_user("Investor", self.asset_idx, idx, rng);
+        let user = DartUser::<T>::asset_user("Investor", self.asset_idx, idx);
 
         // Register the account.
         user.register_account();
@@ -1083,10 +1170,22 @@ impl<T: Config> DartSettlementState<T> {
         }
 
         // Create the settlement to transfer assets to all investors.
-        let proof = settlement
-            .encryt_and_prove(rng, &off_chain.asset_tree)
-            .expect("Failed to create settlement");
-        assert_ok!(Pallet::<T>::create_settlement(issuer.origin(), proof));
+        let paths = MultiLeafPathAndRoot {
+            paths: vec![off_chain
+                .asset_tree
+                .get_path_and_root_by_index(asset_id as LeafIndex)
+                .expect("Failed to get path to leaf")],
+        };
+        let req = GenerateDartProofRequest::CreateSettlement {
+            paths,
+            settlement: settlement,
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate(seed) {
+            assert_ok!(Pallet::<T>::create_settlement(issuer.origin(), proof));
+        } else {
+            panic!("Failed to generate create settlement proof");
+        };
 
         let settlement = Self {
             settlement_id: settlement_id.into(),
