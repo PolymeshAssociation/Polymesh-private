@@ -126,7 +126,7 @@ benchmarks! {
         let venue = DartUser::<T>::new("Venue", &mut rng);
 
         // Create a settlement to transfer some assets from the issuer to the investor.
-        let mut settlement = SettlementBuilder::<T>::new(b"Test");
+        let mut settlement = SettlementBuilder::<PolymeshPrivateLimits>::new(b"Test");
 
         for asset_idx in 0..l {
             // Create asset issuer and an asset.

@@ -1058,7 +1058,7 @@ impl<T: Config> DartSettlementState<T> {
         // Create the investors.
         let mut investors = Vec::with_capacity(count);
         let mut legs = Vec::with_capacity(count);
-        let mut settlement = SettlementBuilder::<T>::new(b"FundInvestors");
+        let mut settlement = SettlementBuilder::<PolymeshPrivateLimits>::new(b"FundInvestors");
         for leg_idx in 0..count {
             let leg_ref = LegRef {
                 settlement: settlement_id.into(),

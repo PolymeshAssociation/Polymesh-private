@@ -16,8 +16,9 @@ use rand_core::SeedableRng;
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M, AccountAssetRegistrationProof,
-    AssetMintingProof, LegEncrypted, MediatorAffirmationProof, ReceiverAffirmationProof,
-    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
+    AssetMintingProof, LegEncrypted, MediatorAffirmationProof, PolymeshPrivateLimits,
+    ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
+    SenderReversalProof, SettlementProof,
     curve_tree::{AccountTreeConfig, AssetTreeConfig, CurveTreeRoot},
 };
 
@@ -42,6 +43,10 @@ pub enum VerifyDartAssetRequest {
     MintAsset {
         root: AccountTreeRoot,
         proof: AssetMintingProof,
+    },
+    CreateSettlement {
+        root: AssetTreeRoot,
+        proof: SettlementProof<PolymeshPrivateLimits>,
     },
     SenderAffirmation {
         leg_enc: LegEncrypted,
@@ -82,6 +87,11 @@ impl VerifyDartAssetRequest {
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::MintAsset { root, proof } => {
+                proof
+                    .verify(root, &mut rng)
+                    .map_err(|_| Error::VerifyFailed)?;
+            }
+            Self::CreateSettlement { root, proof } => {
                 proof
                     .verify(root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;

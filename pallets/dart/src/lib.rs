@@ -31,8 +31,8 @@ use polymesh_dart::{
     curve_tree::{ValidateCurveTreeRoot, WrappedCurveTreeParameters},
     AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
     AssetId as DartAssetId, AssetState, BatchedSettlementCounts, DartLimits, EncryptionPublicKey,
-    Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, SettlementId, SettlementRef,
-    ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
+    Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, PolymeshPrivateLimits,
+    SettlementId, SettlementRef, ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
 use polymesh_dart_host_functions::{BatchSeed, VerifyDartAssetRequest};
@@ -479,7 +479,7 @@ pub mod pallet {
         _,
         Twox64Concat,
         SettlementRef,
-        BoundedVec<u8, T::MaxSettlementMemoLength>,
+        BoundedVec<u8, <PolymeshPrivateLimits as DartLimits>::MaxSettlementMemoLength>,
         OptionQuery,
     >;
 
@@ -692,7 +692,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::mint_asset())]
         pub fn mint_asset(
             origin: OriginFor<T>,
-            proof: polymesh_dart::AssetMintingProof<AccountTreeConfig>,
+            proof: polymesh_dart::AssetMintingProof,
         ) -> DispatchResult {
             // Ensure the caller has the required permissions to mint the asset.
             let caller_did = Self::ensure_dart_account_permissions(origin, &proof.pk)?;
@@ -757,7 +757,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_settlement(proof.legs.len() as u32))]
         pub fn create_settlement(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SettlementProof<T, AssetTreeConfig>,
+            proof: polymesh_dart::SettlementProof<PolymeshPrivateLimits>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -766,7 +766,7 @@ pub mod pallet {
             NextSettlementId::<T>::put(settlement_id + 1);
             let settlement_ref = SettlementRef::from(settlement_id);
 
-            Self::base_create_settlement(settlement_ref, &proof)
+            Self::base_create_settlement(settlement_ref, proof)
         }
 
         /// Sender affirms a settlement leg.
@@ -785,7 +785,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_affirmation())]
         pub fn sender_affirmation(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
+            proof: polymesh_dart::SenderAffirmationProof,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -808,7 +808,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::receiver_affirmation())]
         pub fn receiver_affirmation(
             origin: OriginFor<T>,
-            proof: polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
+            proof: polymesh_dart::ReceiverAffirmationProof,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -870,7 +870,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_update_counter())]
         pub fn sender_update_counter(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderCounterUpdateProof<AccountTreeConfig>,
+            proof: polymesh_dart::SenderCounterUpdateProof,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -906,7 +906,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::sender_revert())]
         pub fn sender_revert(
             origin: OriginFor<T>,
-            proof: polymesh_dart::SenderReversalProof<AccountTreeConfig>,
+            proof: polymesh_dart::SenderReversalProof,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -942,7 +942,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::receiver_claim())]
         pub fn receiver_claim(
             origin: OriginFor<T>,
-            proof: polymesh_dart::ReceiverClaimProof<AccountTreeConfig>,
+            proof: polymesh_dart::ReceiverClaimProof,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -977,7 +977,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::batched_settlement(proof.count_leg_affirmations()))]
         pub fn batched_settlement(
             origin: OriginFor<T>,
-            proof: polymesh_dart::BatchedSettlementProof<T, AssetTreeConfig, AccountTreeConfig>,
+            proof: polymesh_dart::BatchedSettlementProof<PolymeshPrivateLimits>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -991,7 +991,7 @@ pub mod pallet {
             let settlement_ref = proof.settlement_ref();
 
             // Create the settlement with the provided proof.
-            Self::base_create_settlement(settlement_ref, proof.settlement_proof())?;
+            Self::base_create_settlement(settlement_ref, proof.hashed_settlement.settlement)?;
 
             // Handle the leg affirmations in the proof.
             for leg_affirmation in proof.leg_affirmations {
@@ -1060,7 +1060,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn base_create_settlement(
         settlement_ref: SettlementRef,
-        proof: &polymesh_dart::SettlementProof<T, AssetTreeConfig>,
+        proof: polymesh_dart::SettlementProof<PolymeshPrivateLimits>,
     ) -> DispatchResult {
         let leg_count = proof.legs.len();
         // Ensure the settlement has at least one leg.
@@ -1072,24 +1072,25 @@ impl<T: Config> Pallet<T> {
             Error::<T>::SettlementTooManyLegs
         );
 
-        // Get the asset curve tree.
-        let asset_curve_tree = Self::get_asset_curve_tree()?;
-
         // Verify the settlement proof.
-        let mut rng = Self::get_rng();
-        proof
-            .verify(&asset_curve_tree, &mut rng)
-            .map_err(|_| Error::<T>::InvalidProof)?;
+        let memo = proof.memo.clone();
+        let proof_legs = proof.legs.clone();
+        let root_block: BlockNumberFor<T> = proof.root_block.into();
+        let seed = Self::get_seed(true);
+        let root =
+            AssetCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
+        let req = VerifyDartAssetRequest::CreateSettlement { root, proof };
+        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Set the settlement state to pending.
         SettlementState::<T>::insert(settlement_ref, SettlementStatus::Pending);
 
         // Store the settlement memo.
-        SettlementMemo::<T>::insert(settlement_ref, &proof.memo);
+        SettlementMemo::<T>::insert(settlement_ref, &memo);
 
         // Store the settlement legs.
         let mut legs = BoundedVec::new();
-        for (leg_id, leg) in proof.legs.iter().enumerate() {
+        for (leg_id, leg) in proof_legs.into_iter().enumerate() {
             let leg_id = leg_id as LegId;
             let leg_enc = leg.leg_enc().map_err(Error::<T>::from)?;
             legs.force_push(leg_enc.clone());
@@ -1112,9 +1113,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn base_sender_affirmation(
-        proof: polymesh_dart::SenderAffirmationProof<AccountTreeConfig>,
-    ) -> DispatchResult {
+    pub fn base_sender_affirmation(proof: polymesh_dart::SenderAffirmationProof) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
         Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
@@ -1132,7 +1131,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn base_receiver_affirmation(
-        proof: polymesh_dart::ReceiverAffirmationProof<AccountTreeConfig>,
+        proof: polymesh_dart::ReceiverAffirmationProof,
     ) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
@@ -1353,12 +1352,6 @@ impl<T: Config> Pallet<T> {
         let len = seed.len().min(s.len());
         seed[..len].copy_from_slice(&s[..len]);
         seed
-    }
-
-    fn get_rng() -> rand_chacha::ChaCha20Rng {
-        use rand_core::SeedableRng;
-        // Get the random number generator.
-        rand_chacha::ChaCha20Rng::from_seed(Self::get_seed(true))
     }
 
     pub fn update_curve_tree_roots() {
