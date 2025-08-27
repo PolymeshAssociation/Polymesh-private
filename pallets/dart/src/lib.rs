@@ -42,7 +42,7 @@ type PalletIdentity<T> = pallet_identity::Pallet<T>;
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
-//#[cfg(feature = "testing")]
+#[cfg(feature = "testing")]
 pub mod testing;
 
 pub mod weights;
