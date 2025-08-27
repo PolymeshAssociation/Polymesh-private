@@ -106,11 +106,12 @@ impl DartUserAccountAssetState {
     pub async fn update_leaf_index(&mut self, res: &mut TransactionResults) -> Result<()> {
         if let Some((leaf_index, account_leaf)) = get_account_leaf_inserted(res).await? {
             // Get the expect new account commitment.
-            let expected_leaf = if let Some(pending) = &self.asset_state.pending_state {
-                pending.commitment()?.as_leaf_value()?
-            } else {
-                self.asset_state.current_state_commitment.as_leaf_value()?
-            };
+            let expected_leaf =
+                if let Some((_state, pending_commitment)) = &self.asset_state.pending_state {
+                    pending_commitment.as_leaf_value()?
+                } else {
+                    self.asset_state.current_state_commitment.as_leaf_value()?
+                };
 
             // Check that the account leaf matches the expected state commitment.
             if account_leaf != expected_leaf {
@@ -207,7 +208,7 @@ impl DartUserInner {
             let params = get_account_curve_tree_parameters();
             let (proof, asset_state) = AccountAssetRegistrationProof::new(
                 &mut rng,
-                &self.keys,
+                &self.keys.acct,
                 asset_id,
                 0,
                 &did.0[..],
@@ -287,7 +288,13 @@ impl DartUserInner {
         // Generate minting proof.
         let proof = {
             let mut rng = rand::thread_rng();
-            AssetMintingProof::new(&mut rng, asset_state.as_mut(), account_lookup, amount)?
+            AssetMintingProof::new(
+                &mut rng,
+                &self.keys.acct,
+                asset_state.as_mut(),
+                account_lookup,
+                amount,
+            )?
         };
 
         // Submit the minting proof.
@@ -366,6 +373,7 @@ impl DartUserInner {
             let mut rng = rand::thread_rng();
             SenderAffirmationProof::new(
                 &mut rng,
+                &self.keys.acct,
                 &leg_ref,
                 amount,
                 &leg_enc,
@@ -432,6 +440,7 @@ impl DartUserInner {
             let mut rng = rand::thread_rng();
             ReceiverAffirmationProof::new(
                 &mut rng,
+                &self.keys.acct,
                 &leg_ref,
                 &leg_enc,
                 &leg_enc_rand,
@@ -544,6 +553,7 @@ impl DartUserInner {
             let mut rng = rand::thread_rng();
             ReceiverClaimProof::new(
                 &mut rng,
+                &self.keys.acct,
                 &leg_ref,
                 amount,
                 &leg_enc,
@@ -598,6 +608,7 @@ impl DartUserInner {
             let mut rng = rand::thread_rng();
             SenderCounterUpdateProof::new(
                 &mut rng,
+                &self.keys.acct,
                 &leg_ref,
                 &leg_enc,
                 &leg_enc_rand,
@@ -649,6 +660,7 @@ impl DartUserInner {
             let mut rng = rand::thread_rng();
             SenderReversalProof::new(
                 &mut rng,
+                &self.keys.acct,
                 &leg_ref,
                 amount,
                 &leg_enc,
