@@ -10,7 +10,7 @@ use rand_core::SeedableRng;
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M, AccountAssetRegistrationProof,
-    AccountAssetState, AccountKeys, AssetId, AssetMintingProof, Balance, EncryptionKeyPair,
+    AccountAssetState, AccountKeyPair, AssetId, AssetMintingProof, Balance, EncryptionKeyPair,
     LegEncrypted, LegEncryptionRandomness, LegRef, MediatorAffirmationProof, PolymeshPrivateLimits,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
     SenderReversalProof, SettlementBuilder, SettlementProof,
@@ -27,12 +27,13 @@ pub type AssetLeafPathAndRoot = LeafPathAndRoot<ASSET_TREE_L, ASSET_TREE_M, Asse
 #[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum GenerateDartProofRequest {
     AccountAssetRegistration {
+        key: AccountKeyPair,
         did: IdentityId,
-        keys: AccountKeys,
         asset_id: AssetId,
         counter: u16,
     },
     MintAsset {
+        key: AccountKeyPair,
         amount: Balance,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
@@ -42,6 +43,7 @@ pub enum GenerateDartProofRequest {
         settlement: SettlementBuilder<PolymeshPrivateLimits>,
     },
     SenderAffirmation {
+        key: AccountKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
         leg_enc_rand: LegEncryptionRandomness,
@@ -50,6 +52,7 @@ pub enum GenerateDartProofRequest {
         account_state: AccountAssetState,
     },
     ReceiverAffirmation {
+        key: AccountKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
         leg_enc_rand: LegEncryptionRandomness,
@@ -57,14 +60,15 @@ pub enum GenerateDartProofRequest {
         account_state: AccountAssetState,
     },
     MediatorAffirmation {
+        key: EncryptionKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        asset_id: AssetId,
-        key: EncryptionKeyPair,
         key_index: u8,
+        asset_id: AssetId,
         accept: bool,
     },
     ReceiverClaim {
+        key: AccountKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
         leg_enc_rand: LegEncryptionRandomness,
@@ -73,6 +77,7 @@ pub enum GenerateDartProofRequest {
         account_state: AccountAssetState,
     },
     SenderCounterUpdate {
+        key: AccountKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
         leg_enc_rand: LegEncryptionRandomness,
@@ -80,6 +85,7 @@ pub enum GenerateDartProofRequest {
         account_state: AccountAssetState,
     },
     SenderRevert {
+        key: AccountKeyPair,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
         leg_enc_rand: LegEncryptionRandomness,
@@ -95,15 +101,15 @@ impl GenerateDartProofRequest {
         let mut rng = Rng::from_seed(seed);
         match self {
             GenerateDartProofRequest::AccountAssetRegistration {
+                key,
                 did,
-                keys,
                 asset_id,
                 counter,
             } => {
                 let params = get_account_curve_tree_parameters();
                 let (proof, account_state) = AccountAssetRegistrationProof::new(
                     &mut rng,
-                    &keys,
+                    &key,
                     asset_id,
                     counter,
                     &did.0[..],
@@ -116,12 +122,14 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::MintAsset {
+                key,
                 amount,
                 path,
                 mut account_state,
             } => {
-                let proof = AssetMintingProof::new(&mut rng, &mut account_state, path, amount)
-                    .map_err(|_| Error::VerifyFailed)?;
+                let proof =
+                    AssetMintingProof::new(&mut rng, &key, &mut account_state, path, amount)
+                        .map_err(|_| Error::VerifyFailed)?;
                 Ok(GenerateDartProofResponse::MintAsset {
                     proof,
                     account_state,
@@ -137,6 +145,7 @@ impl GenerateDartProofRequest {
                 Ok(GenerateDartProofResponse::CreateSettlement { proof })
             }
             GenerateDartProofRequest::SenderAffirmation {
+                key,
                 leg_ref,
                 leg_enc,
                 leg_enc_rand,
@@ -146,6 +155,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = SenderAffirmationProof::new(
                     &mut rng,
+                    &key,
                     &leg_ref,
                     amount,
                     &leg_enc,
@@ -160,6 +170,7 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::ReceiverAffirmation {
+                key,
                 leg_ref,
                 leg_enc,
                 leg_enc_rand,
@@ -168,6 +179,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = ReceiverAffirmationProof::new(
                     &mut rng,
+                    &key,
                     &leg_ref,
                     &leg_enc,
                     &leg_enc_rand,
@@ -181,11 +193,11 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::MediatorAffirmation {
+                key,
                 leg_ref,
                 leg_enc,
-                asset_id,
-                key,
                 key_index,
+                asset_id,
                 accept,
             } => {
                 let proof = MediatorAffirmationProof::new(
@@ -195,6 +207,7 @@ impl GenerateDartProofRequest {
                 Ok(GenerateDartProofResponse::MediatorAffirmation { proof })
             }
             GenerateDartProofRequest::ReceiverClaim {
+                key,
                 leg_ref,
                 leg_enc,
                 leg_enc_rand,
@@ -204,6 +217,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = ReceiverClaimProof::new(
                     &mut rng,
+                    &key,
                     &leg_ref,
                     amount,
                     &leg_enc,
@@ -218,6 +232,7 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::SenderCounterUpdate {
+                key,
                 leg_ref,
                 leg_enc,
                 leg_enc_rand,
@@ -226,6 +241,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = SenderCounterUpdateProof::new(
                     &mut rng,
+                    &key,
                     &leg_ref,
                     &leg_enc,
                     &leg_enc_rand,
@@ -239,6 +255,7 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::SenderRevert {
+                key,
                 leg_ref,
                 leg_enc,
                 leg_enc_rand,
@@ -248,6 +265,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = SenderReversalProof::new(
                     &mut rng,
+                    &key,
                     &leg_ref,
                     amount,
                     &leg_enc,

@@ -13,8 +13,6 @@ polymesh-runtime-common = { workspace = true, default-features = false }
 pallet-identity = { workspace = true, default-features = false }
 
 # Crypto
-rand_core = { workspace = true, default-features = false }
-rand_chacha = { workspace = true, default-features = false }
 polymesh-dart-host-functions = { workspace = true, default-features = false }
 
 # DART
@@ -53,8 +51,6 @@ std = [
   "asm",
   "parallel",
   "lazy_static",
-  "rand_core/std",
-  "rand_chacha/std",
   "codec/std",
   "polymesh-dart/std",
   "frame-support/std",

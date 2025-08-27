@@ -1,5 +1,3 @@
-use rand_chacha::ChaCha20Rng as StdRng;
-
 use frame_support::assert_ok;
 use scale_info::prelude::format;
 use sp_std::cell::RefCell;
@@ -137,7 +135,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn register_account_asset_proof(
         &mut self,
-        _rng: &mut StdRng,
         asset_id: DartAssetId,
     ) -> (AccountAssetRegistrationProof, AccountAssetState) {
         assert!(
@@ -147,8 +144,8 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the account asset registration proof.
         let req = GenerateDartProofRequest::AccountAssetRegistration {
+            key: self.keys.acct.clone(),
             did: self.did(),
-            keys: self.keys.clone(),
             asset_id,
             counter: 0,
         };
@@ -164,8 +161,8 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn register_account_asset(&mut self, rng: &mut StdRng, asset_id: DartAssetId) {
-        let (proof, mut account_state) = self.register_account_asset_proof(rng, asset_id);
+    pub fn register_account_asset(&mut self, asset_id: DartAssetId) {
+        let (proof, mut account_state) = self.register_account_asset_proof(asset_id);
 
         assert_ok!(Pallet::<T>::register_account_asset(self.origin(), proof));
 
@@ -179,7 +176,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mint_asset_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
@@ -191,6 +187,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the mint asset proof.
         let req = GenerateDartProofRequest::MintAsset {
+            key: self.keys.acct.clone(),
             amount,
             path: off_chain
                 .account_tree
@@ -218,13 +215,12 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mint_asset(
         &mut self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
     ) {
         let origin = self.origin();
-        let (mint_proof, account_state) = self.mint_asset_proof(rng, off_chain, asset_id, amount);
+        let (mint_proof, account_state) = self.mint_asset_proof(off_chain, asset_id, amount);
 
         assert_ok!(Pallet::<T>::mint_asset(origin, mint_proof));
 
@@ -236,7 +232,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_affirmation_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -266,6 +261,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the sender affirmation proof.
         let req = GenerateDartProofRequest::SenderAffirmation {
+            key: self.keys.acct.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
@@ -296,7 +292,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_affirmation(
         &mut self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -304,7 +299,7 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let origin = self.origin();
         let (proof, account_state) =
-            self.sender_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
+            self.sender_affirmation_proof(off_chain, leg_ref, asset_id, amount);
 
         assert_ok!(Pallet::<T>::sender_affirmation(origin, proof));
 
@@ -316,7 +311,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn receiver_affirmation_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -345,6 +339,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the receiver affirmation proof.
         let req = GenerateDartProofRequest::ReceiverAffirmation {
+            key: self.keys.acct.clone(),
             leg_ref,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
@@ -374,7 +369,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn receiver_affirmation(
         &mut self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -382,7 +376,7 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let origin = self.origin();
         let (proof, account_state) =
-            self.receiver_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
+            self.receiver_affirmation_proof(off_chain, leg_ref, asset_id, amount);
 
         assert_ok!(Pallet::<T>::receiver_affirmation(origin, proof));
 
@@ -394,7 +388,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn receiver_claim_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -416,6 +409,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the receiver claim proof.
         let req = GenerateDartProofRequest::ReceiverClaim {
+            key: self.keys.acct.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
@@ -444,14 +438,9 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn receiver_claim(
-        &mut self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn receiver_claim(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let origin = self.origin();
-        let (proof, account_state) = self.receiver_claim_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = self.receiver_claim_proof(off_chain, leg_ref);
 
         assert_ok!(Pallet::<T>::receiver_claim(origin, proof));
 
@@ -463,7 +452,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_revert_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -485,6 +473,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the sender revert proof.
         let req = GenerateDartProofRequest::SenderRevert {
+            key: self.keys.acct.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
@@ -513,14 +502,9 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn sender_revert(
-        &mut self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn sender_revert(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let origin = self.origin();
-        let (proof, account_state) = self.sender_revert_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = self.sender_revert_proof(off_chain, leg_ref);
 
         assert_ok!(Pallet::<T>::sender_revert(origin, proof));
 
@@ -532,7 +516,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn sender_counter_update_proof(
         &mut self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -553,6 +536,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Generate the sender counter update proof.
         let req = GenerateDartProofRequest::SenderCounterUpdate {
+            key: self.keys.acct.clone(),
             leg_ref,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
@@ -580,14 +564,9 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn sender_counter_update(
-        &mut self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn sender_counter_update(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let origin = self.origin();
-        let (proof, account_state) = self.sender_counter_update_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = self.sender_counter_update_proof(off_chain, leg_ref);
 
         assert_ok!(Pallet::<T>::sender_update_counter(origin, proof));
 
@@ -599,7 +578,6 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mediator_affirmation_proof(
         &self,
-        _rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         accept: bool,
@@ -637,14 +615,13 @@ impl<T: Config> DartUserInner<T> {
 
     pub fn mediator_affirmation(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         accept: bool,
         verify: Option<(DartAssetId, DartBalance)>,
     ) {
         let origin = self.origin();
-        let proof = self.mediator_affirmation_proof(rng, off_chain, leg_ref, accept, verify);
+        let proof = self.mediator_affirmation_proof(off_chain, leg_ref, accept, verify);
 
         assert_ok!(Pallet::<T>::mediator_affirmation(origin, proof));
     }
@@ -703,45 +680,41 @@ impl<T: Config> DartUser<T> {
 
     pub fn register_account_asset_proof(
         &self,
-        rng: &mut StdRng,
         asset_id: DartAssetId,
     ) -> (AccountAssetRegistrationProof, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        inner.register_account_asset_proof(rng, asset_id)
+        inner.register_account_asset_proof(asset_id)
     }
 
-    pub fn register_account_asset(&self, rng: &mut StdRng, asset_id: DartAssetId) {
+    pub fn register_account_asset(&self, asset_id: DartAssetId) {
         let mut inner = self.0.borrow_mut();
-        inner.register_account_asset(rng, asset_id);
+        inner.register_account_asset(asset_id);
     }
 
     pub fn mint_asset_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
     ) -> (AssetMintingProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.mint_asset_proof(rng, off_chain, asset_id, amount);
+        let (proof, account_state) = inner.mint_asset_proof(off_chain, asset_id, amount);
 
         (proof, account_state.clone())
     }
 
     pub fn mint_asset(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         asset_id: DartAssetId,
         amount: DartBalance,
     ) {
         let mut inner = self.0.borrow_mut();
-        inner.mint_asset(rng, off_chain, asset_id, amount);
+        inner.mint_asset(off_chain, asset_id, amount);
     }
 
     pub fn sender_affirmation_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -749,25 +722,23 @@ impl<T: Config> DartUser<T> {
     ) -> (SenderAffirmationProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) =
-            inner.sender_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
+            inner.sender_affirmation_proof(off_chain, leg_ref, asset_id, amount);
         (proof, account_state.clone())
     }
 
     pub fn sender_affirmation(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
     ) {
         let mut inner = self.0.borrow_mut();
-        inner.sender_affirmation(rng, off_chain, leg_ref, asset_id, amount);
+        inner.sender_affirmation(off_chain, leg_ref, asset_id, amount);
     }
 
     pub fn receiver_affirmation_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
@@ -778,69 +749,55 @@ impl<T: Config> DartUser<T> {
     ) {
         let mut inner = self.0.borrow_mut();
         let (proof, account_state) =
-            inner.receiver_affirmation_proof(rng, off_chain, leg_ref, asset_id, amount);
+            inner.receiver_affirmation_proof(off_chain, leg_ref, asset_id, amount);
         (proof, account_state.clone())
     }
 
     pub fn receiver_affirmation(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
         amount: DartBalance,
     ) {
         let mut inner = self.0.borrow_mut();
-        inner.receiver_affirmation(rng, off_chain, leg_ref, asset_id, amount);
+        inner.receiver_affirmation(off_chain, leg_ref, asset_id, amount);
     }
 
     pub fn receiver_claim_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (ReceiverClaimProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.receiver_claim_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = inner.receiver_claim_proof(off_chain, leg_ref);
 
         (proof, account_state.clone())
     }
 
-    pub fn receiver_claim(
-        &self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn receiver_claim(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let mut inner = self.0.borrow_mut();
-        inner.receiver_claim(rng, off_chain, leg_ref);
+        inner.receiver_claim(off_chain, leg_ref);
     }
 
     pub fn sender_revert_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (SenderReversalProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.sender_revert_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = inner.sender_revert_proof(off_chain, leg_ref);
 
         (proof, account_state.clone())
     }
 
-    pub fn sender_revert(
-        &self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn sender_revert(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let mut inner = self.0.borrow_mut();
-        inner.sender_revert(rng, off_chain, leg_ref);
+        inner.sender_revert(off_chain, leg_ref);
     }
 
     pub fn sender_counter_update_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
     ) -> (
@@ -848,43 +805,36 @@ impl<T: Config> DartUser<T> {
         AccountAssetState,
     ) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.sender_counter_update_proof(rng, off_chain, leg_ref);
+        let (proof, account_state) = inner.sender_counter_update_proof(off_chain, leg_ref);
 
         (proof, account_state.clone())
     }
 
-    pub fn sender_counter_update(
-        &self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        leg_ref: LegRef,
-    ) {
+    pub fn sender_counter_update(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
         let mut inner = self.0.borrow_mut();
-        inner.sender_counter_update(rng, off_chain, leg_ref);
+        inner.sender_counter_update(off_chain, leg_ref);
     }
 
     pub fn mediator_affirmation_proof(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         accept: bool,
         verify: Option<(DartAssetId, DartBalance)>,
     ) -> MediatorAffirmationProof {
         let inner = self.0.borrow();
-        inner.mediator_affirmation_proof(rng, off_chain, leg_ref, accept, verify)
+        inner.mediator_affirmation_proof(off_chain, leg_ref, accept, verify)
     }
 
     pub fn mediator_affirmation(
         &self,
-        rng: &mut StdRng,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         accept: bool,
         verify: Option<(DartAssetId, DartBalance)>,
     ) {
         let inner = self.0.borrow();
-        inner.mediator_affirmation(rng, off_chain, leg_ref, accept, verify);
+        inner.mediator_affirmation(off_chain, leg_ref, accept, verify);
     }
 }
 
@@ -901,7 +851,6 @@ pub struct DartTestAsset<T: Config> {
 
 impl<T: Config> DartTestAsset<T> {
     pub fn new(
-        rng: &mut StdRng,
         off_chain: &mut OffchainProverState<T>,
         name: &'static str,
         asset_idx: u32,
@@ -961,13 +910,13 @@ impl<T: Config> DartTestAsset<T> {
         let mint_amount = mint_amount.unwrap_or(0);
         if mint_amount > 0 {
             // Asset issuer registers the asset.
-            asset_issuer.register_account_asset(rng, asset_id);
+            asset_issuer.register_account_asset(asset_id);
 
             // Update the curve tree roots.
             off_chain.apply_new_leaves();
 
             // Mint asset proof.
-            asset_issuer.mint_asset(rng, &off_chain, asset_id, mint_amount);
+            asset_issuer.mint_asset(&off_chain, asset_id, mint_amount);
 
             // Update the curve tree roots.
             off_chain.apply_new_leaves();
@@ -1007,14 +956,9 @@ impl<T: Config> DartTestAsset<T> {
         AssetState::new(self.id, &auditors, &mediators)
     }
 
-    pub fn mint_more(
-        &mut self,
-        rng: &mut StdRng,
-        off_chain: &mut OffchainProverState<T>,
-        amount: DartBalance,
-    ) {
+    pub fn mint_more(&mut self, off_chain: &mut OffchainProverState<T>, amount: DartBalance) {
         // Mint asset proof.
-        self.issuer.mint_asset(rng, off_chain, self.id, amount);
+        self.issuer.mint_asset(off_chain, self.id, amount);
 
         // Update the curve tree roots.
         off_chain.apply_new_leaves();
@@ -1024,7 +968,7 @@ impl<T: Config> DartTestAsset<T> {
         self.issuer_balance += amount;
     }
 
-    pub fn create_investor(&mut self, rng: &mut StdRng) -> DartUser<T> {
+    pub fn create_investor(&mut self) -> DartUser<T> {
         let idx = self.idx + 1;
         self.idx = idx;
         // Create a user to invest in the asset.
@@ -1034,34 +978,33 @@ impl<T: Config> DartTestAsset<T> {
         user.register_account();
 
         // Account asset registration proof.
-        user.register_account_asset(rng, self.id);
+        user.register_account_asset(self.id);
 
         user
     }
 
     pub fn create_and_fund_investors(
         &mut self,
-        rng: &mut StdRng,
         count: usize,
         amount: DartBalance,
         off_chain: &mut OffchainProverState<T>,
     ) -> Vec<DartUser<T>> {
         let total_amount = amount * count as DartBalance;
         if total_amount > self.issuer_balance {
-            self.mint_more(rng, off_chain, total_amount);
+            self.mint_more(off_chain, total_amount);
         }
 
         let (settlement, investors) =
-            DartSettlementState::create_investors_and_fund(rng, self, count, amount, off_chain);
+            DartSettlementState::create_investors_and_fund(self, count, amount, off_chain);
 
         // Update the curve tree roots.
         off_chain.apply_new_leaves();
 
         // Affirm all the legs in the settlement.
-        settlement.affirm_legs(rng, off_chain);
+        settlement.affirm_legs(off_chain);
 
         // All investors claim their assets.
-        settlement.claim_assets(rng, off_chain);
+        settlement.claim_assets(off_chain);
 
         investors
     }
@@ -1078,30 +1021,19 @@ pub struct DartSettlementLegState<T: Config> {
 }
 
 impl<T: Config> DartSettlementLegState<T> {
-    pub fn sender_affirmation(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+    pub fn sender_affirmation(&self, off_chain: &mut OffchainProverState<T>) {
         self.sender
-            .sender_affirmation(rng, off_chain, self.leg_ref, self.asset_id, self.amount);
+            .sender_affirmation(off_chain, self.leg_ref, self.asset_id, self.amount);
     }
 
-    pub fn receiver_affirmation(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
-        self.receiver.receiver_affirmation(
-            rng,
-            off_chain,
-            self.leg_ref,
-            self.asset_id,
-            self.amount,
-        );
+    pub fn receiver_affirmation(&self, off_chain: &mut OffchainProverState<T>) {
+        self.receiver
+            .receiver_affirmation(off_chain, self.leg_ref, self.asset_id, self.amount);
     }
 
-    pub fn mediator_affirmation(
-        &self,
-        rng: &mut StdRng,
-        off_chain: &OffchainProverState<T>,
-        accept: bool,
-    ) {
+    pub fn mediator_affirmation(&self, off_chain: &OffchainProverState<T>, accept: bool) {
         for mediator in &self.mediators {
             mediator.mediator_affirmation(
-                rng,
                 off_chain,
                 self.leg_ref,
                 accept,
@@ -1110,16 +1042,16 @@ impl<T: Config> DartSettlementLegState<T> {
         }
     }
 
-    pub fn affirm_leg(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
-        self.sender_affirmation(rng, off_chain);
+    pub fn affirm_leg(&self, off_chain: &mut OffchainProverState<T>) {
+        self.sender_affirmation(off_chain);
         off_chain.apply_new_leaves();
-        self.receiver_affirmation(rng, off_chain);
+        self.receiver_affirmation(off_chain);
         off_chain.apply_new_leaves();
-        self.mediator_affirmation(rng, off_chain, true);
+        self.mediator_affirmation(off_chain, true);
     }
 
-    pub fn receiver_claim(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
-        self.receiver.receiver_claim(rng, off_chain, self.leg_ref);
+    pub fn receiver_claim(&self, off_chain: &mut OffchainProverState<T>) {
+        self.receiver.receiver_claim(off_chain, self.leg_ref);
     }
 }
 
@@ -1131,7 +1063,6 @@ pub struct DartSettlementState<T: Config> {
 
 impl<T: Config> DartSettlementState<T> {
     pub fn create_investors_and_fund(
-        rng: &mut StdRng,
         asset: &mut DartTestAsset<T>,
         count: usize,
         amount: DartBalance,
@@ -1151,7 +1082,7 @@ impl<T: Config> DartSettlementState<T> {
                 settlement: settlement_id.into(),
                 leg_id: leg_idx as _,
             };
-            let user = asset.create_investor(rng);
+            let user = asset.create_investor();
             legs.push(DartSettlementLegState {
                 leg_ref,
                 sender: issuer.clone(),
@@ -1195,49 +1126,44 @@ impl<T: Config> DartSettlementState<T> {
         (settlement, investors)
     }
 
-    pub fn senders_affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+    pub fn senders_affirm_legs(&self, off_chain: &mut OffchainProverState<T>) {
         // All senders affirm their legs.
         for leg in &self.legs {
-            leg.sender_affirmation(rng, off_chain);
+            leg.sender_affirmation(off_chain);
             off_chain.apply_new_leaves();
         }
     }
 
-    pub fn receivers_affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+    pub fn receivers_affirm_legs(&self, off_chain: &mut OffchainProverState<T>) {
         // All receivers affirm their legs.
         for leg in &self.legs {
-            leg.receiver_affirmation(rng, off_chain);
+            leg.receiver_affirmation(off_chain);
             off_chain.apply_new_leaves();
         }
     }
 
-    pub fn mediators_affirm_legs(
-        &self,
-        rng: &mut StdRng,
-        off_chain: &mut OffchainProverState<T>,
-        accept: bool,
-    ) {
+    pub fn mediators_affirm_legs(&self, off_chain: &mut OffchainProverState<T>, accept: bool) {
         // All mediators affirm their legs.
         for leg in &self.legs {
-            leg.mediator_affirmation(rng, off_chain, accept);
+            leg.mediator_affirmation(off_chain, accept);
             off_chain.apply_new_leaves();
         }
     }
 
-    pub fn affirm_legs(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+    pub fn affirm_legs(&self, off_chain: &mut OffchainProverState<T>) {
         // Affirm all the legs in the settlement.
         for leg in &self.legs {
-            leg.affirm_leg(rng, off_chain);
+            leg.affirm_leg(off_chain);
 
             off_chain.apply_new_leaves();
         }
     }
 
-    pub fn claim_assets(&self, rng: &mut StdRng, off_chain: &mut OffchainProverState<T>) {
+    pub fn claim_assets(&self, off_chain: &mut OffchainProverState<T>) {
         // All investors claim their assets.
         for leg in &self.legs {
             // Investor claims the assets.
-            leg.receiver_claim(rng, off_chain);
+            leg.receiver_claim(off_chain);
         }
         off_chain.apply_new_leaves();
     }
