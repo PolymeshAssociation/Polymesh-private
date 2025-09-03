@@ -7,7 +7,7 @@ use codec::{Decode, Encode};
 
 use polymesh_dart::curve_tree::{AccountTreeConfig, LeafPathAndRoot};
 use polymesh_dart::{
-    curve_tree::get_account_curve_tree_parameters, AccountAssetRegistrationProof,
+    curve_tree::get_account_curve_tree_parameters, AccountAssetRegistrationProof, AccountKeyPair,
     AccountPublicKeys, AssetMintingProof, AssetState, Balance as DartBalance, EncryptionPublicKey,
     LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole, MediatorAffirmationProof,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
@@ -86,13 +86,15 @@ pub fn create_keys() -> AccountKeys {
 }
 
 pub struct DartUserAccountAssetState {
+    account: AccountKeyPair,
     pub asset_state: AccountAssetState,
     pub leaf_index: Option<LeafIndex>,
 }
 
 impl DartUserAccountAssetState {
-    pub fn new(asset_state: AccountAssetState) -> Self {
+    pub fn new(asset_state: AccountAssetState, account: &AccountKeyPair) -> Self {
         Self {
+            account: account.clone(),
             asset_state,
             leaf_index: None,
         }
@@ -106,12 +108,14 @@ impl DartUserAccountAssetState {
     pub async fn update_leaf_index(&mut self, res: &mut TransactionResults) -> Result<()> {
         if let Some((leaf_index, account_leaf)) = get_account_leaf_inserted(res).await? {
             // Get the expect new account commitment.
-            let expected_leaf =
-                if let Some((_state, pending_commitment)) = &self.asset_state.pending_state {
-                    pending_commitment.as_leaf_value()?
-                } else {
-                    self.asset_state.current_state_commitment.as_leaf_value()?
-                };
+            let expected_leaf = if let Some(state) = &self.asset_state.pending_state {
+                state.commitment(&self.account)?.as_leaf_value()?
+            } else {
+                self.asset_state
+                    .current_state
+                    .commitment(&self.account)?
+                    .as_leaf_value()?
+            };
 
             // Check that the account leaf matches the expected state commitment.
             if account_leaf != expected_leaf {
@@ -214,7 +218,7 @@ impl DartUserInner {
                 &did.0[..],
                 params,
             )?;
-            let asset_state = DartUserAccountAssetState::new(asset_state);
+            let asset_state = DartUserAccountAssetState::new(asset_state, &self.keys.acct);
             (proof, asset_state)
         };
 

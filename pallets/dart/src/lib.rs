@@ -456,7 +456,7 @@ pub mod pallet {
     /// This is used to ensure that the same account state commitment cannot be used twice.
     #[pallet::storage]
     pub(super) type AccountStateCommitmentNullifiers<T: Config> =
-        StorageMap<_, Twox64Concat, AccountStateNullifier, (), ValueQuery>;
+        StorageMap<_, Twox64Concat, AccountStateNullifier, BlockNumberFor<T>, ValueQuery>;
 
     /// Update flag for the account curve tree.
     ///
@@ -1092,15 +1092,14 @@ impl<T: Config> Pallet<T> {
         let mut legs = BoundedVec::new();
         for (leg_id, leg) in proof_legs.into_iter().enumerate() {
             let leg_id = leg_id as LegId;
-            let leg_enc = leg.leg_enc().map_err(Error::<T>::from)?;
-            legs.force_push(leg_enc.clone());
+            legs.force_push(leg.leg_enc.clone());
 
             // Mediator affirmation status if the leg has a mediator.
             let has_mediator = leg.has_mediator().map_err(Error::<T>::from)?;
 
             SettlementLegs::<T>::insert(
                 (settlement_ref, leg_id),
-                DartSettlementLeg::new(leg_enc, has_mediator),
+                DartSettlementLeg::new(leg.leg_enc, has_mediator),
             );
         }
 
@@ -1173,7 +1172,8 @@ impl<T: Config> Pallet<T> {
         Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
 
         // Burn the nullifier to ensure it cannot be used again.
-        AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+        let block = frame_system::Pallet::<T>::block_number();
+        AccountStateCommitmentNullifiers::<T>::insert(nullifier, block);
 
         Ok(())
     }

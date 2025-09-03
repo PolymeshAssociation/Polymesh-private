@@ -186,17 +186,16 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the mint asset proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::MintAsset {
-            key: self.keys.acct.clone(),
+            key,
             amount,
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
@@ -260,20 +259,19 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender affirmation proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::SenderAffirmation {
-            key: self.keys.acct.clone(),
+            key,
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
@@ -338,19 +336,18 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the receiver affirmation proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::ReceiverAffirmation {
-            key: self.keys.acct.clone(),
+            key,
             leg_ref,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
@@ -408,20 +405,19 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the receiver claim proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::ReceiverClaim {
-            key: self.keys.acct.clone(),
+            key,
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
@@ -472,20 +468,19 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender revert proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::SenderRevert {
-            key: self.keys.acct.clone(),
+            key,
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
@@ -535,19 +530,18 @@ impl<T: Config> DartUserInner<T> {
             .expect("Asset not registered for user");
 
         // Generate the sender counter update proof.
+        let key = self.keys.acct.clone();
+        let current_state_commitment = account_state
+            .current_commitment(&key)
+            .expect("current commitment");
         let req = GenerateDartProofRequest::SenderCounterUpdate {
-            key: self.keys.acct.clone(),
+            key,
             leg_ref,
             leg_enc: leg_enc.clone(),
             leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
-                .get_path_and_root(
-                    account_state
-                        .current_state_commitment
-                        .as_leaf_value()
-                        .expect("leaf path"),
-                )
+                .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };

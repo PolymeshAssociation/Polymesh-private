@@ -17,9 +17,12 @@ polymesh-primitives = { workspace = true, default-features = false }
 
 # DART
 polymesh-dart = { workspace = true, default-features = false, features = [
-    "backend_bp",
+  "std",
+  "asm",
+  "parallel",
+  "backend_bp",
+  "async_tree"
 ] }
-
 lazy_static = "1.4.0"
 crossbeam = "0.8"
 rayon = "1.8"
@@ -37,7 +40,7 @@ sp-runtime-interface = { workspace = true, default-features = false }
 [features]
 default = ["std"]
 
-testing = ["polymesh-dart/testing"]
+testing = []
 
 asm = ["polymesh-dart/asm"]
 parallel = ["polymesh-dart/parallel"]

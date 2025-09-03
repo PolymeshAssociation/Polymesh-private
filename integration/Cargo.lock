@@ -3590,7 +3590,10 @@ dependencies = [
  "relations",
  "scale-info",
  "schnorr_pok",
+ "serde",
+ "serde_json",
  "thiserror 2.0.12",
+ "zeroize",
 ]
 
 [[package]]
@@ -3616,6 +3619,7 @@ dependencies = [
  "relations",
  "schnorr_pok",
  "thiserror 2.0.12",
+ "zeroize",
 ]
 
 [[package]]

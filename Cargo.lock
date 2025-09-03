@@ -6501,7 +6501,11 @@ dependencies = [
  "relations",
  "scale-info",
  "schnorr_pok",
+ "serde",
+ "serde_arrays",
+ "serde_json",
  "thiserror 2.0.12",
+ "zeroize",
 ]
 
 [[package]]
@@ -6527,6 +6531,7 @@ dependencies = [
  "relations",
  "schnorr_pok",
  "thiserror 2.0.12",
+ "zeroize",
 ]
 
 [[package]]
@@ -9237,6 +9242,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_arrays"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94a16b99c5ea4fe3daccd14853ad260ec00ea043b2708d1fd1da3106dcd8d9df"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
