@@ -9,7 +9,7 @@ use polymesh_dart::curve_tree::{AccountTreeConfig, LeafPathAndRoot};
 use polymesh_dart::{
     curve_tree::get_account_curve_tree_parameters, AccountAssetRegistrationProof, AccountKeyPair,
     AccountPublicKeys, AssetMintingProof, AssetState, Balance as DartBalance, EncryptionPublicKey,
-    LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole, MediatorAffirmationProof,
+    LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole, MediatorAffirmationProof, MediatorId,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
     SenderReversalProof, SettlementBuilder, SettlementProof, SettlementRef, ACCOUNT_TREE_L,
     ACCOUNT_TREE_M,
@@ -472,6 +472,7 @@ impl DartUserInner {
         &mut self,
         tester: &DartAssetTester,
         leg_ref: LegRef,
+        mediator_id: MediatorId,
         accept: bool,
         asset_and_amount: Option<(DartAssetId, DartBalance)>,
     ) -> Result<()> {
@@ -483,7 +484,7 @@ impl DartUserInner {
 
         // Try to decrypt the leg as the mediator
         let leg = leg_enc
-            .decrypt(LegRole::Mediator(0), &self.keys.enc)
+            .decrypt(LegRole::Mediator(mediator_id), &self.keys.enc)
             .unwrap();
 
         // Check the leg asset and amount if provided.
@@ -776,13 +777,14 @@ impl DartUser {
         &self,
         tester: &DartAssetTester,
         leg_ref: LegRef,
+        mediator_id: MediatorId,
         accept: bool,
         asset_and_amount: Option<(DartAssetId, DartBalance)>,
     ) -> Result<()> {
         self.0
             .write()
             .await
-            .mediator_affirmation(tester, leg_ref, accept, asset_and_amount)
+            .mediator_affirmation(tester, leg_ref, mediator_id, accept, asset_and_amount)
             .await
     }
 
@@ -1016,16 +1018,20 @@ impl DartTestAssetInner {
         })
     }
 
-    pub fn has_mediator(&self) -> bool {
-        self.mediators.len() > 0
+    pub fn mediator_count(&self) -> usize {
+        self.mediators.len()
     }
 
-    pub fn mediator(&self) -> Option<DartUser> {
-        if self.has_mediator() {
-            Some(self.mediators[0].clone())
-        } else {
-            None
-        }
+    pub fn mediators(&self) -> Vec<(MediatorId, DartUser)> {
+        let mut idx = self.auditors.len() as MediatorId;
+        self.mediators
+            .iter()
+            .map(|m| {
+                let id = idx;
+                idx += 1;
+                (id, m.clone())
+            })
+            .collect()
     }
 
     pub async fn asset_state(&self) -> AssetState {
@@ -1148,9 +1154,9 @@ impl DartTestAsset {
         inner.issuer.clone()
     }
 
-    pub async fn mediator(&self) -> Option<DartUser> {
+    pub async fn mediators(&self) -> Vec<(MediatorId, DartUser)> {
         let inner = self.inner.read().await;
-        inner.mediator()
+        inner.mediators()
     }
 
     pub async fn asset_state(&self) -> AssetState {
@@ -1209,30 +1215,31 @@ pub struct DartSettlementLegState {
     pub receiver: DartUser,
     pub asset_id: DartAssetId,
     pub amount: DartBalance,
-    pub mediator: Option<DartUser>,
+    pub mediators: Vec<(MediatorId, DartUser)>,
 }
 
 impl DartSettlementLegState {
-    pub async fn sender_affirmation(&self, tester: &DartAssetTester) -> Result<()> {
+    pub async fn sender_affirms(&self, tester: &DartAssetTester) -> Result<()> {
         self.sender
             .sender_affirmation(tester, self.leg_ref, self.asset_id, self.amount)
             .await?;
         Ok(())
     }
 
-    pub async fn receiver_affirmation(&self, tester: &DartAssetTester) -> Result<()> {
+    pub async fn receiver_affirms(&self, tester: &DartAssetTester) -> Result<()> {
         self.receiver
             .receiver_affirmation(tester, self.leg_ref, self.asset_id, self.amount)
             .await?;
         Ok(())
     }
 
-    pub async fn mediator_affirmation(&self, tester: &DartAssetTester, accept: bool) -> Result<()> {
-        if let Some(mediator) = &self.mediator {
+    pub async fn mediators_affirm(&self, tester: &DartAssetTester, accept: bool) -> Result<()> {
+        for (id, mediator) in &self.mediators {
             mediator
                 .mediator_affirmation(
                     tester,
                     self.leg_ref,
+                    *id,
                     accept,
                     Some((self.asset_id, self.amount)),
                 )
@@ -1242,9 +1249,9 @@ impl DartSettlementLegState {
     }
 
     pub async fn affirm_leg(&self, tester: &DartAssetTester) -> Result<()> {
-        self.sender_affirmation(tester).await?;
-        self.receiver_affirmation(tester).await?;
-        self.mediator_affirmation(tester, true).await?;
+        self.sender_affirms(tester).await?;
+        self.receiver_affirms(tester).await?;
+        self.mediators_affirm(tester, true).await?;
         Ok(())
     }
 
@@ -1310,7 +1317,7 @@ impl DartSettlementState {
                 receiver: leg.receiver.clone(),
                 asset_id,
                 amount,
-                mediator: asset.mediator().await,
+                mediators: asset.mediators().await,
             });
         }
 
@@ -1366,7 +1373,7 @@ impl DartSettlementState {
     pub async fn senders_affirm_legs(&self, tester: &DartAssetTester) -> Result<()> {
         // All senders affirm their legs.
         for leg in &self.legs {
-            leg.sender_affirmation(tester).await?;
+            leg.sender_affirms(tester).await?;
         }
         Ok(())
     }
@@ -1374,7 +1381,7 @@ impl DartSettlementState {
     pub async fn receivers_affirm_legs(&self, tester: &DartAssetTester) -> Result<()> {
         // All receivers affirm their legs.
         for leg in &self.legs {
-            leg.receiver_affirmation(tester).await?;
+            leg.receiver_affirms(tester).await?;
         }
         Ok(())
     }
@@ -1386,7 +1393,7 @@ impl DartSettlementState {
     ) -> Result<()> {
         // All mediators affirm their legs.
         for leg in &self.legs {
-            leg.mediator_affirmation(tester, accept).await?;
+            leg.mediators_affirm(tester, accept).await?;
         }
         Ok(())
     }
@@ -1399,24 +1406,24 @@ impl DartSettlementState {
             {
                 let tester = tester.clone();
                 let leg = leg.clone();
-                tasks.push(tokio::spawn(async move {
-                    leg.sender_affirmation(&tester).await
-                }));
+                tasks.push(tokio::spawn(
+                    async move { leg.sender_affirms(&tester).await },
+                ));
             }
             // Receiver affirm task.
             {
                 let tester = tester.clone();
                 let leg = leg.clone();
-                tasks.push(tokio::spawn(async move {
-                    leg.receiver_affirmation(&tester).await
-                }));
+                tasks.push(tokio::spawn(
+                    async move { leg.receiver_affirms(&tester).await },
+                ));
             }
             // Mediator affirm task.
-            if leg.mediator.is_some() {
+            if leg.mediators.len() > 0 {
                 let tester = tester.clone();
                 let leg = leg.clone();
                 tasks.push(tokio::spawn(async move {
-                    leg.mediator_affirmation(&tester, true).await
+                    leg.mediators_affirm(&tester, true).await
                 }));
             }
         }

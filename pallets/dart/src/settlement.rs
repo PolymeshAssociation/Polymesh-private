@@ -3,12 +3,14 @@ use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     ensure,
     traits::Get,
+    BoundedBTreeMap,
 };
 use polymesh_dart_host_functions::VerifyMediatorRequest;
 use scale_info::TypeInfo;
+use sp_std::vec::Vec;
 
 use polymesh_dart::{
-    LegEncrypted, LegId, LegRef, MediatorAffirmationProof, ReceiverAffirmationProof,
+    LegEncrypted, LegId, LegRef, MediatorAffirmationProof, MediatorId, ReceiverAffirmationProof,
     ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
     SettlementRef,
 };
@@ -77,7 +79,7 @@ pub struct DartSettlementLeg<T: Config> {
     /// The receiver's affirmation status.
     pub receiver: AffirmationStatus,
     /// The mediator's affirmation status, if any.
-    pub mediator: Option<AffirmationStatus>,
+    pub mediators: BoundedBTreeMap<MediatorId, AffirmationStatus, T::MaxAssetMediators>,
     /// The leg status, which is derived from the sender, receiver, and mediator statuses.
     pub status: AffirmationStatus,
     _marker: core::marker::PhantomData<T>,
@@ -85,15 +87,21 @@ pub struct DartSettlementLeg<T: Config> {
 
 impl<T: Config> DartSettlementLeg<T> {
     /// Create a new `DartSettlementLeg` instance.
-    pub fn new(enc: LegEncrypted, has_mediator: bool) -> Self {
-        Self {
+    pub fn new(enc: LegEncrypted, mediator_ids: Vec<MediatorId>) -> Result<Self, DispatchError> {
+        let mut mediators = BoundedBTreeMap::new();
+        for id in mediator_ids {
+            mediators
+                .try_insert(id, AffirmationStatus::Pending)
+                .map_err(|_| Error::<T>::TooManyMediators)?;
+        }
+        Ok(Self {
             enc,
             sender: AffirmationStatus::Pending,
             receiver: AffirmationStatus::Pending,
-            mediator: has_mediator.then_some(AffirmationStatus::Pending),
+            mediators,
             status: AffirmationStatus::Pending,
             _marker: core::marker::PhantomData,
-        }
+        })
     }
 
     /// Try to update the status of the leg based on the current sender, receiver, and mediator statuses.
@@ -101,8 +109,8 @@ impl<T: Config> DartSettlementLeg<T> {
         // Merge the sender and receiver statuses.
         let mut affirmation = self.sender.merge::<T>(self.receiver)?;
         // If there is a mediator, merge the mediator status as well.
-        if let Some(mediator) = self.mediator {
-            affirmation = affirmation.merge::<T>(mediator)?;
+        for (_, mediator) in &self.mediators {
+            affirmation = affirmation.merge::<T>(*mediator)?;
         }
         self.status = affirmation;
         Ok(())
@@ -135,7 +143,7 @@ impl<T: Config> DartSettlementLeg<T> {
     /// When the settlement is rejected or affirmed (all legs are affirmed), then we can finalize the mediators.
     pub fn finalize_mediators(&mut self) {
         // Mark the mediator as finalized, since they cannot affirm or reject anymore.
-        if let Some(mediator) = &mut self.mediator {
+        for (_, mediator) in &mut self.mediators {
             *mediator = AffirmationStatus::Finalized;
         }
     }
@@ -203,10 +211,15 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify a mediator affirmation proof for this leg.
     pub fn mediator_affirmation(&mut self, proof: MediatorAffirmationProof) -> DispatchResult {
         // A mediator can only affirm if the leg has a mediator.
-        ensure!(self.mediator.is_some(), Error::<T>::NoMediatorForThisLeg,);
+        ensure!(self.mediators.is_empty(), Error::<T>::NoMediatorsForThisLeg,);
         // The mediator can only affirm if the mediator affirmation status is `Pending`.
+        let mediator_id = proof.key_index;
+        let mediator = self
+            .mediators
+            .get_mut(&mediator_id)
+            .ok_or(Error::<T>::WrongMediatorId)?;
         ensure!(
-            self.mediator == Some(AffirmationStatus::Pending),
+            *mediator == AffirmationStatus::Pending,
             Error::<T>::AlreadyAffirmed
         );
 
@@ -221,10 +234,10 @@ impl<T: Config> DartSettlementLeg<T> {
         // Update the leg's mediator status based on the proof.
         if accept {
             // The mediator is affirming the leg.
-            self.mediator = Some(AffirmationStatus::Affirmed);
+            *mediator = AffirmationStatus::Affirmed;
         } else {
             // The mediator is rejecting the leg.
-            self.mediator = Some(AffirmationStatus::Rejected);
+            *mediator = AffirmationStatus::Rejected;
         }
 
         // Update the leg status.  If the other parties have already affirmed, this will update the leg's status to `Affirmed`.

@@ -313,8 +313,12 @@ pub mod pallet {
         LegNotAffirmed,
         /// Leg not rejected.
         LegNotRejected,
-        /// No mediator for this leg.
-        NoMediatorForThisLeg,
+        /// No mediators for this leg.
+        NoMediatorsForThisLeg,
+        /// Too many mediators for this leg.
+        TooManyMediators,
+        /// Wrong mediator id for this leg.
+        WrongMediatorId,
         /// Settlement not found.
         SettlementNotFound,
         /// Leg not found in the settlement.
@@ -1095,11 +1099,11 @@ impl<T: Config> Pallet<T> {
             legs.force_push(leg.leg_enc.clone());
 
             // Mediator affirmation status if the leg has a mediator.
-            let has_mediator = leg.has_mediator().map_err(Error::<T>::from)?;
+            let mediators = leg.get_mediator_ids().map_err(Error::<T>::from)?;
 
             SettlementLegs::<T>::insert(
                 (settlement_ref, leg_id),
-                DartSettlementLeg::new(leg.leg_enc, has_mediator),
+                DartSettlementLeg::new(leg.leg_enc, mediators)?,
             );
         }
 

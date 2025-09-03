@@ -17,11 +17,7 @@ polymesh-primitives = { workspace = true, default-features = false }
 
 # DART
 polymesh-dart = { workspace = true, default-features = false, features = [
-  "std",
-  "asm",
-  "parallel",
-  "backend_bp",
-  "async_tree"
+  "backend_bp"
 ] }
 lazy_static = "1.4.0"
 crossbeam = "0.8"
