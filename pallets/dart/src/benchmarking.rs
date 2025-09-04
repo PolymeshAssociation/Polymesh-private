@@ -237,7 +237,7 @@ benchmarks! {
         let leg = settlement.legs[0].clone();
 
         // Generate the receiver's claim proof.
-        let (proof, _) = leg.receiver.receiver_claim_proof(&off_chain, leg.leg_ref);
+        let (proof, _) = leg.receiver.receiver_claim_proof(&off_chain, leg.leg_ref, leg.asset_id, leg.amount);
     }: _(leg.receiver.raw_origin(), proof)
 
     sender_update_counter {
@@ -264,7 +264,7 @@ benchmarks! {
         off_chain.apply_new_leaves();
 
         // Generate the sender's update counter proof.
-        let (proof, _) = leg.sender.sender_counter_update_proof(&off_chain, leg.leg_ref);
+        let (proof, _) = leg.sender.sender_counter_update_proof(&off_chain, leg.leg_ref, leg.asset_id);
     }: _(leg.sender.raw_origin(), proof)
 
     sender_revert {
@@ -294,6 +294,6 @@ benchmarks! {
         leg.mediator_affirmation(&off_chain, false);
 
         // Generate the sender's revert proof.
-        let (proof, _) = leg.sender.sender_revert_proof(&off_chain, leg.leg_ref);
+        let (proof, _) = leg.sender.sender_revert_proof(&off_chain, leg.leg_ref, leg.asset_id, leg.amount);
     }: _(leg.sender.raw_origin(), proof)
 }

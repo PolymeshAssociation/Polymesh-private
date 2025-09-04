@@ -6,16 +6,16 @@ use rand_chacha::ChaCha20Rng as Rng;
 #[cfg(feature = "std")]
 use rand_core::SeedableRng;
 
-#[cfg(feature = "std")]
-use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M, AccountAssetRegistrationProof,
-    AccountAssetState, AccountKeyPair, AssetId, AssetMintingProof, Balance, EncryptionKeyPair,
-    LegEncrypted, LegEncryptionRandomness, LegRef, MediatorAffirmationProof, PolymeshPrivateLimits,
+    AccountAssetState, AccountKeyPair, AccountKeys, AssetId, AssetMintingProof, Balance,
+    EncryptionKeyPair, LegEncrypted, LegRef, MediatorAffirmationProof, PolymeshPrivateLimits,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
     SenderReversalProof, SettlementBuilder, SettlementProof,
     curve_tree::{AccountTreeConfig, AssetTreeConfig, LeafPathAndRoot, MultiLeafPathAndRoot},
 };
+#[cfg(feature = "std")]
+use polymesh_dart::{LegRole, curve_tree::get_account_curve_tree_parameters};
 use polymesh_primitives::IdentityId;
 
 use crate::{BatchSeed, Error};
@@ -43,19 +43,17 @@ pub enum GenerateDartProofRequest {
         settlement: SettlementBuilder<PolymeshPrivateLimits>,
     },
     SenderAffirmation {
-        key: AccountKeyPair,
+        keys: AccountKeys,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        leg_enc_rand: LegEncryptionRandomness,
         amount: Balance,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
     },
     ReceiverAffirmation {
-        key: AccountKeyPair,
+        keys: AccountKeys,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        leg_enc_rand: LegEncryptionRandomness,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
     },
@@ -68,27 +66,24 @@ pub enum GenerateDartProofRequest {
         accept: bool,
     },
     ReceiverClaim {
-        key: AccountKeyPair,
+        keys: AccountKeys,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        leg_enc_rand: LegEncryptionRandomness,
         amount: Balance,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
     },
     SenderCounterUpdate {
-        key: AccountKeyPair,
+        keys: AccountKeys,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        leg_enc_rand: LegEncryptionRandomness,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
     },
     SenderRevert {
-        key: AccountKeyPair,
+        keys: AccountKeys,
         leg_ref: LegRef,
         leg_enc: LegEncrypted,
-        leg_enc_rand: LegEncryptionRandomness,
         amount: Balance,
         path: AccountLeafPathAndRoot,
         account_state: AccountAssetState,
@@ -145,17 +140,21 @@ impl GenerateDartProofRequest {
                 Ok(GenerateDartProofResponse::CreateSettlement { proof })
             }
             GenerateDartProofRequest::SenderAffirmation {
-                key,
+                keys,
                 leg_ref,
                 leg_enc,
-                leg_enc_rand,
                 amount,
                 path,
                 mut account_state,
             } => {
+                // Decrypt leg.
+                let leg_enc_rand = leg_enc
+                    .get_encryption_randomness(LegRole::Sender, &keys.enc)
+                    .map_err(|_| Error::VerifyFailed)?;
+
                 let proof = SenderAffirmationProof::new(
                     &mut rng,
-                    &key,
+                    &keys.acct,
                     &leg_ref,
                     amount,
                     &leg_enc,
@@ -170,16 +169,20 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::ReceiverAffirmation {
-                key,
+                keys,
                 leg_ref,
                 leg_enc,
-                leg_enc_rand,
                 path,
                 mut account_state,
             } => {
+                // Decrypt leg.
+                let leg_enc_rand = leg_enc
+                    .get_encryption_randomness(LegRole::Receiver, &keys.enc)
+                    .map_err(|_| Error::VerifyFailed)?;
+
                 let proof = ReceiverAffirmationProof::new(
                     &mut rng,
-                    &key,
+                    &keys.acct,
                     &leg_ref,
                     &leg_enc,
                     &leg_enc_rand,
@@ -207,17 +210,21 @@ impl GenerateDartProofRequest {
                 Ok(GenerateDartProofResponse::MediatorAffirmation { proof })
             }
             GenerateDartProofRequest::ReceiverClaim {
-                key,
+                keys,
                 leg_ref,
                 leg_enc,
-                leg_enc_rand,
                 amount,
                 path,
                 mut account_state,
             } => {
+                // Decrypt leg.
+                let leg_enc_rand = leg_enc
+                    .get_encryption_randomness(LegRole::Receiver, &keys.enc)
+                    .map_err(|_| Error::VerifyFailed)?;
+
                 let proof = ReceiverClaimProof::new(
                     &mut rng,
-                    &key,
+                    &keys.acct,
                     &leg_ref,
                     amount,
                     &leg_enc,
@@ -232,16 +239,20 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::SenderCounterUpdate {
-                key,
+                keys,
                 leg_ref,
                 leg_enc,
-                leg_enc_rand,
                 path,
                 mut account_state,
             } => {
+                // Decrypt leg.
+                let leg_enc_rand = leg_enc
+                    .get_encryption_randomness(LegRole::Sender, &keys.enc)
+                    .map_err(|_| Error::VerifyFailed)?;
+
                 let proof = SenderCounterUpdateProof::new(
                     &mut rng,
-                    &key,
+                    &keys.acct,
                     &leg_ref,
                     &leg_enc,
                     &leg_enc_rand,
@@ -255,17 +266,21 @@ impl GenerateDartProofRequest {
                 })
             }
             GenerateDartProofRequest::SenderRevert {
-                key,
+                keys,
                 leg_ref,
                 leg_enc,
-                leg_enc_rand,
                 amount,
                 path,
                 mut account_state,
             } => {
+                // Decrypt leg.
+                let leg_enc_rand = leg_enc
+                    .get_encryption_randomness(LegRole::Sender, &keys.enc)
+                    .map_err(|_| Error::VerifyFailed)?;
+
                 let proof = SenderReversalProof::new(
                     &mut rng,
-                    &key,
+                    &keys.acct,
                     &leg_ref,
                     amount,
                     &leg_enc,

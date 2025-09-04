@@ -241,17 +241,6 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
 
-        // Decrypt leg.
-        let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys)
-            .expect("Failed to decrypt leg");
-
-        assert!(
-            asset_id == leg.asset_id(),
-            "Asset ID mismatch in encrypted leg"
-        );
-        assert!(amount == leg.amount(), "Amount mismatch in encrypted leg");
-
         // Get the account state for the asset.
         let account_state = self
             .assets
@@ -264,11 +253,10 @@ impl<T: Config> DartUserInner<T> {
             .current_commitment(&key)
             .expect("current commitment");
         let req = GenerateDartProofRequest::SenderAffirmation {
-            key,
+            keys: self.keys.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
-            leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
                 .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
@@ -312,22 +300,12 @@ impl<T: Config> DartUserInner<T> {
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
         asset_id: DartAssetId,
-        amount: DartBalance,
+        _amount: DartBalance,
     ) -> (
         ReceiverAffirmationProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        // Decrypt leg.
-        let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Receiver, &self.keys)
-            .expect("Failed to decrypt leg");
-
-        assert!(
-            asset_id == leg.asset_id(),
-            "Asset ID mismatch in encrypted leg"
-        );
-        assert!(amount == leg.amount(), "Amount mismatch in encrypted leg");
 
         // Get the account state for the asset.
         let account_state = self
@@ -341,10 +319,9 @@ impl<T: Config> DartUserInner<T> {
             .current_commitment(&key)
             .expect("current commitment");
         let req = GenerateDartProofRequest::ReceiverAffirmation {
-            key,
+            keys: self.keys.clone(),
             leg_ref,
             leg_enc: leg_enc.clone(),
-            leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
                 .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
@@ -387,16 +364,13 @@ impl<T: Config> DartUserInner<T> {
         &mut self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
     ) -> (
         ReceiverClaimProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Receiver, &self.keys)
-            .expect("Failed to decrypt leg");
-        let asset_id = leg.asset_id();
-        let amount = leg.amount();
 
         // Get the account state for the asset.
         let account_state = self
@@ -410,11 +384,10 @@ impl<T: Config> DartUserInner<T> {
             .current_commitment(&key)
             .expect("current commitment");
         let req = GenerateDartProofRequest::ReceiverClaim {
-            key,
+            keys: self.keys.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
-            leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
                 .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
@@ -434,9 +407,16 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn receiver_claim(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn receiver_claim(
+        &mut self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) {
         let origin = self.origin();
-        let (proof, account_state) = self.receiver_claim_proof(off_chain, leg_ref);
+        let (proof, account_state) =
+            self.receiver_claim_proof(off_chain, leg_ref, asset_id, amount);
 
         assert_ok!(Pallet::<T>::receiver_claim(origin, proof));
 
@@ -450,16 +430,13 @@ impl<T: Config> DartUserInner<T> {
         &mut self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
     ) -> (
         SenderReversalProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys)
-            .expect("Failed to decrypt leg");
-        let asset_id = leg.asset_id();
-        let amount = leg.amount();
 
         // Get the account state for the asset.
         let account_state = self
@@ -473,11 +450,10 @@ impl<T: Config> DartUserInner<T> {
             .current_commitment(&key)
             .expect("current commitment");
         let req = GenerateDartProofRequest::SenderRevert {
-            key,
+            keys: self.keys.clone(),
             leg_ref,
             amount,
             leg_enc: leg_enc.clone(),
-            leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
                 .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
@@ -497,9 +473,15 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn sender_revert(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn sender_revert(
+        &mut self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) {
         let origin = self.origin();
-        let (proof, account_state) = self.sender_revert_proof(off_chain, leg_ref);
+        let (proof, account_state) = self.sender_revert_proof(off_chain, leg_ref, asset_id, amount);
 
         assert_ok!(Pallet::<T>::sender_revert(origin, proof));
 
@@ -513,15 +495,12 @@ impl<T: Config> DartUserInner<T> {
         &mut self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
     ) -> (
         SenderCounterUpdateProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
-        let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys)
-            .expect("Failed to decrypt leg");
-        let asset_id = leg.asset_id();
 
         // Get the account state for the asset.
         let account_state = self
@@ -535,10 +514,9 @@ impl<T: Config> DartUserInner<T> {
             .current_commitment(&key)
             .expect("current commitment");
         let req = GenerateDartProofRequest::SenderCounterUpdate {
-            key,
+            keys: self.keys.clone(),
             leg_ref,
             leg_enc: leg_enc.clone(),
-            leg_enc_rand: leg_enc_rand.clone(),
             path: off_chain
                 .account_tree
                 .get_path_and_root(current_state_commitment.as_leaf_value().expect("leaf path"))
@@ -558,9 +536,14 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
-    pub fn sender_counter_update(&mut self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn sender_counter_update(
+        &mut self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+    ) {
         let origin = self.origin();
-        let (proof, account_state) = self.sender_counter_update_proof(off_chain, leg_ref);
+        let (proof, account_state) = self.sender_counter_update_proof(off_chain, leg_ref, asset_id);
 
         assert_ok!(Pallet::<T>::sender_update_counter(origin, proof));
 
@@ -762,51 +745,76 @@ impl<T: Config> DartUser<T> {
         &self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
     ) -> (ReceiverClaimProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.receiver_claim_proof(off_chain, leg_ref);
+        let (proof, account_state) =
+            inner.receiver_claim_proof(off_chain, leg_ref, asset_id, amount);
 
         (proof, account_state.clone())
     }
 
-    pub fn receiver_claim(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn receiver_claim(
+        &self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) {
         let mut inner = self.0.borrow_mut();
-        inner.receiver_claim(off_chain, leg_ref);
+        inner.receiver_claim(off_chain, leg_ref, asset_id, amount);
     }
 
     pub fn sender_revert_proof(
         &self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
     ) -> (SenderReversalProof<AccountTreeConfig>, AccountAssetState) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.sender_revert_proof(off_chain, leg_ref);
+        let (proof, account_state) =
+            inner.sender_revert_proof(off_chain, leg_ref, asset_id, amount);
 
         (proof, account_state.clone())
     }
 
-    pub fn sender_revert(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn sender_revert(
+        &self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+        amount: DartBalance,
+    ) {
         let mut inner = self.0.borrow_mut();
-        inner.sender_revert(off_chain, leg_ref);
+        inner.sender_revert(off_chain, leg_ref, asset_id, amount);
     }
 
     pub fn sender_counter_update_proof(
         &self,
         off_chain: &OffchainProverState<T>,
         leg_ref: LegRef,
+        asset_id: DartAssetId,
     ) -> (
         SenderCounterUpdateProof<AccountTreeConfig>,
         AccountAssetState,
     ) {
         let mut inner = self.0.borrow_mut();
-        let (proof, account_state) = inner.sender_counter_update_proof(off_chain, leg_ref);
+        let (proof, account_state) =
+            inner.sender_counter_update_proof(off_chain, leg_ref, asset_id);
 
         (proof, account_state.clone())
     }
 
-    pub fn sender_counter_update(&self, off_chain: &OffchainProverState<T>, leg_ref: LegRef) {
+    pub fn sender_counter_update(
+        &self,
+        off_chain: &OffchainProverState<T>,
+        leg_ref: LegRef,
+        asset_id: DartAssetId,
+    ) {
         let mut inner = self.0.borrow_mut();
-        inner.sender_counter_update(off_chain, leg_ref);
+        inner.sender_counter_update(off_chain, leg_ref, asset_id);
     }
 
     pub fn mediator_affirmation_proof(
@@ -1045,7 +1053,8 @@ impl<T: Config> DartSettlementLegState<T> {
     }
 
     pub fn receiver_claim(&self, off_chain: &mut OffchainProverState<T>) {
-        self.receiver.receiver_claim(off_chain, self.leg_ref);
+        self.receiver
+            .receiver_claim(off_chain, self.leg_ref, self.asset_id, self.amount);
     }
 }
 
