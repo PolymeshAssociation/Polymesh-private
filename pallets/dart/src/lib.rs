@@ -25,6 +25,7 @@ use frame_support::{
 use frame_system::pallet_prelude::*;
 use polymesh_primitives::{Balance, IdentityId};
 use scale_info::TypeInfo;
+use sp_runtime::BoundedBTreeSet;
 use sp_std::convert::From;
 
 use polymesh_dart::{
@@ -85,10 +86,10 @@ pub struct DartAssetDetail<T: Config> {
     pub owner_did: IdentityId,
     /// Asset data.
     pub data: BoundedVec<u8, T::MaxAssetDataLength>,
-    /// Auditor public keys.
-    pub auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
     /// Mediator public keys.
-    pub mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+    pub mediators: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
+    /// Auditor public keys.
+    pub auditors: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
 }
 
 pub use pallet::*;
@@ -138,10 +139,10 @@ pub mod pallet {
             caller_did: IdentityId,
             /// Asset ID.
             asset_id: DartAssetId,
-            /// Auditors.
-            auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
             /// Mediators.
-            mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+            mediators: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
+            /// Auditors.
+            auditors: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
             /// Asset data.
             data: BoundedVec<u8, T::MaxAssetDataLength>,
         },
@@ -151,10 +152,10 @@ pub mod pallet {
             caller_did: IdentityId,
             /// Asset ID.
             asset_id: DartAssetId,
-            /// Auditors.
-            auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
             /// Mediators.
-            mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+            mediators: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
+            /// Auditors.
+            auditors: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
         },
         /// Account asset registered.
         AccountAssetRegistered {
@@ -182,6 +183,8 @@ pub mod pallet {
         SettlementCreated {
             /// Settlement reference.
             settlement_ref: SettlementRef,
+            /// Settlement memo.
+            memo: BoundedVec<u8, <PolymeshPrivateLimits as DartLimits>::MaxSettlementMemoLength>,
             /// Legs in the settlement.
             legs: BoundedVec<LegEncrypted, T::MaxSettlementLegs>,
         },
@@ -605,13 +608,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::create_asset())]
         pub fn create_asset(
             origin: OriginFor<T>,
-            auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
-            mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+            mediators: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
+            auditors: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
             data: BoundedVec<u8, T::MaxAssetDataLength>,
         ) -> DispatchResult {
             let issuer = PalletIdentity::<T>::ensure_perms(origin)?;
 
-            Self::base_create_asset(issuer, auditors, mediators, data)?;
+            Self::base_create_asset(issuer, mediators, auditors, data)?;
             Ok(())
         }
 
@@ -1016,13 +1019,13 @@ impl<T: Config> Pallet<T> {
     /// Create a new DART asset.
     pub fn base_create_asset(
         owner_did: IdentityId,
-        auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
-        mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+        mediators: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
+        auditors: BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
         data: BoundedVec<u8, T::MaxAssetDataLength>,
     ) -> Result<DartAssetId, DispatchError> {
         // Ensure the auditor or mediator is registered.
-        Self::ensure_auditor_or_mediator_registered(&auditors)?;
-        Self::ensure_auditor_or_mediator_registered(&mediators)?;
+        Self::ensure_mediators_registered(&mediators)?;
+        Self::ensure_auditors_registered(&auditors)?;
 
         // Allocate a new asset ID.
         let asset_id = NextAssetId::<T>::get();
@@ -1035,27 +1038,21 @@ impl<T: Config> Pallet<T> {
             asset_id,
             owner_did,
             data: data.clone(),
-            auditors: auditors.clone(),
             mediators: mediators.clone(),
+            auditors: auditors.clone(),
         };
         // Store the asset details.
         DartAssetDetails::<T>::insert(asset_id, asset_detail);
 
         // Insert the asset state into the asset curve tree.
-        Self::update_asset_leaf(
-            owner_did,
-            asset_id,
-            auditors.clone(),
-            mediators.clone(),
-            true,
-        )?;
+        Self::update_asset_leaf(owner_did, asset_id, &auditors, &mediators, true)?;
 
         // Emit the event for asset creation.
         Self::deposit_event(Event::<T>::AssetCreated {
             caller_did: owner_did,
             asset_id,
-            auditors: auditors.clone(),
             mediators: mediators.clone(),
+            auditors: auditors.clone(),
             data,
         });
 
@@ -1110,6 +1107,7 @@ impl<T: Config> Pallet<T> {
         // Emit an event for the settlement creation.
         Self::deposit_event(Event::<T>::SettlementCreated {
             settlement_ref,
+            memo,
             legs,
         });
 
@@ -1202,16 +1200,12 @@ impl<T: Config> Pallet<T> {
     fn update_asset_leaf(
         caller_did: IdentityId,
         asset_id: DartAssetId,
-        auditors: BoundedVec<EncryptionPublicKey, T::MaxAssetAuditors>,
-        mediators: BoundedVec<EncryptionPublicKey, T::MaxAssetMediators>,
+        auditors: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
+        mediators: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
         is_new: bool,
     ) -> DispatchResult {
-        // Ensure the auditor or mediator is registered.
-        Self::ensure_auditor_or_mediator_registered(&auditors)?;
-        Self::ensure_auditor_or_mediator_registered(&mediators)?;
-
         // Create the Asset State.
-        let asset_state = AssetState::new(asset_id, &auditors, &mediators);
+        let asset_state = AssetState::<T>::new_bounded(asset_id, mediators, auditors);
         let asset_leaf = asset_state.commitment().map_err(Error::<T>::from)?;
 
         // Update the asset curve tree with the new asset.
@@ -1333,9 +1327,19 @@ impl<T: Config> Pallet<T> {
         EncryptionKeyAccount::<T>::get(encryption_key).ok_or(Error::<T>::EncryptionKeyMissing)
     }
 
-    /// Ensure auditor or mediator encryption public key is registered.
-    pub fn ensure_auditor_or_mediator_registered(
-        keys: &[EncryptionPublicKey],
+    /// Ensure auditor encryption public keys are registered.
+    pub fn ensure_auditors_registered(
+        keys: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
+    ) -> Result<(), Error<T>> {
+        for key in keys {
+            Self::ensure_dart_account_encryption_key_registered(key)?;
+        }
+        Ok(())
+    }
+
+    /// Ensure mediator encryption public keys are registered.
+    pub fn ensure_mediators_registered(
+        keys: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
     ) -> Result<(), Error<T>> {
         for key in keys {
             Self::ensure_dart_account_encryption_key_registered(key)?;

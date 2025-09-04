@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -252,16 +252,16 @@ impl DartUserInner {
     pub async fn create_asset(
         &mut self,
         description: &str,
-        auditors: Vec<EncryptionPublicKey>,
-        mediators: Vec<EncryptionPublicKey>,
+        mediators: BTreeSet<EncryptionPublicKey>,
+        auditors: BTreeSet<EncryptionPublicKey>,
     ) -> Result<DartAssetId> {
         let mut res = self
             .api
             .call()
             .dart_asset()
             .create_asset(
-                to_scale(&auditors),
                 to_scale(&mediators),
+                to_scale(&auditors),
                 description.as_bytes().to_vec(),
             )?
             .submit_and_watch(&mut self.user)
@@ -713,13 +713,13 @@ impl DartUser {
     pub async fn create_asset(
         &self,
         description: &str,
-        auditors: Vec<EncryptionPublicKey>,
-        mediators: Vec<EncryptionPublicKey>,
+        mediators: BTreeSet<EncryptionPublicKey>,
+        auditors: BTreeSet<EncryptionPublicKey>,
     ) -> Result<DartAssetId> {
         self.0
             .write()
             .await
-            .create_asset(description, auditors, mediators)
+            .create_asset(description, mediators, auditors)
             .await
     }
 
@@ -915,8 +915,8 @@ impl DartAssetTester {
         &self,
         asset_issuer: &DartUser,
         name: &'static str,
-        auditors: &[&DartUser],
         mediators: &[&DartUser],
+        auditors: &[&DartUser],
         mint_amount: Option<DartBalance>,
     ) -> Result<DartTestAsset> {
         // Check if the asset already exists.
@@ -934,8 +934,8 @@ impl DartAssetTester {
             &account_tree,
             asset_issuer,
             name,
-            auditors,
             mediators,
+            auditors,
             mint_amount,
         )
         .await?;
@@ -962,8 +962,8 @@ impl DartTestAssetInner {
         account_tree: &AccountCurveTree,
         asset_issuer: &DartUser,
         name: &'static str,
-        auditors: &[&DartUser],
         mediators: &[&DartUser],
+        auditors: &[&DartUser],
         mint_amount: Option<DartBalance>,
     ) -> Result<Self> {
         assert!(
@@ -975,20 +975,20 @@ impl DartTestAssetInner {
         asset_issuer.register_account().await?;
 
         // Create mediator user and keys.
-        let mut auditor_keys = Vec::new();
+        let mut auditor_keys = BTreeSet::new();
         for &auditor in auditors {
             auditor.register_account().await?;
-            auditor_keys.push(auditor.public_keys().await.enc);
+            auditor_keys.insert(auditor.public_keys().await.enc);
         }
-        let mut mediator_keys = Vec::new();
+        let mut mediator_keys = BTreeSet::new();
         for &mediator in mediators {
             mediator.register_account().await?;
-            mediator_keys.push(mediator.public_keys().await.enc);
+            mediator_keys.insert(mediator.public_keys().await.enc);
         }
 
         // Create the asset.
         let asset_id = asset_issuer
-            .create_asset(name, auditor_keys, mediator_keys)
+            .create_asset(name, mediator_keys, auditor_keys)
             .await?;
 
         let mint_amount = mint_amount.unwrap_or(0);
@@ -1007,8 +1007,8 @@ impl DartTestAssetInner {
             name: name.to_string(),
             issuer: asset_issuer.clone(),
             issuer_balance: mint_amount,
-            auditors: auditors.into_iter().copied().cloned().collect(),
             mediators: mediators.into_iter().copied().cloned().collect(),
+            auditors: auditors.into_iter().copied().cloned().collect(),
             total_supply: mint_amount,
         })
     }
@@ -1038,7 +1038,7 @@ impl DartTestAssetInner {
         for mediator in &self.mediators {
             mediators.push(mediator.public_keys().await.enc);
         }
-        AssetState::new(self.id, &auditors, &mediators)
+        AssetState::new(self.id, &mediators, &auditors)
     }
 
     pub async fn mint_more(&mut self, tester: &DartAssetTester, amount: DartBalance) -> Result<()> {

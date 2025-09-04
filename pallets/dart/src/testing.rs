@@ -873,24 +873,24 @@ impl<T: Config> DartTestAsset<T> {
 
         // Create auditors and mediators.
         let mut auditors = Vec::new();
-        let mut auditor_keys = BoundedVec::new();
+        let mut auditor_keys = BoundedBTreeSet::new();
         for i in 0..auditor_count {
             let auditor = DartUser::<T>::auditor_user("Auditor", asset_idx, i);
             // Register the auditor's keys.
             auditor.register_account();
             auditor_keys
-                .try_push(auditor.public_keys().enc)
+                .try_insert(auditor.public_keys().enc)
                 .expect("Failed to push auditor keys");
             auditors.push(auditor);
         }
         let mut mediators = Vec::new();
-        let mut mediator_keys = BoundedVec::new();
+        let mut mediator_keys = BoundedBTreeSet::new();
         for i in 0..mediator_count {
             let mediator = DartUser::<T>::auditor_user("Mediator", asset_idx, i);
             // Register the mediator's keys.
             mediator.register_account();
             mediator_keys
-                .try_push(mediator.public_keys().enc)
+                .try_insert(mediator.public_keys().enc)
                 .expect("Failed to push mediator keys");
             mediators.push(mediator);
         }
@@ -903,7 +903,7 @@ impl<T: Config> DartTestAsset<T> {
 
         // Create the asset.
         let asset_id =
-            Pallet::<T>::base_create_asset(asset_issuer.did(), auditor_keys, mediator_keys, data)
+            Pallet::<T>::base_create_asset(asset_issuer.did(), mediator_keys, auditor_keys, data)
                 .expect("Failed to create asset");
 
         // Need to update the asset curve tree.
@@ -955,7 +955,7 @@ impl<T: Config> DartTestAsset<T> {
             .iter()
             .map(|m| m.public_keys().enc)
             .collect::<Vec<_>>();
-        AssetState::new(self.id, &auditors, &mediators)
+        AssetState::new(self.id, &mediators, &auditors)
     }
 
     pub fn mint_more(&mut self, off_chain: &mut OffchainProverState<T>, amount: DartBalance) {

@@ -44,23 +44,23 @@ benchmarks! {
 
         // Create the maximum number of auditors.
         let mut auditors = Vec::with_capacity(T::MaxAssetAuditors::get() as usize);
-        let mut auditor_keys = BoundedVec::new();
+        let mut auditor_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetAuditors::get() {
             let auditor = DartUser::<T>::auditor_user("Auditor", 0, i);
             auditor.register_account();
             auditor_keys
-                .try_push(auditor.public_keys().enc)
+                .try_insert(auditor.public_keys().enc)
                 .expect("Failed to push auditor keys");
             auditors.push(auditor);
         }
         // Create the maximum number of mediators.
         let mut mediators = Vec::with_capacity(T::MaxAssetMediators::get() as usize);
-        let mut mediator_keys = BoundedVec::new();
+        let mut mediator_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetMediators::get() {
             let mediator = DartUser::<T>::auditor_user("Mediator", 0, i);
             mediator.register_account();
             mediator_keys
-                .try_push(mediator.public_keys().enc)
+                .try_insert(mediator.public_keys().enc)
                 .expect("Failed to push mediator keys");
             mediators.push(mediator);
         }
@@ -70,7 +70,7 @@ benchmarks! {
             .to_vec()
             .try_into()
             .expect("Failed to convert asset data to AssetData");
-    }: _(asset_issuer.raw_origin(), auditor_keys, mediator_keys, data)
+    }: _(asset_issuer.raw_origin(), mediator_keys, auditor_keys, data)
 
     register_account_asset {
         // Offchain prover state.
