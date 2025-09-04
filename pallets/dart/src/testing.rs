@@ -243,7 +243,7 @@ impl<T: Config> DartUserInner<T> {
 
         // Decrypt leg.
         let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys.enc)
+            .decrypt_with_randomness(LegRole::Sender, &self.keys)
             .expect("Failed to decrypt leg");
 
         assert!(
@@ -320,7 +320,7 @@ impl<T: Config> DartUserInner<T> {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         // Decrypt leg.
         let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Receiver, &self.keys.enc)
+            .decrypt_with_randomness(LegRole::Receiver, &self.keys)
             .expect("Failed to decrypt leg");
 
         assert!(
@@ -393,7 +393,7 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Receiver, &self.keys.enc)
+            .decrypt_with_randomness(LegRole::Receiver, &self.keys)
             .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
         let amount = leg.amount();
@@ -456,7 +456,7 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys.enc)
+            .decrypt_with_randomness(LegRole::Sender, &self.keys)
             .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
         let amount = leg.amount();
@@ -519,7 +519,7 @@ impl<T: Config> DartUserInner<T> {
     ) {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let (leg, leg_enc_rand) = leg_enc
-            .decrypt_with_randomness(LegRole::Sender, &self.keys.enc)
+            .decrypt_with_randomness(LegRole::Sender, &self.keys)
             .expect("Failed to decrypt leg");
         let asset_id = leg.asset_id();
 
@@ -579,7 +579,7 @@ impl<T: Config> DartUserInner<T> {
     ) -> MediatorAffirmationProof {
         let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
         let leg = leg_enc
-            .decrypt(LegRole::Mediator(0), &self.keys.enc)
+            .decrypt(LegRole::Mediator(0), &self.keys)
             .expect("Failed to decrypt leg");
 
         if let Some((asset_id, amount)) = verify {

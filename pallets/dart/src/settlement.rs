@@ -211,7 +211,10 @@ impl<T: Config> DartSettlementLeg<T> {
     /// Verify a mediator affirmation proof for this leg.
     pub fn mediator_affirmation(&mut self, proof: MediatorAffirmationProof) -> DispatchResult {
         // A mediator can only affirm if the leg has a mediator.
-        ensure!(self.mediators.is_empty(), Error::<T>::NoMediatorsForThisLeg,);
+        ensure!(
+            !self.mediators.is_empty(),
+            Error::<T>::NoMediatorsForThisLeg,
+        );
         // The mediator can only affirm if the mediator affirmation status is `Pending`.
         let mediator_id = proof.key_index;
         let mediator = self

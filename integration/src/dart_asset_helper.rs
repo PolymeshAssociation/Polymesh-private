@@ -348,8 +348,7 @@ impl DartUserInner {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
         // Try to decrypt the leg as the sender
-        let (leg, leg_enc_rand) =
-            leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys.enc)?;
+        let (leg, leg_enc_rand) = leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys)?;
 
         // Check the leg asset and amount.
         if leg.asset_id() != asset_id || leg.amount() != amount {
@@ -415,8 +414,7 @@ impl DartUserInner {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
         // Try to decrypt the leg as the receiver
-        let (leg, leg_enc_rand) =
-            leg_enc.decrypt_with_randomness(LegRole::Receiver, &self.keys.enc)?;
+        let (leg, leg_enc_rand) = leg_enc.decrypt_with_randomness(LegRole::Receiver, &self.keys)?;
 
         // Check the leg asset and amount.
         if leg.asset_id() != asset_id || leg.amount() != amount {
@@ -484,7 +482,7 @@ impl DartUserInner {
 
         // Try to decrypt the leg as the mediator
         let leg = leg_enc
-            .decrypt(LegRole::Mediator(mediator_id), &self.keys.enc)
+            .decrypt(LegRole::Mediator(mediator_id), &self.keys)
             .unwrap();
 
         // Check the leg asset and amount if provided.
@@ -538,8 +536,7 @@ impl DartUserInner {
             .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
 
         // Try to decrypt the leg as the receiver
-        let (leg, leg_enc_rand) =
-            leg_enc.decrypt_with_randomness(LegRole::Receiver, &self.keys.enc)?;
+        let (leg, leg_enc_rand) = leg_enc.decrypt_with_randomness(LegRole::Receiver, &self.keys)?;
         let asset_id = leg.asset_id();
         let amount = leg.amount();
 
@@ -595,8 +592,7 @@ impl DartUserInner {
             .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
 
         // Try to decrypt the leg as the sender
-        let (leg, leg_enc_rand) =
-            leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys.enc)?;
+        let (leg, leg_enc_rand) = leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys)?;
 
         // Get our current account asset state.
         let asset_state = self
@@ -645,8 +641,7 @@ impl DartUserInner {
             .ok_or_else(|| anyhow::anyhow!("Settlement leg not found"))?;
 
         // Try to decrypt the leg as the sender
-        let (leg, leg_enc_rand) =
-            leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys.enc)?;
+        let (leg, leg_enc_rand) = leg_enc.decrypt_with_randomness(LegRole::Sender, &self.keys)?;
         let asset_id = leg.asset_id();
         let amount = leg.amount();
 
