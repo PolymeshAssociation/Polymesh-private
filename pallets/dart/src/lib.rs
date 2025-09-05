@@ -185,6 +185,8 @@ pub mod pallet {
             settlement_ref: SettlementRef,
             /// Settlement memo.
             memo: BoundedVec<u8, <PolymeshPrivateLimits as DartLimits>::MaxSettlementMemoLength>,
+            /// Asset CurveTree root_block.
+            asset_root_block: BlockNumberFor<T>,
             /// Legs in the settlement.
             legs: BoundedVec<LegEncrypted, T::MaxSettlementLegs>,
         },
@@ -322,6 +324,8 @@ pub mod pallet {
         TooManyMediators,
         /// Wrong mediator id for this leg.
         WrongMediatorId,
+        /// No pending affirmations for this settlement.
+        NoPendingAffirmations,
         /// Settlement not found.
         SettlementNotFound,
         /// Leg not found in the settlement.
@@ -501,7 +505,33 @@ pub mod pallet {
             NMapKey<Twox64Concat, SettlementRef>,
             NMapKey<Twox64Concat, LegId>,
         ),
-        DartSettlementLeg<T>,
+        LegEncrypted,
+        OptionQuery,
+    >;
+
+    /// The number of pending affirmations for a settlement.
+    /// This is used to track when a settlement can be executed.
+    #[pallet::storage]
+    pub(crate) type SettlementPendingAffirmations<T: Config> =
+        StorageMap<_, Twox64Concat, SettlementRef, u32, ValueQuery>;
+
+    /// The number of pending finalizations for a settlement.
+    /// This is used to track when a settlement can be finalized and all storage can be cleaned up.
+    #[pallet::storage]
+    pub(crate) type SettlementPendingFinalizations<T: Config> =
+        StorageMap<_, Twox64Concat, SettlementRef, u32, ValueQuery>;
+
+    /// The affirmation status of each party in a settlement leg.
+    /// This is a triple map where the first key is the settlement ID, the second key is the leg ID, and the third key is the party (sender, receiver, mediator).
+    #[pallet::storage]
+    pub(crate) type LegAffirmationStatus<T: Config> = StorageNMap<
+        _,
+        (
+            NMapKey<Twox64Concat, SettlementRef>,
+            NMapKey<Twox64Concat, LegId>,
+            NMapKey<Twox64Concat, LegAffirmParty>,
+        ),
+        AffirmationStatus,
         OptionQuery,
     >;
 
@@ -846,7 +876,7 @@ pub mod pallet {
             let leg_ref = proof.leg_ref;
             let accept = proof.accept;
             // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(leg_ref)?;
+            let update_settlement = UpdateSettlementStatus::<T>::new(leg_ref)?;
 
             // Verify the mediator affirmation proof and update the settlement and leg status.
             update_settlement.mediator_affirmation(proof)?;
@@ -885,7 +915,7 @@ pub mod pallet {
             // Handle the account state update proof and verify the nullifier.
             Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
-                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+                let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender update proof and update the settlement and leg status.
                 update_settlement.sender_counter_update(proof, account_curve_tree, rng)
@@ -921,7 +951,7 @@ pub mod pallet {
             // Handle the account state update proof and verify the nullifier.
             Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
-                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+                let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender reversal proof and update the settlement and leg status.
                 update_settlement.sender_reversal(proof, account_curve_tree, rng)
@@ -957,7 +987,7 @@ pub mod pallet {
             // Handle the account state update proof and verify the nullifier.
             Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
                 // Create an update settlement status instance.
-                let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+                let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the receiver claim proof and update the settlement and leg status.
                 update_settlement.receiver_claim(proof, account_curve_tree, rng)
@@ -1073,18 +1103,45 @@ impl<T: Config> Pallet<T> {
             Error::<T>::SettlementTooManyLegs
         );
 
-        // Verify the settlement proof.
+        // Get details of the settlement.
         let memo = proof.memo.clone();
         let proof_legs = proof.legs.clone();
         let root_block: BlockNumberFor<T> = proof.root_block.into();
-        let seed = Self::get_seed(true);
+
+        // Verify the settlement proof.
         let root =
             AssetCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
+        let seed = Self::get_seed(true);
         let req = VerifyDartAssetRequest::CreateSettlement { root, proof };
         req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
         // Set the settlement state to pending.
         SettlementState::<T>::insert(settlement_ref, SettlementStatus::Pending);
+
+        // Initialize all affirmation statuses to Pending.
+        let mut pending_affirmations = 0;
+        for (leg_idx, leg) in proof_legs.iter().enumerate() {
+            let leg_idx = leg_idx as LegId;
+            let mediators = leg.mediator_count().map_err(Error::<T>::from)? as u32;
+
+            pending_affirmations += 2 + mediators; // Sender + Receiver + Mediators
+            LegAffirmationStatus::<T>::insert(
+                (settlement_ref, leg_idx, LegAffirmParty::Sender),
+                AffirmationStatus::Pending,
+            );
+            LegAffirmationStatus::<T>::insert(
+                (settlement_ref, leg_idx, LegAffirmParty::Receiver),
+                AffirmationStatus::Pending,
+            );
+            for idx in 0..mediators {
+                LegAffirmationStatus::<T>::insert(
+                    (settlement_ref, leg_idx, LegAffirmParty::Mediator(idx as u8)),
+                    AffirmationStatus::Pending,
+                );
+            }
+        }
+        // Store the number of pending affirmations for the settlement.
+        SettlementPendingAffirmations::<T>::insert(settlement_ref, pending_affirmations);
 
         // Store the settlement memo.
         SettlementMemo::<T>::insert(settlement_ref, &memo);
@@ -1095,18 +1152,13 @@ impl<T: Config> Pallet<T> {
             let leg_id = leg_id as LegId;
             legs.force_push(leg.leg_enc.clone());
 
-            // Mediator affirmation status if the leg has a mediator.
-            let mediators = leg.get_mediator_ids().map_err(Error::<T>::from)?;
-
-            SettlementLegs::<T>::insert(
-                (settlement_ref, leg_id),
-                DartSettlementLeg::new(leg.leg_enc, mediators)?,
-            );
+            SettlementLegs::<T>::insert((settlement_ref, leg_id), leg.leg_enc);
         }
 
         // Emit an event for the settlement creation.
         Self::deposit_event(Event::<T>::SettlementCreated {
             settlement_ref,
+            asset_root_block: root_block,
             memo,
             legs,
         });
@@ -1119,7 +1171,7 @@ impl<T: Config> Pallet<T> {
         // Handle the account state update proof and verify the nullifier.
         Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
             // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+            let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the sender affirmation proof and update the settlement and leg status.
             update_settlement.sender_affirmation(proof, account_curve_tree, rng)
@@ -1138,7 +1190,7 @@ impl<T: Config> Pallet<T> {
         // Handle the account state update proof and verify the nullifier.
         Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
             // Create an update settlement status instance.
-            let mut update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
+            let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the receiver affirmation proof and update the settlement and leg status.
             update_settlement.receiver_affirmation(proof, account_curve_tree, rng)

@@ -70,7 +70,7 @@ impl<T: Config> OffchainProverState<T> {
         self.asset_tree.apply_new_leaves();
     }
 
-    pub fn get_settlement_leg(&self, leg_ref: LegRef) -> DartSettlementLeg<T> {
+    pub fn get_settlement_leg(&self, leg_ref: LegRef) -> LegEncrypted {
         SettlementLegs::<T>::get((leg_ref.settlement, leg_ref.leg_id))
             .expect("Failed to get settlement leg")
     }
@@ -239,7 +239,7 @@ impl<T: Config> DartUserInner<T> {
         SenderAffirmationProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
 
         // Get the account state for the asset.
         let account_state = self
@@ -305,7 +305,7 @@ impl<T: Config> DartUserInner<T> {
         ReceiverAffirmationProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
 
         // Get the account state for the asset.
         let account_state = self
@@ -370,7 +370,7 @@ impl<T: Config> DartUserInner<T> {
         ReceiverClaimProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
 
         // Get the account state for the asset.
         let account_state = self
@@ -436,7 +436,7 @@ impl<T: Config> DartUserInner<T> {
         SenderReversalProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
 
         // Get the account state for the asset.
         let account_state = self
@@ -500,7 +500,7 @@ impl<T: Config> DartUserInner<T> {
         SenderCounterUpdateProof<AccountTreeConfig>,
         &mut AccountAssetState,
     ) {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
 
         // Get the account state for the asset.
         let account_state = self
@@ -560,7 +560,7 @@ impl<T: Config> DartUserInner<T> {
         accept: bool,
         verify: Option<(DartAssetId, DartBalance)>,
     ) -> MediatorAffirmationProof {
-        let leg_enc = off_chain.get_settlement_leg(leg_ref).enc;
+        let leg_enc = off_chain.get_settlement_leg(leg_ref);
         let leg = leg_enc
             .decrypt(LegRole::Mediator(0), &self.keys)
             .expect("Failed to decrypt leg");
