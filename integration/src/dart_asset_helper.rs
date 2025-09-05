@@ -189,12 +189,14 @@ impl DartUserInner {
             return Ok(());
         }
         let keys = self.public_keys();
-        self.api
+        let mut res = self
+            .api
             .call()
             .dart_asset()
             .register_account(to_scale(&keys.acct), to_scale(&keys.enc))?
             .submit_and_watch(&mut self.user)
             .await?;
+        res.ok().await?;
         self.registered = true;
         Ok(())
     }
