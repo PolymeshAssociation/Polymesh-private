@@ -72,12 +72,12 @@ impl VerifyDartAssetRequest {
             }
             Self::MintAsset { root, proof } => {
                 proof
-                    .verify(root, &mut rng)
+                    .verify(&root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::CreateSettlement { root, proof } => {
                 proof
-                    .verify(root, &mut rng)
+                    .verify(&root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderAffirmation {
@@ -86,7 +86,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, root, &mut rng)
+                    .verify(&leg_enc, &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::ReceiverAffirmation {
@@ -95,7 +95,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, root, &mut rng)
+                    .verify(&leg_enc, &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderCounterUpdate {
@@ -104,7 +104,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, root, &mut rng)
+                    .verify(&leg_enc, &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderReversal {
@@ -113,7 +113,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, root, &mut rng)
+                    .verify(&leg_enc, &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::ReceiverClaim {
@@ -122,7 +122,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, root, &mut rng)
+                    .verify(&leg_enc, &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
         }

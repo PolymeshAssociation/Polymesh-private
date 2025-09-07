@@ -29,11 +29,11 @@ use sp_runtime::BoundedBTreeSet;
 use sp_std::convert::From;
 
 use polymesh_dart::{
-    curve_tree::{ValidateCurveTreeRoot, WrappedCurveTreeParameters},
-    AccountPublicKey, AccountStateCommitment, AccountStateNullifier, AccountStateUpdate,
-    AssetId as DartAssetId, AssetState, BatchedSettlementCounts, DartLimits, EncryptionPublicKey,
-    Error as DartError, LeafIndex, LegEncrypted, LegId, LegRef, PolymeshPrivateLimits,
-    SettlementId, SettlementRef, ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
+    curve_tree::WrappedCurveTreeParameters, AccountPublicKey, AccountStateCommitment,
+    AccountStateNullifier, AccountStateUpdate, AssetId as DartAssetId, AssetState,
+    BatchedSettlementCounts, DartLimits, EncryptionPublicKey, Error as DartError, LeafIndex,
+    LegEncrypted, LegId, LegRef, PolymeshPrivateLimits, SettlementId, SettlementRef,
+    ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
 use polymesh_dart_host_functions::{BatchSeed, VerifyDartAssetRequest};
@@ -751,14 +751,9 @@ pub mod pallet {
             let asset_id = proof.asset_id;
             let account = proof.pk;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, _rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, _rng| {
                 // Verify the proof.
-                let req = VerifyDartAssetRequest::MintAsset {
-                    root: account_curve_tree
-                        .get_block_root(proof.root_block)
-                        .ok_or(Error::<T>::CurveTreeRootNotFound)?,
-                    proof,
-                };
+                let req = VerifyDartAssetRequest::MintAsset { root, proof };
                 let seed = Self::get_seed(true);
                 req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
                 Ok(())
@@ -913,12 +908,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender update proof and update the settlement and leg status.
-                update_settlement.sender_counter_update(proof, account_curve_tree, rng)
+                update_settlement.sender_counter_update(proof, root, rng)
             })?;
 
             // Emit an event for the sender update counter.
@@ -949,12 +944,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender reversal proof and update the settlement and leg status.
-                update_settlement.sender_reversal(proof, account_curve_tree, rng)
+                update_settlement.sender_reversal(proof, root, rng)
             })?;
 
             // Emit an event for the sender revert.
@@ -985,12 +980,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the receiver claim proof and update the settlement and leg status.
-                update_settlement.receiver_claim(proof, account_curve_tree, rng)
+                update_settlement.receiver_claim(proof, root, rng)
             })?;
 
             // Emit an event for the receiver claim.
@@ -1169,12 +1164,12 @@ impl<T: Config> Pallet<T> {
     pub fn base_sender_affirmation(proof: polymesh_dart::SenderAffirmationProof) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, root, rng| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the sender affirmation proof and update the settlement and leg status.
-            update_settlement.sender_affirmation(proof, account_curve_tree, rng)
+            update_settlement.sender_affirmation(proof, root, rng)
         })?;
 
         // Emit an event for the sender affirmation.
@@ -1188,12 +1183,12 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, account_curve_tree, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, root, rng| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the receiver affirmation proof and update the settlement and leg status.
-            update_settlement.receiver_affirmation(proof, account_curve_tree, rng)
+            update_settlement.receiver_affirmation(proof, root, rng)
         })?;
 
         // Emit an event for the receiver affirmation.
