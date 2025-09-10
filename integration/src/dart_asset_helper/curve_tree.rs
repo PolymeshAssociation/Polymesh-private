@@ -7,14 +7,16 @@ use polymesh_dart::{
     curve_tree::{
         get_account_curve_tree_parameters, get_asset_curve_tree_parameters, AccountTreeConfig,
         AssetTreeConfig, AsyncCurveTreeBackend, AsyncCurveTreeWithBackend, CurveTreeLookup,
-        CurveTreeParameters, CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation, Root,
+        CurveTreeParameters, CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodePosition, NodeLocation, Root,
     },
     BlockNumber, Error as DartError, LeafIndex, NodeLevel, PallasParameters, VestaParameters,
     ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L,
     ASSET_TREE_M,
 };
 
-pub use polymesh_api::types::polymesh_dart::curve_tree::common::NodeLocation as ChainNodeLocation;
+pub use polymesh_api::types::polymesh_dart::curve_tree::common::{
+    NodeLocation as ChainNodeLocation, NodePosition as ChainNodePosition,
+};
 pub use polymesh_api::{Api, TransactionResults};
 
 use super::*;
@@ -31,8 +33,12 @@ pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
 pub fn node_location_to_chain<const L: usize>(location: NodeLocation<L>) -> ChainNodeLocation {
     match location {
         NodeLocation::Leaf(leaf_index) => ChainNodeLocation::Leaf(leaf_index),
-        NodeLocation::Odd { level, index } => ChainNodeLocation::Odd { level, index },
-        NodeLocation::Even { level, index } => ChainNodeLocation::Even { level, index },
+        NodeLocation::Odd(NodePosition { level, index }) => {
+            ChainNodeLocation::Odd(ChainNodePosition { level, index })
+        }
+        NodeLocation::Even(NodePosition { level, index }) => {
+            ChainNodeLocation::Even(ChainNodePosition { level, index })
+        }
     }
 }
 

@@ -6497,6 +6497,7 @@ dependencies = [
  "polymesh-dart-common",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
+ "rayon",
  "relations",
  "scale-info",
  "schnorr_pok",
