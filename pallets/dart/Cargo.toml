@@ -14,6 +14,8 @@ pallet-identity = { workspace = true, default-features = false }
 
 # Crypto
 polymesh-dart-host-functions = { workspace = true, default-features = false }
+rand_core = { workspace = true, default-features = false, optional = true }
+rand_chacha = { workspace = true, default-features = false, optional = true }
 
 # DART
 polymesh-dart = { workspace = true, default-features = false, features = [
@@ -53,6 +55,8 @@ std = [
   "lazy_static",
   "codec/std",
   "polymesh-dart/std",
+  "rand_core?/std",
+  "rand_chacha?/std",
   "frame-support/std",
   "frame-system/std",
   "frame-benchmarking?/std",
@@ -66,6 +70,8 @@ std = [
 ]
 runtime-benchmarks = [
   "testing",
+  "rand_core",
+  "rand_chacha",
   "frame-benchmarking/runtime-benchmarks",
   "polymesh-primitives/runtime-benchmarks",
   "polymesh-dart-host-functions/runtime-benchmarks",

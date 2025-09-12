@@ -156,6 +156,15 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         leaf_index
     }
 
+    fn last_committed_leaf_index(&self) -> Result<Option<LeafIndex>, Self::Error> {
+        // The asset curve tree doesn't support batched leaf inserts.
+        Ok(None)
+    }
+
+    fn set_committed_leaf_index(&mut self, _leaf_index: LeafIndex) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
     fn get_leaf(
         &self,
         leaf_index: LeafIndex,
@@ -270,6 +279,16 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         // Increment the next leaf index for the next call.
         NextAccountLeafIndex::<T>::put(leaf_index + 1);
         leaf_index
+    }
+
+    fn last_committed_leaf_index(&self) -> Result<Option<LeafIndex>, Self::Error> {
+        let leaf_index = LastCommittedAccountLeafIndex::<T>::get();
+        Ok(Some(leaf_index))
+    }
+
+    fn set_committed_leaf_index(&mut self, leaf_index: LeafIndex) -> Result<(), Self::Error> {
+        LastCommittedAccountLeafIndex::<T>::put(leaf_index);
+        Ok(())
     }
 
     fn get_leaf(

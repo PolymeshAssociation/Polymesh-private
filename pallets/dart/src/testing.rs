@@ -631,6 +631,11 @@ impl<T: Config> DartUser<T> {
         inner.keys.public_keys()
     }
 
+    pub fn keys(&self) -> AccountKeys {
+        let inner = self.0.borrow();
+        inner.keys.clone()
+    }
+
     pub fn did(&self) -> IdentityId {
         let inner = self.0.borrow();
         inner.user.did()

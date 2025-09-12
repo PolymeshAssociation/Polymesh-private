@@ -442,6 +442,12 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type NextAccountLeafIndex<T: Config> = StorageValue<_, LeafIndex, ValueQuery>;
 
+    /// The last committed leaf index for DART accounts curve tree.
+    ///
+    /// This is used to do batched inserts into the tree.
+    #[pallet::storage]
+    pub(super) type LastCommittedAccountLeafIndex<T: Config> = StorageValue<_, LeafIndex, ValueQuery>;
+
     /// Inner node storage for DART accounts curve tree.
     #[pallet::storage]
     pub(super) type AccountInnerNodes<T: Config> =
@@ -468,12 +474,6 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type AccountStateCommitmentNullifiers<T: Config> =
         StorageMap<_, Twox64Concat, AccountStateNullifier, BlockNumberFor<T>, ValueQuery>;
-
-    /// Update flag for the account curve tree.
-    ///
-    /// This is used to detect when the account curve tree has been updated.
-    #[pallet::storage]
-    pub(crate) type UpdatedAccountCurveTree<T: Config> = StorageValue<_, bool, ValueQuery>;
 
     /// The next settlement ID to be used.
     #[pallet::storage]
@@ -571,7 +571,6 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
             UpdatedAssetCurveTree::<T>::put(false);
-            UpdatedAccountCurveTree::<T>::put(false);
             // TODO: weight.
             Weight::zero()
         }
@@ -751,10 +750,9 @@ pub mod pallet {
             let asset_id = proof.asset_id;
             let account = proof.pk;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, _rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
                 // Verify the proof.
                 let req = VerifyDartAssetRequest::MintAsset { root, proof };
-                let seed = Self::get_seed(true);
                 req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
                 Ok(())
             })?;
@@ -908,12 +906,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender update proof and update the settlement and leg status.
-                update_settlement.sender_counter_update(proof, root, rng)
+                update_settlement.sender_counter_update(proof, root, seed)
             })?;
 
             // Emit an event for the sender update counter.
@@ -944,12 +942,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender reversal proof and update the settlement and leg status.
-                update_settlement.sender_reversal(proof, root, rng)
+                update_settlement.sender_reversal(proof, root, seed)
             })?;
 
             // Emit an event for the sender revert.
@@ -980,12 +978,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, rng| {
+            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the receiver claim proof and update the settlement and leg status.
-                update_settlement.receiver_claim(proof, root, rng)
+                update_settlement.receiver_claim(proof, root, seed)
             })?;
 
             // Emit an event for the receiver claim.
@@ -1164,12 +1162,12 @@ impl<T: Config> Pallet<T> {
     pub fn base_sender_affirmation(proof: polymesh_dart::SenderAffirmationProof) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, root, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, root, seed| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the sender affirmation proof and update the settlement and leg status.
-            update_settlement.sender_affirmation(proof, root, rng)
+            update_settlement.sender_affirmation(proof, root, seed)
         })?;
 
         // Emit an event for the sender affirmation.
@@ -1183,12 +1181,12 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, root, rng| {
+        Self::handle_account_state_update_proof(proof, |proof, root, seed| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the receiver affirmation proof and update the settlement and leg status.
-            update_settlement.receiver_affirmation(proof, root, rng)
+            update_settlement.receiver_affirmation(proof, root, seed)
         })?;
 
         // Emit an event for the receiver affirmation.
@@ -1207,15 +1205,15 @@ impl<T: Config> Pallet<T> {
         // Ensure the nullifier is unique.
         Self::ensure_account_state_nullifier_unique(&nullifier)?;
 
-        // Get account curve tree.
-        let mut account_curve_tree = Self::get_account_curve_tree()?;
-
         // Verify the account state update proof.
         let root_block: BlockNumberFor<T> = proof.root_block().into();
         let seed = Self::get_seed(true);
         let root =
             AccountCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
         verify(proof, root, seed)?;
+
+        // Get account curve tree.
+        let mut account_curve_tree = Self::get_account_curve_tree()?;
 
         // Insert the update account state commitment into the account curve tree.
         Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
@@ -1291,10 +1289,7 @@ impl<T: Config> Pallet<T> {
         let account_leaf = account_commitment.as_leaf_value()?;
 
         // Insert the new account leaf.
-        let leaf_index = account_curve_tree.insert_leaf(account_leaf)?;
-
-        // Set the updated flag for the account curve tree.
-        UpdatedAccountCurveTree::<T>::put(true);
+        let leaf_index = account_curve_tree.insert_leaf_delayed_update(account_leaf)?;
 
         // Emit an event for the account curve tree update.
         Self::deposit_event(Event::<T>::AccountStateLeafInserted {
@@ -1421,13 +1416,16 @@ impl<T: Config> Pallet<T> {
                 .expect("Asset curve tree should be able to store root; qed");
         }
 
-        // Check if the account curve tree has been updated.
-        if UpdatedAccountCurveTree::<T>::get() {
-            // Get the account curve tree.
-            let mut tree = Self::get_account_curve_tree()
-                .expect("Account curve tree should be initialized; qed");
+        // Get the account curve tree.
+        let mut tree = Self::get_account_curve_tree()
+            .expect("Account curve tree should be initialized; qed");
 
-            // Store the new account curve tree root.
+        // Commit the delayed updates to the account curve tree.
+        let updated = tree.commit_leaves_to_tree()
+            .expect("Account curve tree should be able to commit leaves; qed");
+
+        // Store the new account curve tree root if there were updates.
+        if updated {
             tree.store_root()
                 .expect("Account curve tree should be able to store root; qed");
         }
