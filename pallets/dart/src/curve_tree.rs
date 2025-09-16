@@ -156,15 +156,6 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         leaf_index
     }
 
-    fn last_committed_leaf_index(&self) -> Result<Option<LeafIndex>, Self::Error> {
-        // The asset curve tree doesn't support batched leaf inserts.
-        Ok(None)
-    }
-
-    fn set_committed_leaf_index(&mut self, _leaf_index: LeafIndex) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
     fn get_leaf(
         &self,
         leaf_index: LeafIndex,
@@ -275,15 +266,16 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
     }
 
     fn allocate_leaf_index(&mut self) -> LeafIndex {
-        let leaf_index = NextAccountLeafIndex::<T>::get();
-        // Increment the next leaf index for the next call.
-        NextAccountLeafIndex::<T>::put(leaf_index + 1);
-        leaf_index
+        Pallet::<T>::next_account_leaf_index()
     }
 
-    fn last_committed_leaf_index(&self) -> Result<Option<LeafIndex>, Self::Error> {
+    fn batch_inserts_supported(&self) -> bool {
+        true
+    }
+
+    fn last_committed_leaf_index(&self) -> Result<LeafIndex, Self::Error> {
         let leaf_index = LastCommittedAccountLeafIndex::<T>::get();
-        Ok(Some(leaf_index))
+        Ok(leaf_index)
     }
 
     fn set_committed_leaf_index(&mut self, leaf_index: LeafIndex) -> Result<(), Self::Error> {
@@ -295,8 +287,10 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         &self,
         leaf_index: LeafIndex,
     ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
-        let leaf = AccountLeaves::<T>::get(leaf_index);
-        Ok(leaf)
+        match AccountLeaves::<T>::get(leaf_index) {
+            Some(commitment) => Ok(Some(commitment.as_leaf_value()?)),
+            None => Ok(None),
+        }
     }
 
     fn set_leaf(
@@ -304,14 +298,12 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         leaf_index: LeafIndex,
         new_leaf_value: LeafValue<PallasParameters>,
     ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
+        let account_commitment = AccountStateCommitment::from_affine(*new_leaf_value.deref())?;
         // Use `mutate` to update the leaf value in the storage and return the previous value.
-        Ok(AccountLeaves::<T>::mutate(leaf_index, |leaf| {
-            // Get the old value, if it exists.
-            let previous_value = leaf.take();
-            // Set the new value.
-            *leaf = Some(new_leaf_value);
-            previous_value
-        }))
+        AccountLeaves::<T>::set(leaf_index, Some(account_commitment));
+
+        // The account curve tree is append-only, so we don't support updating existing leaves.
+        Ok(None)
     }
 
     fn leaf_count(&self) -> LeafIndex {

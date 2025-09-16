@@ -7,7 +7,8 @@ use polymesh_dart::{
     curve_tree::{
         get_account_curve_tree_parameters, get_asset_curve_tree_parameters, AccountTreeConfig,
         AssetTreeConfig, AsyncCurveTreeBackend, AsyncCurveTreeWithBackend, CurveTreeLookup,
-        CurveTreeParameters, CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodePosition, NodeLocation, Root,
+        CurveTreeParameters, CurveTreePath, CurveTreeRoot, Inner, LeafValue, NodeLocation,
+        NodePosition, Root,
     },
     BlockNumber, Error as DartError, LeafIndex, NodeLevel, PallasParameters, VestaParameters,
     ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L,

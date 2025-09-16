@@ -46,9 +46,9 @@ pub async fn get_account_leaf_inserted(
             match &rec.event {
                 RuntimeEvent::DartAsset(DartAssetEvent::AccountStateLeafInserted {
                     leaf_index,
-                    account_leaf,
+                    account_commitment,
                 }) => {
-                    return Some((*leaf_index, to_scale(account_leaf)));
+                    return Some((*leaf_index, to_scale(account_commitment)));
                 }
                 _ => (),
             }

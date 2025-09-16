@@ -238,8 +238,8 @@ pub mod pallet {
         AccountStateLeafInserted {
             /// The new leaf index.
             leaf_index: LeafIndex,
-            /// The new account state leaf.
-            account_leaf: AccountLeaf,
+            /// The new account state commitment.
+            account_commitment: AccountStateCommitment,
         },
         /// An asset state leaf has been updated.
         ///
@@ -434,7 +434,7 @@ pub mod pallet {
     /// The leaves are immutable, so we use a simple storage map.
     #[pallet::storage]
     pub(super) type AccountLeaves<T: Config> =
-        StorageMap<_, Twox64Concat, LeafIndex, AccountLeaf, OptionQuery>;
+        StorageMap<_, Twox64Concat, LeafIndex, AccountStateCommitment, OptionQuery>;
 
     /// Next leaf index for DART accounts curve tree.
     ///
@@ -446,7 +446,8 @@ pub mod pallet {
     ///
     /// This is used to do batched inserts into the tree.
     #[pallet::storage]
-    pub(super) type LastCommittedAccountLeafIndex<T: Config> = StorageValue<_, LeafIndex, ValueQuery>;
+    pub(super) type LastCommittedAccountLeafIndex<T: Config> =
+        StorageValue<_, LeafIndex, ValueQuery>;
 
     /// Inner node storage for DART accounts curve tree.
     #[pallet::storage]
@@ -685,9 +686,6 @@ pub mod pallet {
             let account = proof.account;
             let account_state_commitment = proof.account_state_commitment;
 
-            // Get the account curve tree.
-            let mut account_curve_tree = Self::get_account_curve_tree()?;
-
             // Verify the proof.
             let req = VerifyDartAssetRequest::AccountAssetRegistration {
                 did: caller_did,
@@ -697,7 +695,7 @@ pub mod pallet {
             req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
             // Insert the new account state commitment from the proof into the account curve tree.
-            Self::insert_account_leaf(&mut &mut account_curve_tree, account_state_commitment)?;
+            Self::insert_account_leaf(account_state_commitment)?;
 
             // Emit an event for the account asset registration.
             Self::deposit_event(Event::<T>::AccountAssetRegistered {
@@ -1068,7 +1066,7 @@ impl<T: Config> Pallet<T> {
         DartAssetDetails::<T>::insert(asset_id, asset_detail);
 
         // Insert the asset state into the asset curve tree.
-        Self::update_asset_leaf(owner_did, asset_id, &auditors, &mediators, true)?;
+        Self::update_asset_leaf(owner_did, asset_id, &auditors, &mediators)?;
 
         // Emit the event for asset creation.
         Self::deposit_event(Event::<T>::AssetCreated {
@@ -1212,11 +1210,8 @@ impl<T: Config> Pallet<T> {
             AccountCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
         verify(proof, root, seed)?;
 
-        // Get account curve tree.
-        let mut account_curve_tree = Self::get_account_curve_tree()?;
-
         // Insert the update account state commitment into the account curve tree.
-        Self::insert_account_leaf(&mut account_curve_tree, account_commitment)?;
+        Self::insert_account_leaf(account_commitment)?;
 
         // Burn the nullifier to ensure it cannot be used again.
         let block = frame_system::Pallet::<T>::block_number();
@@ -1247,7 +1242,6 @@ impl<T: Config> Pallet<T> {
         asset_id: DartAssetId,
         auditors: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetAuditors>,
         mediators: &BoundedBTreeSet<EncryptionPublicKey, T::MaxAssetMediators>,
-        is_new: bool,
     ) -> DispatchResult {
         // Create the Asset State.
         let asset_state = AssetState::<T>::new_bounded(asset_id, mediators, auditors);
@@ -1256,11 +1250,7 @@ impl<T: Config> Pallet<T> {
         // Update the asset curve tree with the new asset.
         let mut asset_curve_tree = Self::get_asset_curve_tree()?;
         let leaf_index = asset_id.into();
-        if is_new {
-            asset_curve_tree.insert_leaf(asset_leaf)?;
-        } else {
-            asset_curve_tree.update_leaf(leaf_index, asset_leaf)?;
-        }
+        asset_curve_tree.update_leaf(leaf_index, asset_leaf)?;
 
         // Set the updated flag for the asset curve tree.
         UpdatedAssetCurveTree::<T>::put(true);
@@ -1281,23 +1271,26 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Insert a new account state commitment into the account curve tree.
-    fn insert_account_leaf(
-        account_curve_tree: &mut AccountCurveTree<T>,
-        account_commitment: AccountStateCommitment,
-    ) -> Result<(), Error<T>> {
-        // Create the account leaf.
-        let account_leaf = account_commitment.as_leaf_value()?;
-
+    fn insert_account_leaf(account_commitment: AccountStateCommitment) -> Result<(), Error<T>> {
         // Insert the new account leaf.
-        let leaf_index = account_curve_tree.insert_leaf_delayed_update(account_leaf)?;
+        let leaf_index = Self::next_account_leaf_index();
+        AccountLeaves::<T>::set(leaf_index, Some(account_commitment));
 
         // Emit an event for the account curve tree update.
         Self::deposit_event(Event::<T>::AccountStateLeafInserted {
             leaf_index,
-            account_leaf,
+            account_commitment,
         });
 
         Ok(())
+    }
+
+    /// Get the next account leaf index.
+    pub fn next_account_leaf_index() -> LeafIndex {
+        let leaf_index = NextAccountLeafIndex::<T>::get();
+        // Increment the next leaf index for the next call.
+        NextAccountLeafIndex::<T>::put(leaf_index + 1);
+        leaf_index
     }
 
     /// Ensure account state nullifier is unique.
@@ -1417,11 +1410,12 @@ impl<T: Config> Pallet<T> {
         }
 
         // Get the account curve tree.
-        let mut tree = Self::get_account_curve_tree()
-            .expect("Account curve tree should be initialized; qed");
+        let mut tree =
+            Self::get_account_curve_tree().expect("Account curve tree should be initialized; qed");
 
         // Commit the delayed updates to the account curve tree.
-        let updated = tree.commit_leaves_to_tree()
+        let updated = tree
+            .commit_leaves_to_tree()
             .expect("Account curve tree should be able to commit leaves; qed");
 
         // Store the new account curve tree root if there were updates.

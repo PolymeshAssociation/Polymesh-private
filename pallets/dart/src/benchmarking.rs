@@ -47,19 +47,11 @@ benchmarks! {
             account_commitments.push(account_state_commitment);
         }
     }: {
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
-
         // Insert the account state commitments into the account curve tree.
         for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(&mut account_curve_tree, account_commitment)
+            Pallet::<T>::insert_account_leaf(account_commitment)
                 .expect("Failed to insert account leaf");
         }
-
-        // We need to commit the leaves to the tree to update the internal state.
-        //account_curve_tree.commit_leaves_to_tree()
-        //    .expect("Account curve tree should be able to commit leaves; qed");
     }
 
     commit_insert_account_leaves {
@@ -80,13 +72,10 @@ benchmarks! {
             let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
             account_commitments.push(account_state_commitment);
         }
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
 
         // Insert the account state commitments into the account curve tree.
         for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(&mut account_curve_tree, account_commitment)
+            Pallet::<T>::insert_account_leaf(account_commitment)
                 .expect("Failed to insert account leaf");
         }
     }: {
@@ -130,15 +119,15 @@ benchmarks! {
             account_commitments.push(account_state_commitment);
         }
     }: {
+        // Insert the account state commitments into the account curve tree.
+        for account_commitment in account_commitments {
+            Pallet::<T>::insert_account_leaf(account_commitment)
+                .expect("Failed to insert account leaf");
+        }
+
         // Get account curve tree.
         let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
             .expect("Failed to get account curve tree");
-
-        // Insert the account state commitments into the account curve tree.
-        for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(&mut account_curve_tree, account_commitment)
-                .expect("Failed to insert account leaf");
-        }
 
         // Store the new account curve tree root.
         account_curve_tree.store_root()
