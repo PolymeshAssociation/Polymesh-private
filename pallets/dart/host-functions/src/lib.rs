@@ -46,6 +46,7 @@ pub type AccountTreeRoot = CurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, Account
 pub enum Error {
     VerifyFailed,
     BatchClosed,
+    GenerateProofFailed,
 }
 
 /// Native interface for runtime module for DART Assets
@@ -68,6 +69,6 @@ pub trait NativeDARTAssets {
             _request.generate(_seed)
         }
         #[cfg(not(feature = "testing"))]
-        Err(Error::VerifyFailed)
+        Err(Error::GenerateProofFailed)
     }
 }

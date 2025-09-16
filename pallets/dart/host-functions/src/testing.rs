@@ -110,7 +110,7 @@ impl GenerateDartProofRequest {
                     &did.0[..],
                     params,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::AccountAssetRegistration {
                     proof,
                     account_state,
@@ -124,7 +124,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof =
                     AssetMintingProof::new(&mut rng, &key, &mut account_state, path, amount)
-                        .map_err(|_| Error::VerifyFailed)?;
+                        .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::MintAsset {
                     proof,
                     account_state,
@@ -136,7 +136,7 @@ impl GenerateDartProofRequest {
             } => {
                 let proof = builder
                     .encrypt_and_prove(&mut rng, paths)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::CreateSettlement { proof })
             }
             GenerateDartProofRequest::SenderAffirmation {
@@ -150,7 +150,7 @@ impl GenerateDartProofRequest {
                 // Decrypt leg.
                 let leg_enc_rand = leg_enc
                     .get_encryption_randomness(LegRole::Sender, &keys.enc)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
 
                 let proof = SenderAffirmationProof::new(
                     &mut rng,
@@ -162,7 +162,7 @@ impl GenerateDartProofRequest {
                     &mut account_state,
                     path,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::SenderAffirmation {
                     proof,
                     account_state,
@@ -178,7 +178,7 @@ impl GenerateDartProofRequest {
                 // Decrypt leg.
                 let leg_enc_rand = leg_enc
                     .get_encryption_randomness(LegRole::Receiver, &keys.enc)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
 
                 let proof = ReceiverAffirmationProof::new(
                     &mut rng,
@@ -189,7 +189,7 @@ impl GenerateDartProofRequest {
                     &mut account_state,
                     path,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::ReceiverAffirmation {
                     proof,
                     account_state,
@@ -206,7 +206,7 @@ impl GenerateDartProofRequest {
                 let proof = MediatorAffirmationProof::new(
                     &mut rng, &leg_ref, asset_id, &leg_enc, &key, key_index, accept,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::MediatorAffirmation { proof })
             }
             GenerateDartProofRequest::ReceiverClaim {
@@ -220,7 +220,7 @@ impl GenerateDartProofRequest {
                 // Decrypt leg.
                 let leg_enc_rand = leg_enc
                     .get_encryption_randomness(LegRole::Receiver, &keys.enc)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
 
                 let proof = ReceiverClaimProof::new(
                     &mut rng,
@@ -232,7 +232,7 @@ impl GenerateDartProofRequest {
                     &mut account_state,
                     path,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::ReceiverClaim {
                     proof,
                     account_state,
@@ -248,7 +248,7 @@ impl GenerateDartProofRequest {
                 // Decrypt leg.
                 let leg_enc_rand = leg_enc
                     .get_encryption_randomness(LegRole::Sender, &keys.enc)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
 
                 let proof = SenderCounterUpdateProof::new(
                     &mut rng,
@@ -259,7 +259,7 @@ impl GenerateDartProofRequest {
                     &mut account_state,
                     path,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::SenderCounterUpdate {
                     proof,
                     account_state,
@@ -276,7 +276,7 @@ impl GenerateDartProofRequest {
                 // Decrypt leg.
                 let leg_enc_rand = leg_enc
                     .get_encryption_randomness(LegRole::Sender, &keys.enc)
-                    .map_err(|_| Error::VerifyFailed)?;
+                    .map_err(|_| Error::GenerateProofFailed)?;
 
                 let proof = SenderReversalProof::new(
                     &mut rng,
@@ -288,7 +288,7 @@ impl GenerateDartProofRequest {
                     &mut account_state,
                     path,
                 )
-                .map_err(|_| Error::VerifyFailed)?;
+                .map_err(|_| Error::GenerateProofFailed)?;
                 Ok(GenerateDartProofResponse::SenderRevert {
                     proof,
                     account_state,
