@@ -42,7 +42,7 @@ benchmarks! {
         let mut account_commitments = Vec::with_capacity(l as usize);
         for asset_id in 0..l {
             // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0).expect("Failed to create account state");
+            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
             let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
             account_commitments.push(account_state_commitment);
         }
@@ -68,7 +68,7 @@ benchmarks! {
         let mut account_commitments = Vec::with_capacity(l as usize);
         for asset_id in 0..l {
             // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0).expect("Failed to create account state");
+            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
             let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
             account_commitments.push(account_state_commitment);
         }
@@ -114,7 +114,7 @@ benchmarks! {
         let mut account_commitments = Vec::with_capacity(l as usize);
         for asset_id in 0..l {
             // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0).expect("Failed to create account state");
+            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
             let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
             account_commitments.push(account_state_commitment);
         }
