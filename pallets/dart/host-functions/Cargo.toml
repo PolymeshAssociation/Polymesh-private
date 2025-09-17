@@ -11,6 +11,7 @@ edition = "2024"
 # Crypto
 rand_core = { workspace = true, default-features = false }
 rand_chacha = { workspace = true, default-features = false }
+rand = { workspace = true, default-features = false, optional = true }
 
 # Common
 polymesh-primitives = { workspace = true, default-features = false }
@@ -31,10 +32,11 @@ scale-info = { workspace = true, default-features = false, features = [
 codec = { workspace = true, default-features = false, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
 sp-runtime-interface = { workspace = true, default-features = false }
 
 [features]
-default = ["std"]
+default = ["std", "testing"]
 
 testing = []
 
@@ -45,6 +47,7 @@ no_std = ["polymesh-dart/no_std"]
 std = [
     "asm",
     "parallel",
+    "rand/std",
     "rand_core/std",
     "rand_chacha/std",
     "polymesh-dart/std",
@@ -52,6 +55,7 @@ std = [
     "codec/std",
     "sp-std/std",
     "sp-core/std",
+    "sp-io/std",
     "sp-runtime-interface/std",
 ]
 runtime-benchmarks = ["testing"]

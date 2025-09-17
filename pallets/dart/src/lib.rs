@@ -36,7 +36,7 @@ use polymesh_dart::{
     ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
-use polymesh_dart_host_functions::{BatchSeed, VerifyDartAssetRequest};
+use polymesh_dart_host_functions::{BatchId, BatchSeed, VerifyDartAssetRequest, native_dart_assets};
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
@@ -541,6 +541,10 @@ pub mod pallet {
     #[pallet::getter(fn rng_nonce)]
     pub(super) type RngNonce<T: Config> = StorageValue<_, u64, ValueQuery>;
 
+    /// The BatchId for the current block.
+    #[pallet::storage]
+    pub(crate) type CurrentBatchId<T: Config> = StorageValue<_, BatchId, OptionQuery>;
+
     #[pallet::genesis_config]
     #[derive(Default)]
     pub struct GenesisConfig {}
@@ -572,12 +576,18 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
             UpdatedAssetCurveTree::<T>::put(false);
+
+            // Get a new batch ID for the block.
+            let batch_id = native_dart_assets::create_batch();
+            CurrentBatchId::<T>::put(batch_id);
+
             // TODO: weight.
             Weight::zero()
         }
 
         fn on_finalize(_n: BlockNumberFor<T>) {
             Self::update_curve_tree_roots();
+            CurrentBatchId::<T>::kill();
         }
     }
 
