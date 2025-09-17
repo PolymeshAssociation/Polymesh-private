@@ -89,8 +89,26 @@ benchmarks! {
     }
 
     update_root {
-        // No setup needed.
-    }: {
+        let mut rng = Rng::from_seed([42u8; 32]);
+        // Create an asset issuer and create an asset.
+        let asset_issuer = DartUser::<T>::new("AssetIssuer");
+        let keys = asset_issuer.keys();
+
+        // Generate new account state commitment.
+        let account_state = keys.acct.account_state(&mut rng, 42, 0, &[42]).expect("Failed to create account state");
+        let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
+        // Insert the account state commitment into the account curve tree.
+        Pallet::<T>::insert_account_leaf(account_state_commitment)
+            .expect("Failed to insert account leaf");
+
+        // Get account curve tree.
+        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
+            .expect("Failed to get account curve tree");
+
+        // We need to commit the leaves to the tree to update the internal state.
+        account_curve_tree.commit_leaves_to_tree()
+            .expect("Account curve tree should be able to commit leaves; qed");
+     }: {
         // Get account curve tree.
         let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
             .expect("Failed to get account curve tree");
@@ -128,6 +146,10 @@ benchmarks! {
         // Get account curve tree.
         let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
             .expect("Failed to get account curve tree");
+
+        // We need to commit the leaves to the tree to update the internal state.
+        account_curve_tree.commit_leaves_to_tree()
+            .expect("Account curve tree should be able to commit leaves; qed");
 
         // Store the new account curve tree root.
         account_curve_tree.store_root()
