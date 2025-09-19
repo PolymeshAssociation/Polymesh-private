@@ -36,7 +36,9 @@ use polymesh_dart::{
     ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
-use polymesh_dart_host_functions::{BatchId, BatchSeed, VerifyDartAssetRequest, native_dart_assets};
+use polymesh_dart_host_functions::{
+    native_dart_assets, BatchId, BatchSeed, VerifyDartAssetRequest,
+};
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
@@ -474,7 +476,7 @@ pub mod pallet {
     /// This is used to ensure that the same account state commitment cannot be used twice.
     #[pallet::storage]
     pub(super) type AccountStateCommitmentNullifiers<T: Config> =
-        StorageMap<_, Twox64Concat, AccountStateNullifier, BlockNumberFor<T>, ValueQuery>;
+        StorageMap<_, Identity, AccountStateNullifier, BlockNumberFor<T>, OptionQuery>;
 
     /// The next settlement ID to be used.
     #[pallet::storage]

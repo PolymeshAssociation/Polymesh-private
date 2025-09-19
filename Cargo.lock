@@ -380,6 +380,7 @@ dependencies = [
  "ark-std",
  "derivative",
  "hashbrown 0.13.2",
+ "rayon",
 ]
 
 [[package]]
@@ -6550,11 +6551,13 @@ dependencies = [
  "parity-scale-codec",
  "polymesh-dart",
  "polymesh-primitives",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
  "rayon",
  "scale-info",
  "sp-core",
+ "sp-io",
  "sp-runtime-interface",
  "sp-std",
 ]
