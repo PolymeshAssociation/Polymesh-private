@@ -246,6 +246,7 @@ confidential_assets = { version = "1.0.0", default-features = false }
 
 # DART
 polymesh-dart = { path = "../polymesh-dart", version = "0.1.0", default-features = false }
+ark-ec = { version = "0.4", default-features = false }
 
 # Validator set (PoA)
 validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }

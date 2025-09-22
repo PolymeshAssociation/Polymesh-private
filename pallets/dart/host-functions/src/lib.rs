@@ -4,8 +4,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod verify;
-
 pub use verify::*;
+
+mod curve_tree;
+pub use curve_tree::*;
 
 #[cfg(feature = "std")]
 mod batch;
@@ -29,17 +31,15 @@ mod testing {
 
 pub use testing::*;
 
-use sp_std::prelude::Vec;
-use codec::{Decode, Encode, Compact};
-use sp_runtime_interface::{
-    runtime_interface, pass_by::PassByCodec
-};
+use codec::{Compact, Decode, Encode};
 use sp_io::hashing::blake2_256;
+use sp_runtime_interface::{pass_by::PassByCodec, runtime_interface};
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::prelude::Vec;
 
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M,
-    curve_tree::{AccountTreeConfig, AssetTreeConfig, CurveTreeRoot},
+    curve_tree::{AccountTreeConfig, AssetTreeConfig, CompressedCurveTreeRoot},
 };
 
 pub type BatchId = u32;
@@ -159,9 +159,7 @@ impl BatchRequest {
                 kind: self.kind,
                 resp: Vec::new(),
             }),
-            BatchRequestKind::GenerateProof(_) => {
-                Err(Error::GenerateProofFailed)
-            }
+            BatchRequestKind::GenerateProof(_) => Err(Error::GenerateProofFailed),
         }
     }
 }
@@ -196,8 +194,9 @@ impl BatchResponse {
     }
 }
 
-pub type AssetTreeRoot = CurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
-pub type AccountTreeRoot = CurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
+pub type AssetTreeRoot = CompressedCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
+pub type AccountTreeRoot =
+    CompressedCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
 
 #[derive(Encode, Decode, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
@@ -206,6 +205,12 @@ pub enum Error {
     GenerateProofFailed,
     DecodingFailed,
     MissingBatch,
+}
+
+impl From<polymesh_dart::Error> for Error {
+    fn from(_e: polymesh_dart::Error) -> Self {
+        Self::VerifyFailed
+    }
 }
 
 /// Native interface for runtime module for DART Assets
@@ -239,7 +244,9 @@ pub trait NativeDARTAssets {
         batch::BatchVerifiers::batch_submit(id, req)
     }
 
-    fn batch_finish(id: BatchId) -> Result<BTreeMap<BatchReqId, Result<BatchResponse, Error>>, Error> {
+    fn batch_finish(
+        id: BatchId,
+    ) -> Result<BTreeMap<BatchReqId, Result<BatchResponse, Error>>, Error> {
         let batch = batch::BatchVerifiers::batch_finish(id).ok_or(Error::VerifyFailed)?;
         batch.finalize()
     }
@@ -261,5 +268,17 @@ pub trait NativeDARTAssets {
         }
         #[cfg(not(feature = "testing"))]
         Err(Error::VerifyFailed)
+    }
+
+    fn asset_tree_update_inner_node(
+        req: UpdateTreeNodeRequest<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>,
+    ) -> Result<UpdateTreeNodeResult<ASSET_TREE_M>, Error> {
+        req.update()
+    }
+
+    fn account_tree_update_inner_node(
+        req: UpdateTreeNodeRequest<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
+    ) -> Result<UpdateTreeNodeResult<ACCOUNT_TREE_M>, Error> {
+        req.update()
     }
 }

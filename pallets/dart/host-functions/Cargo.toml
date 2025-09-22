@@ -18,8 +18,9 @@ polymesh-primitives = { workspace = true, default-features = false }
 
 # DART
 polymesh-dart = { workspace = true, default-features = false, features = [
-  "backend_bp"
+  "backend_bp",
 ] }
+ark-ec = { workspace = true, default-features = false }
 lazy_static = "1.4.0"
 crossbeam = "0.8"
 rayon = "1.8"
@@ -27,7 +28,7 @@ log = "0.4"
 
 # Substrate
 scale-info = { workspace = true, default-features = false, features = [
-    "derive",
+  "derive",
 ] }
 codec = { workspace = true, default-features = false, features = ["derive"] }
 sp-std = { workspace = true, default-features = false }
@@ -45,17 +46,18 @@ parallel = ["polymesh-dart/parallel"]
 
 no_std = ["polymesh-dart/no_std"]
 std = [
-    "asm",
-    "parallel",
-    "rand/std",
-    "rand_core/std",
-    "rand_chacha/std",
-    "polymesh-dart/std",
-    "polymesh-primitives/std",
-    "codec/std",
-    "sp-std/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-runtime-interface/std",
+  "asm",
+  "parallel",
+  "rand/std",
+  "rand_core/std",
+  "rand_chacha/std",
+  "polymesh-dart/std",
+  "ark-ec/std",
+  "polymesh-primitives/std",
+  "codec/std",
+  "sp-std/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime-interface/std",
 ]
 runtime-benchmarks = ["testing"]

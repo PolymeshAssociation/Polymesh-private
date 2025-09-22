@@ -6545,6 +6545,7 @@ version = "0.1.0"
 name = "polymesh-dart-host-functions"
 version = "0.1.0"
 dependencies = [
+ "ark-ec",
  "crossbeam",
  "lazy_static",
  "log",
