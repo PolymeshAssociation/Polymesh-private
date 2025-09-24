@@ -2,22 +2,23 @@ use core::ops::{Deref, DerefMut};
 
 use polymesh_dart::{
     curve_tree::{
-        CompressedCurveTreeRoot, CompressedInner, CurveTreeBackend, CurveTreeConfig,
-        CurveTreeParameters, CurveTreeWithBackend, DefaultCurveTreeUpdater, LeafValue,
-        NodeLocation, ValidateCurveTreeRoot,
+        CompressedCurveTreeRoot, CompressedInner, CompressedLeafValue, CurveTreeBackend,
+        CurveTreeConfig, CurveTreeParameters, CurveTreeWithBackend, NodeLocation,
+        ValidateCurveTreeRoot,
     },
-    BlockNumber, LeafIndex, NodeLevel, PallasParameters, VestaParameters, ACCOUNT_TREE_HEIGHT,
-    ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_HEIGHT, ASSET_TREE_L, ASSET_TREE_M,
+    BlockNumber, LeafIndex, NodeLevel, ACCOUNT_TREE_HEIGHT, ACCOUNT_TREE_L, ACCOUNT_TREE_M,
+    ASSET_TREE_HEIGHT, ASSET_TREE_L, ASSET_TREE_M,
 };
+use polymesh_dart_host_functions::HostCurveTreeUpdater;
 
 pub use polymesh_dart::curve_tree::{AccountTreeConfig, AssetTreeConfig};
 
-pub type AssetLeaf = LeafValue<VestaParameters>;
+pub type AssetLeaf = CompressedLeafValue<AssetTreeConfig>;
 pub type AssetInnerNode = CompressedInner<ASSET_TREE_M, AssetTreeConfig>;
 pub type AssetNodeLocation = NodeLocation<ASSET_TREE_L>;
 pub type AssetTreeRoot = CompressedCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
 
-pub type AccountLeaf = LeafValue<PallasParameters>;
+pub type AccountLeaf = CompressedLeafValue<AccountTreeConfig>;
 pub type AccountInnerNode = CompressedInner<ACCOUNT_TREE_M, AccountTreeConfig>;
 pub type AccountNodeLocation = NodeLocation<ACCOUNT_TREE_L>;
 pub type AccountTreeRoot =
@@ -98,7 +99,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     for AssetCurveTreeStorage<T>
 {
     type Error = Error<T>;
-    type Updater = DefaultCurveTreeUpdater<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
+    type Updater = HostCurveTreeUpdater<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -158,10 +159,7 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         leaf_index
     }
 
-    fn get_leaf(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<Option<LeafValue<VestaParameters>>, Self::Error> {
+    fn get_leaf(&self, leaf_index: LeafIndex) -> Result<Option<AssetLeaf>, Self::Error> {
         let leaf = AssetLeaves::<T>::get(leaf_index);
         Ok(leaf)
     }
@@ -169,8 +167,8 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
     fn set_leaf(
         &mut self,
         leaf_index: LeafIndex,
-        new_leaf_value: LeafValue<VestaParameters>,
-    ) -> Result<Option<LeafValue<VestaParameters>>, Self::Error> {
+        new_leaf_value: AssetLeaf,
+    ) -> Result<Option<AssetLeaf>, Self::Error> {
         // Use `mutate` to update the leaf value in the storage and return the previous value.
         Ok(AssetLeaves::<T>::mutate(leaf_index, |leaf| {
             // Get the old value, if it exists.
@@ -213,7 +211,7 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
     for AccountCurveTreeStorage<T>
 {
     type Error = Error<T>;
-    type Updater = DefaultCurveTreeUpdater<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
+    type Updater = HostCurveTreeUpdater<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
 
     fn new(_height: NodeLevel, _gens_length: usize) -> Result<Self, Self::Error> {
         Ok(Self {
@@ -287,10 +285,7 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         Ok(())
     }
 
-    fn get_leaf(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
+    fn get_leaf(&self, leaf_index: LeafIndex) -> Result<Option<AccountLeaf>, Self::Error> {
         match AccountLeaves::<T>::get(leaf_index) {
             Some(commitment) => Ok(Some(commitment.as_leaf_value()?)),
             None => Ok(None),
@@ -300,9 +295,9 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
     fn set_leaf(
         &mut self,
         leaf_index: LeafIndex,
-        new_leaf_value: LeafValue<PallasParameters>,
-    ) -> Result<Option<LeafValue<PallasParameters>>, Self::Error> {
-        let account_commitment = AccountStateCommitment::from_affine(*new_leaf_value.deref())?;
+        new_leaf_value: AccountLeaf,
+    ) -> Result<Option<AccountLeaf>, Self::Error> {
+        let account_commitment = AccountStateCommitment::from(new_leaf_value);
         // Use `mutate` to update the leaf value in the storage and return the previous value.
         AccountLeaves::<T>::set(leaf_index, Some(account_commitment));
 

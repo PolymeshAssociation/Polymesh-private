@@ -205,6 +205,7 @@ pub enum Error {
     GenerateProofFailed,
     DecodingFailed,
     MissingBatch,
+    CurveTreeUpdateError,
 }
 
 impl From<polymesh_dart::Error> for Error {

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, RwLock};
 
-use crossbeam::channel::{unbounded, Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender, unbounded};
 
 use crate::*;
 
@@ -188,11 +188,7 @@ pub struct BatchVerifier {
 impl BatchVerifier {
     pub fn new() -> Self {
         let (tx, rx) = unbounded();
-        Self {
-            count: 0,
-            tx,
-            rx,
-        }
+        Self { count: 0, tx, rx }
     }
 
     pub fn next_req(&mut self) -> (BatchReqId, Sender<BatchResult>) {
