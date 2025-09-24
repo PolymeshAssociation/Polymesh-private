@@ -607,7 +607,7 @@ pub mod pallet {
         /// * `BadOrigin` if `origin` isn't signed.
         /// * `AccountAlreadyCreated` if the dart account or encryption key is already registered.
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_accounts(1))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_accounts(proof.len() as u32))]
         pub fn register_accounts(
             origin: OriginFor<T>,
             proof: polymesh_dart::AccountRegistrationProof,
