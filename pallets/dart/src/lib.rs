@@ -26,8 +26,8 @@ use frame_system::pallet_prelude::*;
 use polymesh_primitives::{Balance, IdentityId};
 use scale_info::TypeInfo;
 use sp_runtime::BoundedBTreeSet;
-use sp_std::convert::From;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::convert::From;
 use sp_std::vec::Vec;
 
 use polymesh_dart::{
@@ -59,9 +59,9 @@ mod settlement;
 pub use settlement::*;
 
 pub trait WeightInfo {
-    fn register_account() -> Weight;
+    fn register_accounts(k: u32) -> Weight;
     fn create_asset() -> Weight;
-    fn register_account_asset() -> Weight;
+    fn register_account_assets(p: u32) -> Weight;
     fn mint_asset() -> Weight;
     fn create_settlement(l: u32) -> Weight;
     fn sender_affirmation() -> Weight;
@@ -607,35 +607,47 @@ pub mod pallet {
         /// * `BadOrigin` if `origin` isn't signed.
         /// * `AccountAlreadyCreated` if the dart account or encryption key is already registered.
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_account())]
-        pub fn register_account(
+        #[pallet::weight(<T as Config>::WeightInfo::register_accounts(1))]
+        pub fn register_accounts(
             origin: OriginFor<T>,
-            account: AccountPublicKey,
-            encryption_key: EncryptionPublicKey,
+            proof: polymesh_dart::AccountRegistrationProof,
         ) -> DispatchResult {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
-            // Ensure the dart account doesn't exist.
-            ensure!(
-                !AccountDid::<T>::contains_key(&account),
-                Error::<T>::AccountAlreadyCreated
-            );
-            // Ensure the encryption key doesn't exist.
-            ensure!(
-                !EncryptionKeyAccount::<T>::contains_key(&encryption_key),
-                Error::<T>::AccountAlreadyCreated
-            );
-            // Link the dart account to the caller's identity.
-            AccountDid::<T>::insert(&account, caller_did);
-            // Link the encryption key to the dart account.
-            AccountEncryptionKey::<T>::insert(&account, &encryption_key);
-            // Link the dart account to the encryption key.
-            EncryptionKeyAccount::<T>::insert(&encryption_key, &account);
 
-            Self::deposit_event(Event::<T>::AccountRegistered {
-                caller_did,
-                account,
-                encryption_key,
-            });
+            // Ensure the accounts haven't already been registered.
+            for account in &proof.accounts {
+                // Ensure the dart account doesn't exist.
+                ensure!(
+                    !AccountDid::<T>::contains_key(&account.acct),
+                    Error::<T>::AccountAlreadyCreated
+                );
+                // Ensure the encryption key doesn't exist.
+                ensure!(
+                    !EncryptionKeyAccount::<T>::contains_key(&account.enc),
+                    Error::<T>::AccountAlreadyCreated
+                );
+                // Link the dart account to the caller's identity.
+                AccountDid::<T>::insert(&account.acct, caller_did);
+                // Link the encryption key to the dart account.
+                AccountEncryptionKey::<T>::insert(&account.acct, &account.enc);
+                // Link the dart account to the encryption key.
+                EncryptionKeyAccount::<T>::insert(&account.enc, &account.acct);
+
+                Self::deposit_event(Event::<T>::AccountRegistered {
+                    caller_did,
+                    account: account.acct,
+                    encryption_key: account.enc,
+                });
+            }
+
+            // Verify the proof.
+            let req = VerifyDartAssetRequest::AccountRegistration {
+                did: caller_did,
+                proof,
+            };
+            let seed = Self::get_seed(true);
+            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+
             Ok(())
         }
 
@@ -662,13 +674,13 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Register a DART asset with a DART account.
+        /// Batch register multiple accounts and assets.
         ///
         /// This is used to initialize the first account state commitment of the DART asset for the DART account.
         ///
         /// # Arguments
         /// * `origin` - The origin of the call.  They must be the owner of the DART account.
-        /// * `proof` - The Account asset registration proof.
+        /// * `proof` - The Batched Account asset registration proof.
         ///
         /// # Errors
         /// * `BadOrigin` if `origin` isn't signed.
@@ -678,51 +690,70 @@ pub mod pallet {
         /// * `NotAccountOwner` if the caller is not the owner of the DART account.
         /// * `InvalidProof` if the proof is invalid.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_account_asset())]
-        pub fn register_account_asset(
+        #[pallet::weight(<T as Config>::WeightInfo::register_account_assets(proof.len() as u32))]
+        pub fn register_account_assets(
             origin: OriginFor<T>,
-            proof: polymesh_dart::AccountAssetRegistrationProof,
+            proof: polymesh_dart::BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
         ) -> DispatchResult {
-            // Ensure the caller has the required permissions to register the account asset.
-            let caller_did = Self::ensure_dart_account_permissions(origin, &proof.account)?;
+            // Ensure the caller is allowed to make this call.
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
 
-            // Ensure the DART asset exists.
-            Self::ensure_dart_asset_exists(proof.asset_id)?;
+            let mut seen_account = BTreeSet::new();
+            let mut seen_asset = BTreeSet::new();
+            let mut registrations = Vec::with_capacity(proof.proofs.len());
+            for p in &proof.proofs {
+                if !seen_account.contains(&p.account) {
+                    seen_account.insert(p.account);
+                    // Ensure the DART account is registered to the caller's identity.
+                    Self::ensure_dart_account_owner(caller_did, &p.account)?;
+                }
+                if !seen_asset.contains(&p.asset_id) {
+                    seen_asset.insert(p.asset_id);
+                    // Ensure the DART asset exists.
+                    Self::ensure_dart_asset_exists(p.asset_id)?;
+                }
 
-            // Ensure the DART account hasn't already registered the DART asset.
-            ensure!(
-                !AccountAssetRegistrations::<T>::get((&proof.account, &proof.asset_id)),
-                Error::<T>::AccountAssetAlreadyRegistered
-            );
-            AccountAssetRegistrations::<T>::insert((&proof.account, &proof.asset_id), true);
+                // Ensure the DART account hasn't already registered the DART asset.
+                ensure!(
+                    !AccountAssetRegistrations::<T>::get((&p.account, &p.asset_id)),
+                    Error::<T>::AccountAssetAlreadyRegistered
+                );
+                AccountAssetRegistrations::<T>::insert((&p.account, &p.asset_id), true);
 
-            let asset_id = proof.asset_id;
-            let account = proof.account;
-            let nullifier = proof.nullifier;
-            let account_state_commitment = proof.account_state_commitment;
-            // Ensure the nullifier is unique.
-            Self::ensure_account_state_nullifier_unique(&nullifier)?;
+                // Ensure the nullifier is unique.
+                Self::ensure_account_state_nullifier_unique(&p.nullifier)?;
+
+                registrations.push((
+                    p.account,
+                    p.asset_id,
+                    p.nullifier,
+                    p.account_state_commitment,
+                ));
+            }
 
             // Verify the proof.
-            let req = VerifyDartAssetRequest::AccountAssetRegistration {
+            let req = VerifyDartAssetRequest::BatchedAccountAssetRegistration {
                 did: caller_did,
                 proof,
             };
             let seed = Self::get_seed(true);
             req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
 
-            // Insert the new account state commitment from the proof into the account curve tree.
-            Self::insert_account_leaf(account_state_commitment)?;
+            // Process each registration.
+            for (account, asset_id, nullifier, account_state_commitment) in registrations {
+                // Insert the new account state commitment from the proof into the account curve tree.
+                Self::insert_account_leaf(account_state_commitment)?;
 
-            // Burn the nullifier to ensure it cannot be used again.
-            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+                // Burn the nullifier to ensure it cannot be used again.
+                AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
-            // Emit an event for the account asset registration.
-            Self::deposit_event(Event::<T>::AccountAssetRegistered {
-                caller_did,
-                asset_id,
-                account,
-            });
+                // Emit an event for the account asset registration.
+                Self::deposit_event(Event::<T>::AccountAssetRegistered {
+                    caller_did,
+                    asset_id,
+                    account,
+                });
+            }
 
             Ok(())
         }
@@ -1053,91 +1084,6 @@ pub mod pallet {
 
             Ok(())
         }
-
-        /// Batch register multiple accounts and assets.
-        ///
-        /// This is used to initialize the first account state commitment of the DART asset for the DART account.
-        ///
-        /// # Arguments
-        /// * `origin` - The origin of the call.  They must be the owner of the DART account.
-        /// * `proof` - The Batched Account asset registration proof.
-        ///
-        /// # Errors
-        /// * `BadOrigin` if `origin` isn't signed.
-        /// * `AccountMissing` if the DART account is not registered.
-        /// * `AssetMissing` if the DART asset is not registered.
-        /// * `AccountAssetAlreadyRegistered` if the DART account has already registered the DART asset.
-        /// * `NotAccountOwner` if the caller is not the owner of the DART account.
-        /// * `InvalidProof` if the proof is invalid.
-        #[pallet::call_index(12)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_account_asset())]
-        pub fn batched_register_account_asset(
-            origin: OriginFor<T>,
-            proof: polymesh_dart::BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
-        ) -> DispatchResult {
-            // Ensure the caller is allowed to make this call.
-            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
-
-            let mut seen_account = BTreeSet::new();
-            let mut seen_asset = BTreeSet::new();
-            let mut registrations = Vec::with_capacity(proof.proofs.len());
-            for p in &proof.proofs {
-                if !seen_account.contains(&p.account) {
-                    seen_account.insert(p.account);
-                    // Ensure the DART account is registered to the caller's identity.
-                    Self::ensure_dart_account_owner(caller_did, &p.account)?;
-                }
-                if !seen_asset.contains(&p.asset_id) {
-                    seen_asset.insert(p.asset_id);
-                    // Ensure the DART asset exists.
-                    Self::ensure_dart_asset_exists(p.asset_id)?;
-                }
-
-                // Ensure the DART account hasn't already registered the DART asset.
-                ensure!(
-                    !AccountAssetRegistrations::<T>::get((&p.account, &p.asset_id)),
-                    Error::<T>::AccountAssetAlreadyRegistered
-                );
-                AccountAssetRegistrations::<T>::insert((&p.account, &p.asset_id), true);
-
-                // Ensure the nullifier is unique.
-                Self::ensure_account_state_nullifier_unique(&p.nullifier)?;
-
-                registrations.push((
-                    p.account,
-                    p.asset_id,
-                    p.nullifier,
-                    p.account_state_commitment,
-                ));
-            }
-
-            // Verify the proof.
-            let req = VerifyDartAssetRequest::BatchedAccountAssetRegistration {
-                did: caller_did,
-                proof,
-            };
-            let seed = Self::get_seed(true);
-            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
-
-            // Process each registration.
-            for (account, asset_id, nullifier, account_state_commitment) in registrations {
-                // Insert the new account state commitment from the proof into the account curve tree.
-                Self::insert_account_leaf(account_state_commitment)?;
-
-                // Burn the nullifier to ensure it cannot be used again.
-                AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
-
-                // Emit an event for the account asset registration.
-                Self::deposit_event(Event::<T>::AccountAssetRegistered {
-                    caller_did,
-                    asset_id,
-                    account,
-                });
-            }
-
-            Ok(())
-        }
-
     }
 }
 

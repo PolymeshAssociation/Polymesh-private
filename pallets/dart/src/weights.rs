@@ -47,17 +47,28 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: CddServiceProviders ActiveMembers (max_values: Some(1), max_size: None, mode: Measured)
     // Storage: Identity Claims (r:2 w:0)
     // Proof Skipped: Identity Claims (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset AccountDid (r:1 w:1)
+    // Storage: DartAsset AccountDid (r:100 w:100)
     // Proof Skipped: DartAsset AccountDid (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset EncryptionKeyAccount (r:1 w:1)
+    // Storage: DartAsset EncryptionKeyAccount (r:100 w:100)
     // Proof Skipped: DartAsset EncryptionKeyAccount (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset AccountEncryptionKey (r:0 w:1)
+    // Storage: DartAsset RngNonce (r:1 w:1)
+    // Proof Skipped: DartAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: Babe NextRandomness (r:1 w:0)
+    // Proof: Babe NextRandomness (max_values: Some(1), max_size: Some(32), added: 527, mode: MaxEncodedLen)
+    // Storage: Babe EpochStart (r:1 w:0)
+    // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    // Storage: DartAsset AccountEncryptionKey (r:0 w:100)
     // Proof Skipped: DartAsset AccountEncryptionKey (max_values: None, max_size: None, mode: Measured)
-    fn register_account() -> Weight {
-        // Minimum execution time: 24_106 nanoseconds.
-        Weight::from_ref_time(25_649_000)
-            .saturating_add(DbWeight::get().reads(7))
-            .saturating_add(DbWeight::get().writes(3))
+    /// The range of component `k` is `[0, 100]`.
+    fn register_accounts(k: u32) -> Weight {
+        // Minimum execution time: 420_291 nanoseconds.
+        Weight::from_ref_time(663_164_171)
+            // Standard Error: 949_048
+            .saturating_add(Weight::from_ref_time(95_176_942).saturating_mul(k.into()))
+            .saturating_add(DbWeight::get().reads(8))
+            .saturating_add(DbWeight::get().reads((2_u64).saturating_mul(k.into())))
+            .saturating_add(DbWeight::get().writes(1))
+            .saturating_add(DbWeight::get().writes((3_u64).saturating_mul(k.into())))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof: Identity KeyRecords (max_values: None, max_size: Some(73), added: 2548, mode: MaxEncodedLen)
@@ -97,12 +108,14 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof Skipped: CddServiceProviders ActiveMembers (max_values: Some(1), max_size: None, mode: Measured)
     // Storage: Identity Claims (r:2 w:0)
     // Proof Skipped: Identity Claims (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset AccountDid (r:1 w:0)
+    // Storage: DartAsset AccountDid (r:10 w:0)
     // Proof Skipped: DartAsset AccountDid (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset DartAssetDetails (r:1 w:0)
+    // Storage: DartAsset DartAssetDetails (r:10 w:0)
     // Proof Skipped: DartAsset DartAssetDetails (max_values: None, max_size: None, mode: Measured)
-    // Storage: DartAsset AccountAssetRegistrations (r:1 w:1)
+    // Storage: DartAsset AccountAssetRegistrations (r:10 w:10)
     // Proof Skipped: DartAsset AccountAssetRegistrations (max_values: None, max_size: None, mode: Measured)
+    // Storage: DartAsset AccountStateCommitmentNullifiers (r:10 w:10)
+    // Proof Skipped: DartAsset AccountStateCommitmentNullifiers (max_values: None, max_size: None, mode: Measured)
     // Storage: DartAsset RngNonce (r:1 w:1)
     // Proof Skipped: DartAsset RngNonce (max_values: Some(1), max_size: None, mode: Measured)
     // Storage: Babe NextRandomness (r:1 w:0)
@@ -111,13 +124,18 @@ impl crate::WeightInfo for SubstrateWeight {
     // Proof: Babe EpochStart (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
     // Storage: DartAsset NextAccountLeafIndex (r:1 w:1)
     // Proof Skipped: DartAsset NextAccountLeafIndex (max_values: Some(1), max_size: None, mode: Measured)
-    // Storage: DartAsset AccountLeaves (r:0 w:1)
+    // Storage: DartAsset AccountLeaves (r:0 w:10)
     // Proof Skipped: DartAsset AccountLeaves (max_values: None, max_size: None, mode: Measured)
-    fn register_account_asset() -> Weight {
-        // Minimum execution time: 3_457_968 nanoseconds.
-        Weight::from_ref_time(3_502_633_000)
-            .saturating_add(DbWeight::get().reads(12))
-            .saturating_add(DbWeight::get().writes(4))
+    /// The range of component `p` is `[0, 10]`.
+    fn register_account_assets(p: u32) -> Weight {
+        // Minimum execution time: 23_004 nanoseconds.
+        Weight::from_ref_time(23_004_000)
+            // Standard Error: 25_822_946
+            .saturating_add(Weight::from_ref_time(3_511_464_605).saturating_mul(p.into()))
+            .saturating_add(DbWeight::get().reads(9))
+            .saturating_add(DbWeight::get().reads((4_u64).saturating_mul(p.into())))
+            .saturating_add(DbWeight::get().writes(2))
+            .saturating_add(DbWeight::get().writes((3_u64).saturating_mul(p.into())))
     }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof: Identity KeyRecords (max_values: None, max_size: Some(73), added: 2548, mode: MaxEncodedLen)

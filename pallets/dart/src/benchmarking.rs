@@ -13,9 +13,6 @@ use polymesh_dart_host_functions::{GenerateDartProofRequest, GenerateDartProofRe
 use crate::testing::*;
 use crate::*;
 
-pub const MAX_LEGS: u32 = 10;
-pub const MAX_REGISTRATIONS: u32 = 10;
-
 benchmarks! {
     where_clause { where T: Config }
 
@@ -157,12 +154,32 @@ benchmarks! {
             .expect("Account curve tree should be able to store root; qed");
     }
 
-    register_account {
-        // Create user.
-        let user = DartUser::<T>::new("User");
-        let keys = user.public_keys();
+    register_accounts {
+        // Number of proofs to batch.
+        let k in 0 .. T::MaxKeysPerRegProof::get();
 
-    }: _(user.raw_origin(), keys.acct, keys.enc)
+        // Create an asset issuer and create an asset.
+        let user = DartUser::<T>::new("Batched User");
+
+        let mut accounts = Vec::with_capacity(k as usize);
+        for idx in 0..k {
+            // Create a new account with the same user but different keys.
+            let account = user.new_account("Batching account", idx);
+            accounts.push(account.keys());
+        }
+        // Generate the account registration proof.
+        let req = GenerateDartProofRequest::AccountRegistration {
+            accounts,
+            did: user.did(),
+        };
+
+        let seed = Pallet::<T>::get_seed(true);
+        let proof = if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate(seed) {
+            proof
+        } else {
+            panic!("Failed to generate account registration proof");
+        };
+    }: _(user.raw_origin(), proof)
 
     create_asset {
         // Offchain prover state.
@@ -172,14 +189,14 @@ benchmarks! {
         let asset_issuer = DartUser::<T>::new("AssetIssuer");
 
         // Register the asset issuer's account.
-        asset_issuer.register_account();
+        asset_issuer.register_accounts();
 
         // Create the maximum number of auditors.
         let mut auditors = Vec::with_capacity(T::MaxAssetAuditors::get() as usize);
         let mut auditor_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetAuditors::get() {
             let auditor = DartUser::<T>::auditor_user("Auditor", 0, i);
-            auditor.register_account();
+            auditor.register_accounts();
             auditor_keys
                 .try_insert(auditor.public_keys().enc)
                 .expect("Failed to push auditor keys");
@@ -190,7 +207,7 @@ benchmarks! {
         let mut mediator_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetMediators::get() {
             let mediator = DartUser::<T>::auditor_user("Mediator", 0, i);
-            mediator.register_account();
+            mediator.register_accounts();
             mediator_keys
                 .try_insert(mediator.public_keys().enc)
                 .expect("Failed to push mediator keys");
@@ -204,21 +221,9 @@ benchmarks! {
             .expect("Failed to convert asset data to AssetData");
     }: _(asset_issuer.raw_origin(), mediator_keys, auditor_keys, data)
 
-    register_account_asset {
-        // Offchain prover state.
-        let mut off_chain = OffchainProverState::<T>::new();
-
-        // Create asset issuer and an asset.
-        let asset = DartTestAsset::<T>::new(&mut off_chain, "Test Asset", 0, 0, 1, None);
-
-        // Asset issuer registers the asset.
-        let (proof, _) = asset.issuer.register_account_asset_proof(asset.id);
-
-    }: _(asset.issuer.raw_origin(), proof)
-
-    batched_register_account_asset {
+    register_account_assets {
         // Number of proofs to batch.
-        let p in 0 .. MAX_REGISTRATIONS;
+        let p in 0 .. T::MaxAccountAssetRegProofs::get();
 
         // Offchain prover state.
         let mut off_chain = OffchainProverState::<T>::new();
@@ -234,7 +239,7 @@ benchmarks! {
             // Create a new account with the same user but different keys.
             let account = user.new_account("Batching account", idx);
             // Register the user's new account.
-            account.register_account();
+            account.register_accounts();
 
             // Asset issuer registers the asset.
             let (proof, _) = account.register_account_asset_proof(asset.id);
@@ -268,7 +273,7 @@ benchmarks! {
 
     create_settlement {
         // Number of legs in transaction.
-        let l in 1 .. MAX_LEGS;
+        let l in 1 .. T::MaxSettlementLegs::get();
 
         // Offchain prover state.
         let mut off_chain = OffchainProverState::<T>::new();

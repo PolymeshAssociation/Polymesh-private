@@ -187,19 +187,10 @@ type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 /// Dart parameters
 type DartMaxAssetDataLength = ConstSize<8192>;
 
-#[cfg(feature = "runtime-benchmarks")]
-type DartMaxSettlementLegs = ConstSize<1000>;
-#[cfg(not(feature = "runtime-benchmarks"))]
-type DartMaxSettlementLegs = ConstSize<10>;
+type DartMaxSettlementLegs = ConstSize<16>;
 
-#[cfg(feature = "runtime-benchmarks")]
-type DartMaxKeysPerRegProof = ConstSize<200>;
-#[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxKeysPerRegProof = ConstSize<100>;
 
-#[cfg(feature = "runtime-benchmarks")]
-type DartMaxAccountAssetRegProofs = ConstSize<100>;
-#[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxAccountAssetRegProofs = ConstSize<50>;
 type DartMaxSettlementMemoLength = ConstSize<256>;
 type DartMaxAssetAuditors = ConstSize<2>;

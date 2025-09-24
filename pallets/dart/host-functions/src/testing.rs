@@ -1,5 +1,6 @@
 use codec::{Decode, Encode};
 use sp_runtime_interface::pass_by::PassByCodec;
+use sp_std::vec::Vec;
 
 #[cfg(feature = "std")]
 use rand_chacha::ChaCha20Rng as Rng;
@@ -8,10 +9,11 @@ use rand_core::SeedableRng;
 
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M, AccountAssetRegistrationProof,
-    AccountAssetState, AccountKeyPair, AccountKeys, AssetId, AssetMintingProof, Balance,
-    EncryptionKeyPair, LegEncrypted, LegRef, MediatorAffirmationProof, PolymeshPrivateLimits,
-    ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
-    SenderReversalProof, SettlementBuilder, SettlementProof,
+    AccountAssetState, AccountKeyPair, AccountKeys, AccountRegistrationProof, AssetId,
+    AssetMintingProof, Balance, EncryptionKeyPair, EncryptionKeyRegistrationProof, LegEncrypted,
+    LegRef, MediatorAffirmationProof, PolymeshPrivateLimits, ReceiverAffirmationProof,
+    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
+    SettlementBuilder, SettlementProof,
     curve_tree::{AccountTreeConfig, AssetTreeConfig, LeafPathAndRoot, MultiLeafPathAndRoot},
 };
 #[cfg(feature = "std")]
@@ -26,6 +28,14 @@ pub type AssetLeafPathAndRoot = LeafPathAndRoot<ASSET_TREE_L, ASSET_TREE_M, Asse
 
 #[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum GenerateDartProofRequest {
+    AccountRegistration {
+        accounts: Vec<AccountKeys>,
+        did: IdentityId,
+    },
+    EncryptionKeyRegistration {
+        keys: Vec<EncryptionKeyPair>,
+        did: IdentityId,
+    },
     AccountAssetRegistration {
         key: AccountKeyPair,
         did: IdentityId,
@@ -95,6 +105,22 @@ impl GenerateDartProofRequest {
     pub fn generate(self, seed: BatchSeed) -> Result<GenerateDartProofResponse, Error> {
         let mut rng = Rng::from_seed(seed);
         match self {
+            GenerateDartProofRequest::AccountRegistration { accounts, did } => {
+                use polymesh_dart::AccountRegistrationProof;
+
+                let proof =
+                    AccountRegistrationProof::new(&mut rng, accounts.as_slice(), &did.0[..])
+                        .map_err(|_| Error::GenerateProofFailed)?;
+                Ok(GenerateDartProofResponse::AccountRegistration { proof })
+            }
+            GenerateDartProofRequest::EncryptionKeyRegistration { keys, did } => {
+                use polymesh_dart::EncryptionKeyRegistrationProof;
+
+                let proof =
+                    EncryptionKeyRegistrationProof::new(&mut rng, keys.as_slice(), &did.0[..])
+                        .map_err(|_| Error::GenerateProofFailed)?;
+                Ok(GenerateDartProofResponse::EncryptionKeyRegistration { proof })
+            }
             GenerateDartProofRequest::AccountAssetRegistration {
                 key,
                 did,
@@ -307,6 +333,12 @@ impl GenerateDartProofRequest {
 
 #[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum GenerateDartProofResponse {
+    AccountRegistration {
+        proof: AccountRegistrationProof,
+    },
+    EncryptionKeyRegistration {
+        proof: EncryptionKeyRegistrationProof,
+    },
     AccountAssetRegistration {
         proof: AccountAssetRegistrationProof,
         account_state: AccountAssetState,

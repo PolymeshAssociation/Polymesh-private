@@ -9,7 +9,10 @@ use rand_core::SeedableRng;
 #[cfg(feature = "std")]
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
-    AccountAssetRegistrationProof, AssetMintingProof, BatchedAccountAssetRegistrationProof, LegEncrypted, MediatorAffirmationProof, PolymeshPrivateLimits, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof, SettlementProof
+    AccountRegistrationProof, AssetMintingProof, BatchedAccountAssetRegistrationProof,
+    EncryptionKeyRegistrationProof, LegEncrypted, MediatorAffirmationProof, PolymeshPrivateLimits,
+    ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
+    SenderReversalProof, SettlementProof,
 };
 use polymesh_primitives::IdentityId;
 
@@ -18,9 +21,13 @@ use crate::{AccountTreeRoot, AssetTreeRoot, BatchSeed, Error};
 /// Verify DART asset proof request.
 #[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum VerifyDartAssetRequest {
-    AccountAssetRegistration {
+    AccountRegistration {
         did: IdentityId,
-        proof: AccountAssetRegistrationProof,
+        proof: AccountRegistrationProof,
+    },
+    EncryptionKeyRegistration {
+        did: IdentityId,
+        proof: EncryptionKeyRegistrationProof,
     },
     BatchedAccountAssetRegistration {
         did: IdentityId,
@@ -66,11 +73,11 @@ impl VerifyDartAssetRequest {
     pub fn verify(self, seed: BatchSeed) -> Result<(), Error> {
         let mut rng = Rng::from_seed(seed);
         match self {
-            Self::AccountAssetRegistration { did, proof } => {
-                let params = get_account_curve_tree_parameters();
-                proof
-                    .verify(&did.0[..], &params, &mut rng)
-                    .map_err(|_| Error::VerifyFailed)?;
+            Self::AccountRegistration { did, proof } => {
+                proof.verify(&did.0[..]).map_err(|_| Error::VerifyFailed)?;
+            }
+            Self::EncryptionKeyRegistration { did, proof } => {
+                proof.verify(&did.0[..]).map_err(|_| Error::VerifyFailed)?;
             }
             Self::BatchedAccountAssetRegistration { did, proof } => {
                 let params = get_account_curve_tree_parameters();

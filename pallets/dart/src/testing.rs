@@ -1,4 +1,5 @@
 use frame_support::assert_ok;
+use polymesh_dart::{AccountRegistrationProof, BatchedAccountAssetRegistrationProof};
 use scale_info::prelude::format;
 use sp_std::cell::RefCell;
 use sp_std::collections::btree_map::BTreeMap;
@@ -135,12 +136,24 @@ impl<T: Config> DartUserInner<T> {
         self.user.origin()
     }
 
-    pub fn register_account(&self) {
-        assert_ok!(Pallet::<T>::register_account(
-            self.origin(),
-            self.keys.acct.public,
-            self.keys.enc.public
-        ));
+    pub fn register_accounts_proof(&self) -> AccountRegistrationProof {
+        // Generate the account registration proof.
+        let req = GenerateDartProofRequest::AccountRegistration {
+            accounts: vec![self.keys.clone()],
+            did: self.did(),
+        };
+        let seed = Pallet::<T>::get_seed(true);
+        if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate(seed) {
+            return proof;
+        } else {
+            panic!("Failed to generate account registration proof");
+        }
+    }
+
+    pub fn register_accounts(&self) {
+        let proof = self.register_accounts_proof();
+
+        assert_ok!(Pallet::<T>::register_accounts(self.origin(), proof,));
     }
 
     pub fn register_account_asset_proof(
@@ -174,7 +187,10 @@ impl<T: Config> DartUserInner<T> {
     pub fn register_account_asset(&mut self, asset_id: DartAssetId) {
         let (proof, mut account_state) = self.register_account_asset_proof(asset_id);
 
-        assert_ok!(Pallet::<T>::register_account_asset(self.origin(), proof));
+        let proof = BatchedAccountAssetRegistrationProof {
+            proofs: vec![proof].try_into().expect("Failed to create vec"),
+        };
+        assert_ok!(Pallet::<T>::register_account_assets(self.origin(), proof));
 
         // Commit the pending state to the account state.
         account_state
@@ -667,13 +683,9 @@ impl<T: Config> DartUser<T> {
         Self(Rc::new(RefCell::new(new_inner)))
     }
 
-    pub fn register_account(&self) {
+    pub fn register_accounts(&self) {
         let inner = self.0.borrow();
-        assert_ok!(Pallet::<T>::register_account(
-            inner.origin(),
-            inner.keys.acct.public,
-            inner.keys.enc.public
-        ));
+        inner.register_accounts();
     }
 
     pub fn register_account_asset_proof(
@@ -890,7 +902,7 @@ impl<T: Config> DartTestAsset<T> {
         let asset_issuer = DartUser::<T>::asset_user(name, asset_idx, 0);
 
         // Register the asset issuer's account.
-        asset_issuer.register_account();
+        asset_issuer.register_accounts();
 
         // Create auditors and mediators.
         let mut auditors = Vec::new();
@@ -898,7 +910,7 @@ impl<T: Config> DartTestAsset<T> {
         for i in 0..auditor_count {
             let auditor = DartUser::<T>::auditor_user("Auditor", asset_idx, i);
             // Register the auditor's keys.
-            auditor.register_account();
+            auditor.register_accounts();
             auditor_keys
                 .try_insert(auditor.public_keys().enc)
                 .expect("Failed to push auditor keys");
@@ -909,7 +921,7 @@ impl<T: Config> DartTestAsset<T> {
         for i in 0..mediator_count {
             let mediator = DartUser::<T>::auditor_user("Mediator", asset_idx, i);
             // Register the mediator's keys.
-            mediator.register_account();
+            mediator.register_accounts();
             mediator_keys
                 .try_insert(mediator.public_keys().enc)
                 .expect("Failed to push mediator keys");
@@ -998,7 +1010,7 @@ impl<T: Config> DartTestAsset<T> {
         let user = DartUser::<T>::asset_user("Investor", self.asset_idx, idx);
 
         // Register the account.
-        user.register_account();
+        user.register_accounts();
 
         // Account asset registration proof.
         user.register_account_asset(self.id);
