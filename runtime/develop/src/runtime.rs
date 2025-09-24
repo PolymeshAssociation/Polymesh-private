@@ -186,14 +186,21 @@ type ConfidentialAssetBatchHostThreads = ConstSize<8>;
 
 /// Dart parameters
 type DartMaxAssetDataLength = ConstSize<8192>;
+
 #[cfg(feature = "runtime-benchmarks")]
 type DartMaxSettlementLegs = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxSettlementLegs = ConstSize<10>;
+
 #[cfg(feature = "runtime-benchmarks")]
-type DartMaxAccountsPerRegProof = ConstSize<200>;
+type DartMaxKeysPerRegProof = ConstSize<200>;
 #[cfg(not(feature = "runtime-benchmarks"))]
-type DartMaxAccountsPerRegProof = ConstSize<100>;
+type DartMaxKeysPerRegProof = ConstSize<100>;
+
+#[cfg(feature = "runtime-benchmarks")]
+type DartMaxAccountAssetRegProofs = ConstSize<100>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type DartMaxAccountAssetRegProofs = ConstSize<50>;
 type DartMaxSettlementMemoLength = ConstSize<256>;
 type DartMaxAssetAuditors = ConstSize<2>;
 type DartMaxAssetMediators = ConstSize<2>;
@@ -337,7 +344,8 @@ impl pallet_dart::Config for Runtime {
 }
 
 impl polymesh_dart::DartLimits for Runtime {
-    type MaxAccountsPerRegProof = DartMaxAccountsPerRegProof;
+    type MaxKeysPerRegProof = DartMaxKeysPerRegProof;
+    type MaxAccountAssetRegProofs = DartMaxAccountAssetRegProofs;
     type MaxSettlementLegs = DartMaxSettlementLegs;
     type MaxSettlementMemoLength = DartMaxSettlementMemoLength;
     type MaxAssetAuditors = DartMaxAssetAuditors;

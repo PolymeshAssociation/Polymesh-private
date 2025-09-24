@@ -9,9 +9,7 @@ use rand_core::SeedableRng;
 #[cfg(feature = "std")]
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
-    AccountAssetRegistrationProof, AssetMintingProof, LegEncrypted, MediatorAffirmationProof,
-    PolymeshPrivateLimits, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof,
-    SenderCounterUpdateProof, SenderReversalProof, SettlementProof,
+    AccountAssetRegistrationProof, AssetMintingProof, BatchedAccountAssetRegistrationProof, LegEncrypted, MediatorAffirmationProof, PolymeshPrivateLimits, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof, SettlementProof
 };
 use polymesh_primitives::IdentityId;
 
@@ -23,6 +21,10 @@ pub enum VerifyDartAssetRequest {
     AccountAssetRegistration {
         did: IdentityId,
         proof: AccountAssetRegistrationProof,
+    },
+    BatchedAccountAssetRegistration {
+        did: IdentityId,
+        proof: BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
     },
     MintAsset {
         root: AccountTreeRoot,
@@ -65,6 +67,12 @@ impl VerifyDartAssetRequest {
         let mut rng = Rng::from_seed(seed);
         match self {
             Self::AccountAssetRegistration { did, proof } => {
+                let params = get_account_curve_tree_parameters();
+                proof
+                    .verify(&did.0[..], &params, &mut rng)
+                    .map_err(|_| Error::VerifyFailed)?;
+            }
+            Self::BatchedAccountAssetRegistration { did, proof } => {
                 let params = get_account_curve_tree_parameters();
                 proof
                     .verify(&did.0[..], &params, &mut rng)

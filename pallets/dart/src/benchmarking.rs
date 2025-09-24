@@ -14,6 +14,7 @@ use crate::testing::*;
 use crate::*;
 
 pub const MAX_LEGS: u32 = 10;
+pub const MAX_REGISTRATIONS: u32 = 10;
 
 benchmarks! {
     where_clause { where T: Config }
@@ -214,6 +215,37 @@ benchmarks! {
         let (proof, _) = asset.issuer.register_account_asset_proof(asset.id);
 
     }: _(asset.issuer.raw_origin(), proof)
+
+    batched_register_account_asset {
+        // Number of proofs to batch.
+        let p in 0 .. MAX_REGISTRATIONS;
+
+        // Offchain prover state.
+        let mut off_chain = OffchainProverState::<T>::new();
+
+        // Create an asset issuer and create an asset.
+        let user = DartUser::<T>::asset_user("Batching user", 0, 0);
+
+        let mut proofs = BoundedVec::with_bounded_capacity(p as usize);
+        for idx in 0..p {
+            // Create asset issuer and an asset.
+            let asset = DartTestAsset::<T>::new(&mut off_chain, "Test Batch reg", idx, 0, 1, None);
+
+            // Create a new account with the same user but different keys.
+            let account = user.new_account("Batching account", idx);
+            // Register the user's new account.
+            account.register_account();
+
+            // Asset issuer registers the asset.
+            let (proof, _) = account.register_account_asset_proof(asset.id);
+
+            proofs.try_push(proof).expect("Failed to push proof");
+        }
+
+        let proof = polymesh_dart::BatchedAccountAssetRegistrationProof {
+            proofs,
+        };
+    }: _(user.raw_origin(), proof)
 
     mint_asset {
         // Offchain prover state.

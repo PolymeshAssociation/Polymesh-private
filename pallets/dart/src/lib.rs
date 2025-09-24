@@ -27,6 +27,8 @@ use polymesh_primitives::{Balance, IdentityId};
 use scale_info::TypeInfo;
 use sp_runtime::BoundedBTreeSet;
 use sp_std::convert::From;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 
 use polymesh_dart::{
     curve_tree::WrappedCurveTreeParameters, AccountPublicKey, AccountStateCommitment,
@@ -1051,6 +1053,91 @@ pub mod pallet {
 
             Ok(())
         }
+
+        /// Batch register multiple accounts and assets.
+        ///
+        /// This is used to initialize the first account state commitment of the DART asset for the DART account.
+        ///
+        /// # Arguments
+        /// * `origin` - The origin of the call.  They must be the owner of the DART account.
+        /// * `proof` - The Batched Account asset registration proof.
+        ///
+        /// # Errors
+        /// * `BadOrigin` if `origin` isn't signed.
+        /// * `AccountMissing` if the DART account is not registered.
+        /// * `AssetMissing` if the DART asset is not registered.
+        /// * `AccountAssetAlreadyRegistered` if the DART account has already registered the DART asset.
+        /// * `NotAccountOwner` if the caller is not the owner of the DART account.
+        /// * `InvalidProof` if the proof is invalid.
+        #[pallet::call_index(12)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_account_asset())]
+        pub fn batched_register_account_asset(
+            origin: OriginFor<T>,
+            proof: polymesh_dart::BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
+        ) -> DispatchResult {
+            // Ensure the caller is allowed to make this call.
+            let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
+
+            let mut seen_account = BTreeSet::new();
+            let mut seen_asset = BTreeSet::new();
+            let mut registrations = Vec::with_capacity(proof.proofs.len());
+            for p in &proof.proofs {
+                if !seen_account.contains(&p.account) {
+                    seen_account.insert(p.account);
+                    // Ensure the DART account is registered to the caller's identity.
+                    Self::ensure_dart_account_owner(caller_did, &p.account)?;
+                }
+                if !seen_asset.contains(&p.asset_id) {
+                    seen_asset.insert(p.asset_id);
+                    // Ensure the DART asset exists.
+                    Self::ensure_dart_asset_exists(p.asset_id)?;
+                }
+
+                // Ensure the DART account hasn't already registered the DART asset.
+                ensure!(
+                    !AccountAssetRegistrations::<T>::get((&p.account, &p.asset_id)),
+                    Error::<T>::AccountAssetAlreadyRegistered
+                );
+                AccountAssetRegistrations::<T>::insert((&p.account, &p.asset_id), true);
+
+                // Ensure the nullifier is unique.
+                Self::ensure_account_state_nullifier_unique(&p.nullifier)?;
+
+                registrations.push((
+                    p.account,
+                    p.asset_id,
+                    p.nullifier,
+                    p.account_state_commitment,
+                ));
+            }
+
+            // Verify the proof.
+            let req = VerifyDartAssetRequest::BatchedAccountAssetRegistration {
+                did: caller_did,
+                proof,
+            };
+            let seed = Self::get_seed(true);
+            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+
+            // Process each registration.
+            for (account, asset_id, nullifier, account_state_commitment) in registrations {
+                // Insert the new account state commitment from the proof into the account curve tree.
+                Self::insert_account_leaf(account_state_commitment)?;
+
+                // Burn the nullifier to ensure it cannot be used again.
+                AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
+
+                // Emit an event for the account asset registration.
+                Self::deposit_event(Event::<T>::AccountAssetRegistered {
+                    caller_did,
+                    asset_id,
+                    account,
+                });
+            }
+
+            Ok(())
+        }
+
     }
 }
 

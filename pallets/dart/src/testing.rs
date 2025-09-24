@@ -109,6 +109,16 @@ impl<T: Config> DartUserInner<T> {
         }
     }
 
+    pub fn new_account(&self, name: &'static str, seed: u32) -> Self {
+        let key_seed = format!("{}-{}", name, seed);
+        let keys = AccountKeys::from_seed(&key_seed).expect("Failed to generate random keys");
+        Self {
+            user: self.user.clone(),
+            keys,
+            assets: BTreeMap::new(),
+        }
+    }
+
     pub fn public_keys(&self) -> AccountPublicKeys {
         self.keys.public_keys()
     }
@@ -649,6 +659,12 @@ impl<T: Config> DartUser<T> {
     pub fn raw_origin(&self) -> frame_system::RawOrigin<T::AccountId> {
         let inner = self.0.borrow();
         inner.user.origin()
+    }
+
+    pub fn new_account(&self, name: &'static str, seed: u32) -> Self {
+        let inner = self.0.borrow();
+        let new_inner = inner.new_account(name, seed);
+        Self(Rc::new(RefCell::new(new_inner)))
     }
 
     pub fn register_account(&self) {
