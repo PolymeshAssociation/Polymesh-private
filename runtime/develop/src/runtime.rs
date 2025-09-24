@@ -190,6 +190,10 @@ type DartMaxAssetDataLength = ConstSize<8192>;
 type DartMaxSettlementLegs = ConstSize<1000>;
 #[cfg(not(feature = "runtime-benchmarks"))]
 type DartMaxSettlementLegs = ConstSize<10>;
+#[cfg(feature = "runtime-benchmarks")]
+type DartMaxAccountsPerRegProof = ConstSize<200>;
+#[cfg(not(feature = "runtime-benchmarks"))]
+type DartMaxAccountsPerRegProof = ConstSize<100>;
 type DartMaxSettlementMemoLength = ConstSize<256>;
 type DartMaxAssetAuditors = ConstSize<2>;
 type DartMaxAssetMediators = ConstSize<2>;
@@ -333,6 +337,7 @@ impl pallet_dart::Config for Runtime {
 }
 
 impl polymesh_dart::DartLimits for Runtime {
+    type MaxAccountsPerRegProof = DartMaxAccountsPerRegProof;
     type MaxSettlementLegs = DartMaxSettlementLegs;
     type MaxSettlementMemoLength = DartMaxSettlementMemoLength;
     type MaxAssetAuditors = DartMaxAssetAuditors;

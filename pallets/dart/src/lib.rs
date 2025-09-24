@@ -476,7 +476,7 @@ pub mod pallet {
     /// This is used to ensure that the same account state commitment cannot be used twice.
     #[pallet::storage]
     pub(super) type AccountStateCommitmentNullifiers<T: Config> =
-        StorageMap<_, Identity, AccountStateNullifier, BlockNumberFor<T>, OptionQuery>;
+        StorageMap<_, Identity, AccountStateNullifier, (), OptionQuery>;
 
     /// The next settlement ID to be used.
     #[pallet::storage]
@@ -696,7 +696,10 @@ pub mod pallet {
 
             let asset_id = proof.asset_id;
             let account = proof.account;
+            let nullifier = proof.nullifier;
             let account_state_commitment = proof.account_state_commitment;
+            // Ensure the nullifier is unique.
+            Self::ensure_account_state_nullifier_unique(&nullifier)?;
 
             // Verify the proof.
             let req = VerifyDartAssetRequest::AccountAssetRegistration {
@@ -708,6 +711,9 @@ pub mod pallet {
 
             // Insert the new account state commitment from the proof into the account curve tree.
             Self::insert_account_leaf(account_state_commitment)?;
+
+            // Burn the nullifier to ensure it cannot be used again.
+            AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
             // Emit an event for the account asset registration.
             Self::deposit_event(Event::<T>::AccountAssetRegistered {
@@ -1226,8 +1232,7 @@ impl<T: Config> Pallet<T> {
         Self::insert_account_leaf(account_commitment)?;
 
         // Burn the nullifier to ensure it cannot be used again.
-        let block = frame_system::Pallet::<T>::block_number();
-        AccountStateCommitmentNullifiers::<T>::insert(nullifier, block);
+        AccountStateCommitmentNullifiers::<T>::insert(nullifier, ());
 
         Ok(())
     }
