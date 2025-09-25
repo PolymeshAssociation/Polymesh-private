@@ -116,6 +116,13 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         Ok(get_block_number::<T>()?.try_into().unwrap_or_default())
     }
 
+    fn current_root(
+        &self,
+    ) -> Result<CompressedCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>, Self::Error>
+    {
+        AssetCurveTreeCurrentRoot::<T>::get().ok_or(Error::<T>::CurveTreeRootNotFound)
+    }
+
     fn store_root(
         &mut self,
         root: CompressedCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>,
@@ -128,6 +135,9 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
         // Store the block number for the asset curve tree update.
         AssetCurveTreeLastUpdate::<T>::put(block_number);
 
+        // Update the current root.
+        AssetCurveTreeCurrentRoot::<T>::put(&root);
+
         // Emit an event for the asset curve tree root update.
         Pallet::<T>::deposit_event(Event::<T>::AssetCurveTreeRootUpdated { root });
 
@@ -136,14 +146,18 @@ impl<T: Config> CurveTreeBackend<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>
 
     fn fetch_root(
         &self,
-        block_number: BlockNumber,
+        block_number: Option<BlockNumber>,
     ) -> Result<CompressedCurveTreeRoot<ASSET_TREE_L, ASSET_TREE_M, AssetTreeConfig>, Self::Error>
     {
-        let block_number: BlockNumberFor<T> = block_number.into();
-        // Fetch the root from the storage.
-        let root =
-            AssetCurveTreeRoots::<T>::get(block_number).ok_or(Error::<T>::CurveTreeRootNotFound)?;
-        Ok(root)
+        if let Some(block_number) = block_number {
+            let block_number: BlockNumberFor<T> = block_number.into();
+            // Fetch the root from the storage.
+            let root = AssetCurveTreeRoots::<T>::get(block_number)
+                .ok_or(Error::<T>::CurveTreeRootNotFound)?;
+            Ok(root)
+        } else {
+            AssetCurveTreeCurrentRoot::<T>::get().ok_or(Error::<T>::CurveTreeRootNotFound)
+        }
     }
 
     fn height(&self) -> NodeLevel {
@@ -228,6 +242,15 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         Ok(get_block_number::<T>()?.try_into().unwrap_or_default())
     }
 
+    fn current_root(
+        &self,
+    ) -> Result<
+        CompressedCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
+        Self::Error,
+    > {
+        AccountCurveTreeCurrentRoot::<T>::get().ok_or(Error::<T>::CurveTreeRootNotFound)
+    }
+
     fn store_root(
         &mut self,
         root: CompressedCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
@@ -239,6 +262,9 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
         // Store the block number for the account curve tree update.
         AccountCurveTreeLastUpdate::<T>::put(block_number);
 
+        // Update the current root.
+        AccountCurveTreeCurrentRoot::<T>::put(&root);
+
         // Emit an event for the account curve tree root update.
         Pallet::<T>::deposit_event(Event::<T>::AccountCurveTreeRootUpdated { root });
 
@@ -247,16 +273,20 @@ impl<T: Config> CurveTreeBackend<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConf
 
     fn fetch_root(
         &self,
-        block_number: BlockNumber,
+        block_number: Option<BlockNumber>,
     ) -> Result<
         CompressedCurveTreeRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>,
         Self::Error,
     > {
-        let block_number: BlockNumberFor<T> = block_number.into();
-        // Fetch the root from the storage.
-        let root = AccountCurveTreeRoots::<T>::get(block_number)
-            .ok_or(Error::<T>::CurveTreeRootNotFound)?;
-        Ok(root)
+        if let Some(block_number) = block_number {
+            let block_number: BlockNumberFor<T> = block_number.into();
+            // Fetch the root from the storage.
+            let root = AccountCurveTreeRoots::<T>::get(block_number)
+                .ok_or(Error::<T>::CurveTreeRootNotFound)?;
+            Ok(root)
+        } else {
+            AccountCurveTreeCurrentRoot::<T>::get().ok_or(Error::<T>::CurveTreeRootNotFound)
+        }
     }
 
     fn height(&self) -> NodeLevel {

@@ -39,6 +39,30 @@ use polymesh_runtime_common::{RocksDbWeight as DbWeight, Weight};
 /// Weights for pallet_dart using the Substrate node and recommended hardware.
 pub struct SubstrateWeight;
 impl crate::WeightInfo for SubstrateWeight {
+    // Storage: DartAsset LastCommittedAccountLeafIndex (r:1 w:1)
+    // Proof Skipped: DartAsset LastCommittedAccountLeafIndex (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: DartAsset NextAccountLeafIndex (r:1 w:0)
+    // Proof Skipped: DartAsset NextAccountLeafIndex (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: DartAsset AccountCurveTreeCurrentRoot (r:1 w:1)
+    // Proof Skipped: DartAsset AccountCurveTreeCurrentRoot (max_values: Some(1), max_size: None, mode: Measured)
+    // Storage: DartAsset AccountLeaves (r:1000 w:0)
+    // Proof Skipped: DartAsset AccountLeaves (max_values: None, max_size: None, mode: Measured)
+    // Storage: DartAsset AccountInnerNodes (r:5 w:5)
+    // Proof Skipped: DartAsset AccountInnerNodes (max_values: None, max_size: None, mode: Measured)
+    // Storage: DartAsset AccountCurveTreeRoots (r:0 w:1)
+    // Proof Skipped: DartAsset AccountCurveTreeRoots (max_values: None, max_size: None, mode: Measured)
+    // Storage: DartAsset AccountCurveTreeLastUpdate (r:0 w:1)
+    // Proof Skipped: DartAsset AccountCurveTreeLastUpdate (max_values: Some(1), max_size: None, mode: Measured)
+    /// The range of component `l` is `[0, 1000]`.
+    fn update_account_curve_tree_root(l: u32) -> Weight {
+        // Minimum execution time: 4_298 nanoseconds.
+        Weight::from_ref_time(91_666_165)
+            // Standard Error: 420_184
+            .saturating_add(Weight::from_ref_time(175_190_811).saturating_mul(l.into()))
+            .saturating_add(DbWeight::get().reads(5))
+            .saturating_add(DbWeight::get().reads((1_u64).saturating_mul(l.into())))
+            .saturating_add(DbWeight::get().writes(5))
+    }
     // Storage: Identity KeyRecords (r:1 w:0)
     // Proof: Identity KeyRecords (max_values: None, max_size: Some(73), added: 2548, mode: MaxEncodedLen)
     // Storage: Timestamp Now (r:1 w:0)

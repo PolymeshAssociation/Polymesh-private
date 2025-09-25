@@ -34,6 +34,7 @@ pub enum VerifyDartAssetRequest {
         proof: BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
     },
     MintAsset {
+        did: IdentityId,
         root: AccountTreeRoot,
         proof: AssetMintingProof,
     },
@@ -85,9 +86,9 @@ impl VerifyDartAssetRequest {
                     .verify(&did.0[..], &params, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
-            Self::MintAsset { root, proof } => {
+            Self::MintAsset { did, root, proof } => {
                 proof
-                    .verify(&root, &mut rng)
+                    .verify(&did.0[..], &root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::CreateSettlement { root, proof } => {

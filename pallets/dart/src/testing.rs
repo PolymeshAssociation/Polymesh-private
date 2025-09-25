@@ -65,7 +65,7 @@ impl<T: Config> OffchainProverState<T> {
 
     pub fn apply_new_leaves(&mut self) {
         // Update the curve tree roots.
-        Pallet::<T>::update_curve_tree_roots();
+        Pallet::<T>::update_account_curve_tree_root();
 
         self.account_tree.apply_new_leaves();
         self.asset_tree.apply_new_leaves();

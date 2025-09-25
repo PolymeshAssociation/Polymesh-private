@@ -59,22 +59,68 @@ mod settlement;
 pub use settlement::*;
 
 pub trait WeightInfo {
+    fn update_account_curve_tree_root(l: u32) -> Weight;
+
     fn register_accounts(k: u32) -> Weight;
+
     fn create_asset() -> Weight;
+    fn create_settlement(l: u32) -> Weight;
+    fn mediator_affirmation() -> Weight;
+
+    // Account state transition weights.
     fn register_account_assets(p: u32) -> Weight;
     fn mint_asset() -> Weight;
-    fn create_settlement(l: u32) -> Weight;
     fn sender_affirmation() -> Weight;
     fn receiver_affirmation() -> Weight;
-    fn mediator_affirmation() -> Weight;
     fn sender_update_counter() -> Weight;
     fn sender_revert() -> Weight;
     fn receiver_claim() -> Weight;
 
     fn batched_settlement(counts: BatchedSettlementCounts) -> Weight {
         Self::create_settlement(counts.leg_count)
-            .saturating_add(Self::sender_affirmation().saturating_mul(counts.sender_count))
-            .saturating_add(Self::receiver_affirmation().saturating_mul(counts.receiver_count))
+            .saturating_add(
+                Self::sender_affirmation_with_leaf().saturating_mul(counts.sender_count),
+            )
+            .saturating_add(
+                Self::receiver_affirmation_with_leaf().saturating_mul(counts.receiver_count),
+            )
+    }
+
+    fn on_init() -> Weight {
+        Self::update_account_curve_tree_root(0)
+    }
+
+    fn insert_account_leaf(l: u32) -> Weight {
+        Self::update_account_curve_tree_root(l)
+            .saturating_sub(Self::update_account_curve_tree_root(0))
+    }
+
+    fn register_account_assets_with_leaf(p: u32) -> Weight {
+        Self::register_account_assets(p).saturating_add(Self::insert_account_leaf(p))
+    }
+
+    fn mint_asset_with_leaf() -> Weight {
+        Self::mint_asset().saturating_add(Self::insert_account_leaf(1))
+    }
+
+    fn sender_affirmation_with_leaf() -> Weight {
+        Self::sender_affirmation().saturating_add(Self::insert_account_leaf(1))
+    }
+
+    fn receiver_affirmation_with_leaf() -> Weight {
+        Self::receiver_affirmation().saturating_add(Self::insert_account_leaf(1))
+    }
+
+    fn sender_update_counter_with_leaf() -> Weight {
+        Self::sender_update_counter().saturating_add(Self::insert_account_leaf(1))
+    }
+
+    fn sender_revert_with_leaf() -> Weight {
+        Self::sender_revert().saturating_add(Self::insert_account_leaf(1))
+    }
+
+    fn receiver_claim_with_leaf() -> Weight {
+        Self::receiver_claim().saturating_add(Self::insert_account_leaf(1))
     }
 }
 
@@ -412,6 +458,11 @@ pub mod pallet {
     pub(super) type AssetInnerNodes<T: Config> =
         StorageMap<_, Twox64Concat, AssetNodeLocation, AssetInnerNode, OptionQuery>;
 
+    /// The current CurveTree Root for DART assets curve tree.
+    #[pallet::storage]
+    pub(super) type AssetCurveTreeCurrentRoot<T: Config> =
+        StorageValue<_, AssetTreeRoot, OptionQuery>;
+
     /// CurveTree Roots for DART assets curve tree.
     ///
     /// At the end of each block we will store the root of the assets curve tree.
@@ -426,12 +477,6 @@ pub mod pallet {
     #[pallet::storage]
     pub(crate) type AssetCurveTreeLastUpdate<T: Config> =
         StorageValue<_, T::BlockNumber, ValueQuery>;
-
-    /// Update flag for the asset curve tree.
-    ///
-    /// This is used to detect when the asset curve tree has been updated.
-    #[pallet::storage]
-    pub(crate) type UpdatedAssetCurveTree<T: Config> = StorageValue<_, bool, ValueQuery>;
 
     /// Leaf storage for DART accounts curve tree.
     ///
@@ -457,6 +502,11 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type AccountInnerNodes<T: Config> =
         StorageMap<_, Twox64Concat, AccountNodeLocation, AccountInnerNode, OptionQuery>;
+
+    /// The current CurveTree Root for DART accounts curve tree.
+    #[pallet::storage]
+    pub(super) type AccountCurveTreeCurrentRoot<T: Config> =
+        StorageValue<_, AccountTreeRoot, OptionQuery>;
 
     /// CurveTree Roots for DART accounts curve tree.
     ///
@@ -556,8 +606,6 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
-            // TODO: Pre-create X assets to reserve the first 0-X asset IDs.
-
             // Generate the asset curve tree parameters.
             let params = WrappedCurveTreeParameters::new::<AssetTreeConfig>(
                 polymesh_dart::MAX_CURVE_TREE_GENS,
@@ -573,24 +621,36 @@ pub mod pallet {
             .expect("Account curve tree parameters should be valid; qed");
             // Store the account curve tree parameters in the storage.
             CachedAccountCurveTreeParameters::<T>::put(params);
+
+            // Initialize the Asset Curve Tree.
+            {
+                let mut tree = Pallet::<T>::get_asset_curve_tree()
+                    .expect("Asset curve tree should be initialized; qed");
+                tree.init_root()
+                    .expect("Asset curve tree should be able to init root; qed");
+            }
+            // Initialize the Account Curve Tree.
+            {
+                let mut tree = Pallet::<T>::get_account_curve_tree()
+                    .expect("Account curve tree should be initialized; qed");
+                tree.init_root()
+                    .expect("Account curve tree should be able to init root; qed");
+            }
         }
     }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
-            UpdatedAssetCurveTree::<T>::put(false);
-
             // Get a new batch ID for the block.
             let batch_id = native_dart_assets::create_batch();
             CurrentBatchId::<T>::put(batch_id);
 
-            // TODO: weight.
-            Weight::zero()
+            <T as Config>::WeightInfo::on_init()
         }
 
         fn on_finalize(_n: BlockNumberFor<T>) {
-            Self::update_curve_tree_roots();
+            Self::update_account_curve_tree_root();
             CurrentBatchId::<T>::kill();
         }
     }
@@ -690,7 +750,7 @@ pub mod pallet {
         /// * `NotAccountOwner` if the caller is not the owner of the DART account.
         /// * `InvalidProof` if the proof is invalid.
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_account_assets(proof.len() as u32))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_account_assets_with_leaf(proof.len() as u32))]
         pub fn register_account_assets(
             origin: OriginFor<T>,
             proof: polymesh_dart::BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
@@ -774,7 +834,7 @@ pub mod pallet {
         /// * `MaxTotalSupplyExceeded` if the total supply of the DART asset exceeds the maximum total supply.
         /// * `NullifierAlreadyUsed` if the nullifier for the account state commitment has already been used.
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::mint_asset_with_leaf())]
         pub fn mint_asset(
             origin: OriginFor<T>,
             proof: polymesh_dart::AssetMintingProof,
@@ -801,7 +861,11 @@ pub mod pallet {
             // Handle the account state update proof and verify the nullifier.
             Self::handle_account_state_update_proof(proof, |proof, root, seed| {
                 // Verify the proof.
-                let req = VerifyDartAssetRequest::MintAsset { root, proof };
+                let req = VerifyDartAssetRequest::MintAsset {
+                    did: caller_did,
+                    root,
+                    proof,
+                };
                 req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
                 Ok(())
             })?;
@@ -861,7 +925,7 @@ pub mod pallet {
         /// * `LegNotFound` if the leg is not found in the settlement.
         /// * `AlreadyAffirmed` if the leg has already been affirmed by the sender.
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::sender_affirmation())]
+        #[pallet::weight(<T as Config>::WeightInfo::sender_affirmation_with_leaf())]
         pub fn sender_affirmation(
             origin: OriginFor<T>,
             proof: polymesh_dart::SenderAffirmationProof,
@@ -884,7 +948,7 @@ pub mod pallet {
         /// * `LegNotFound` if the leg is not found in the settlement.
         /// * `AlreadyAffirmed` if the leg has already been affirmed by the receiver.
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::receiver_affirmation())]
+        #[pallet::weight(<T as Config>::WeightInfo::receiver_affirmation_with_leaf())]
         pub fn receiver_affirmation(
             origin: OriginFor<T>,
             proof: polymesh_dart::ReceiverAffirmationProof,
@@ -946,7 +1010,7 @@ pub mod pallet {
         /// * `LegNotFound` if the leg is not found in the settlement.
         /// * `SenderHasNotAffirmed` if the sender has not affirmed the leg.
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::sender_update_counter())]
+        #[pallet::weight(<T as Config>::WeightInfo::sender_update_counter_with_leaf())]
         pub fn sender_update_counter(
             origin: OriginFor<T>,
             proof: polymesh_dart::SenderCounterUpdateProof,
@@ -982,7 +1046,7 @@ pub mod pallet {
         /// * `LegNotFound` if the leg is not found in the settlement.
         /// * `SenderHasNotAffirmed` if the sender has not affirmed the leg.
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::sender_revert())]
+        #[pallet::weight(<T as Config>::WeightInfo::sender_revert_with_leaf())]
         pub fn sender_revert(
             origin: OriginFor<T>,
             proof: polymesh_dart::SenderReversalProof,
@@ -1018,7 +1082,7 @@ pub mod pallet {
         /// * `LegNotFound` if the leg is not found in the settlement.
         /// * `ReceiverHasNotAffirmed` if the receiver has not affirmed the leg.
         #[pallet::call_index(10)]
-        #[pallet::weight(<T as Config>::WeightInfo::receiver_claim())]
+        #[pallet::weight(<T as Config>::WeightInfo::receiver_claim_with_leaf())]
         pub fn receiver_claim(
             origin: OriginFor<T>,
             proof: polymesh_dart::ReceiverClaimProof,
@@ -1302,9 +1366,6 @@ impl<T: Config> Pallet<T> {
         let leaf_index = asset_id.into();
         asset_curve_tree.update_leaf(leaf_index, asset_leaf)?;
 
-        // Set the updated flag for the asset curve tree.
-        UpdatedAssetCurveTree::<T>::put(true);
-
         // Emit an event for the asset state update.
         Self::deposit_event(Event::<T>::AssetUpdated {
             caller_did,
@@ -1447,31 +1508,13 @@ impl<T: Config> Pallet<T> {
         seed
     }
 
-    pub fn update_curve_tree_roots() {
-        // Check if the asset curve tree has been updated.
-        if UpdatedAssetCurveTree::<T>::get() {
-            // Get the asset curve tree.
-            let mut tree =
-                Self::get_asset_curve_tree().expect("Asset curve tree should be initialized; qed");
-
-            // Store the new asset curve tree root.
-            tree.store_root()
-                .expect("Asset curve tree should be able to store root; qed");
-        }
-
+    pub fn update_account_curve_tree_root() {
         // Get the account curve tree.
         let mut tree =
             Self::get_account_curve_tree().expect("Account curve tree should be initialized; qed");
 
         // Commit the delayed updates to the account curve tree.
-        let updated = tree
-            .commit_leaves_to_tree()
+        tree.commit_leaves_to_tree()
             .expect("Account curve tree should be able to commit leaves; qed");
-
-        // Store the new account curve tree root if there were updates.
-        if updated {
-            tree.store_root()
-                .expect("Account curve tree should be able to store root; qed");
-        }
     }
 }

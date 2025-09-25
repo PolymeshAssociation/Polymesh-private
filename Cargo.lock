@@ -380,6 +380,7 @@ dependencies = [
  "ark-std",
  "derivative",
  "hashbrown 0.13.2",
+ "rayon",
 ]
 
 [[package]]

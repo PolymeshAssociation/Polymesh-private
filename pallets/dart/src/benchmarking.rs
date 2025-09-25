@@ -7,7 +7,9 @@ use sp_std::vec::Vec;
 use rand_chacha::ChaCha20Rng as Rng;
 use rand_core::SeedableRng;
 
-use polymesh_dart::{curve_tree::MultiLeafPathAndRoot, LegBuilder, SettlementBuilder};
+use polymesh_dart::{
+    curve_tree::MultiLeafPathAndRoot, LegBuilder, SettlementBuilder, ACCOUNT_TREE_L,
+};
 use polymesh_dart_host_functions::{GenerateDartProofRequest, GenerateDartProofResponse};
 
 use crate::testing::*;
@@ -16,15 +18,33 @@ use crate::*;
 benchmarks! {
     where_clause { where T: Config }
 
-    /*
-    get_cached_curve_tree_parameters {
-        // This benchmark is used to test the retrieval of cached curve tree parameters.
-        // It does not require any specific setup.
+    update_account_curve_tree_root {
+        // Number of leaves to insert.
+        let l in 0 .. (ACCOUNT_TREE_L as u32 + 1);
+
+        let mut rng = Rng::from_seed([42u8; 32]);
+        // Create an asset issuer and create an asset.
+        let asset_issuer = DartUser::<T>::new("AssetIssuer");
+
+        let keys = asset_issuer.keys();
+
+        // Generate new account state commitments.
+        let mut account_commitments = Vec::with_capacity(l as usize);
+        for asset_id in 0..l {
+            // Generate an initial account state for each asset.
+            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
+            let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
+            account_commitments.push(account_state_commitment);
+        }
+
+        // Insert the account state commitments into the account curve tree.
+        for account_commitment in account_commitments {
+            Pallet::<T>::insert_account_leaf(account_commitment)
+                .expect("Failed to insert account leaf");
+        }
     }: {
-        let _ = Pallet::<T>::get_cached_curve_tree_parameters()
-            .expect("Failed to get cached curve tree parameters");
+        Pallet::<T>::update_account_curve_tree_root();
     }
-    // */
 
     insert_account_leaves {
         // Number of leaves to insert.
@@ -182,9 +202,6 @@ benchmarks! {
     }: _(user.raw_origin(), proof)
 
     create_asset {
-        // Offchain prover state.
-        let off_chain = OffchainProverState::<T>::new();
-
         // Create an asset issuer and create an asset.
         let asset_issuer = DartUser::<T>::new("AssetIssuer");
 
@@ -192,7 +209,6 @@ benchmarks! {
         asset_issuer.register_accounts();
 
         // Create the maximum number of auditors.
-        let mut auditors = Vec::with_capacity(T::MaxAssetAuditors::get() as usize);
         let mut auditor_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetAuditors::get() {
             let auditor = DartUser::<T>::auditor_user("Auditor", 0, i);
@@ -200,10 +216,8 @@ benchmarks! {
             auditor_keys
                 .try_insert(auditor.public_keys().enc)
                 .expect("Failed to push auditor keys");
-            auditors.push(auditor);
         }
         // Create the maximum number of mediators.
-        let mut mediators = Vec::with_capacity(T::MaxAssetMediators::get() as usize);
         let mut mediator_keys = BoundedBTreeSet::new();
         for i in 0..T::MaxAssetMediators::get() {
             let mediator = DartUser::<T>::auditor_user("Mediator", 0, i);
@@ -211,7 +225,6 @@ benchmarks! {
             mediator_keys
                 .try_insert(mediator.public_keys().enc)
                 .expect("Failed to push mediator keys");
-            mediators.push(mediator);
         }
 
         // Asset Data.
