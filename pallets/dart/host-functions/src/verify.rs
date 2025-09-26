@@ -83,7 +83,7 @@ impl VerifyDartAssetRequest {
             Self::BatchedAccountAssetRegistration { did, proof } => {
                 let params = get_account_curve_tree_parameters();
                 proof
-                    .verify(&did.0[..], &params, &mut rng)
+                    .batched_verify(&did.0[..], &params, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::MintAsset { did, root, proof } => {

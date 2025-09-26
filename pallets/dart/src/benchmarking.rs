@@ -46,137 +46,9 @@ benchmarks! {
         Pallet::<T>::update_account_curve_tree_root();
     }
 
-    insert_account_leaves {
-        // Number of leaves to insert.
-        let l in 1 .. 1000;
-
-        let mut rng = Rng::from_seed([42u8; 32]);
-        // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::new("AssetIssuer");
-
-        let keys = asset_issuer.keys();
-
-        // Generate new account state commitments.
-        let mut account_commitments = Vec::with_capacity(l as usize);
-        for asset_id in 0..l {
-            // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
-            let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
-            account_commitments.push(account_state_commitment);
-        }
-    }: {
-        // Insert the account state commitments into the account curve tree.
-        for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(account_commitment)
-                .expect("Failed to insert account leaf");
-        }
-    }
-
-    commit_insert_account_leaves {
-        // Number of leaves to insert.
-        let l in 1 .. 1000;
-
-        let mut rng = Rng::from_seed([42u8; 32]);
-        // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::new("AssetIssuer");
-
-        let keys = asset_issuer.keys();
-
-        // Generate new account state commitments.
-        let mut account_commitments = Vec::with_capacity(l as usize);
-        for asset_id in 0..l {
-            // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
-            let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
-            account_commitments.push(account_state_commitment);
-        }
-
-        // Insert the account state commitments into the account curve tree.
-        for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(account_commitment)
-                .expect("Failed to insert account leaf");
-        }
-    }: {
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
-
-        // We need to commit the leaves to the tree to update the internal state.
-        account_curve_tree.commit_leaves_to_tree()
-            .expect("Account curve tree should be able to commit leaves; qed");
-    }
-
-    update_root {
-        let mut rng = Rng::from_seed([42u8; 32]);
-        // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::new("AssetIssuer");
-        let keys = asset_issuer.keys();
-
-        // Generate new account state commitment.
-        let account_state = keys.acct.account_state(&mut rng, 42, 0, &[42]).expect("Failed to create account state");
-        let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
-        // Insert the account state commitment into the account curve tree.
-        Pallet::<T>::insert_account_leaf(account_state_commitment)
-            .expect("Failed to insert account leaf");
-
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
-
-        // We need to commit the leaves to the tree to update the internal state.
-        account_curve_tree.commit_leaves_to_tree()
-            .expect("Account curve tree should be able to commit leaves; qed");
-     }: {
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
-
-        // Store the new account curve tree root.
-        account_curve_tree.store_root()
-            .expect("Account curve tree should be able to store root; qed");
-    }
-
-    insert_account_leaves_and_update_root {
-        // Number of leaves to insert.
-        let l in 1 .. 1000;
-
-        let mut rng = Rng::from_seed([42u8; 32]);
-        // Create an asset issuer and create an asset.
-        let asset_issuer = DartUser::<T>::new("AssetIssuer");
-
-        let keys = asset_issuer.keys();
-
-        // Generate new account state commitments.
-        let mut account_commitments = Vec::with_capacity(l as usize);
-        for asset_id in 0..l {
-            // Generate an initial account state for each asset.
-            let account_state = keys.acct.account_state(&mut rng, asset_id, 0, &[42]).expect("Failed to create account state");
-            let account_state_commitment = account_state.commitment(&keys.acct).expect("Failed to get account state commitment");
-            account_commitments.push(account_state_commitment);
-        }
-    }: {
-        // Insert the account state commitments into the account curve tree.
-        for account_commitment in account_commitments {
-            Pallet::<T>::insert_account_leaf(account_commitment)
-                .expect("Failed to insert account leaf");
-        }
-
-        // Get account curve tree.
-        let mut account_curve_tree = Pallet::<T>::get_account_curve_tree()
-            .expect("Failed to get account curve tree");
-
-        // We need to commit the leaves to the tree to update the internal state.
-        account_curve_tree.commit_leaves_to_tree()
-            .expect("Account curve tree should be able to commit leaves; qed");
-
-        // Store the new account curve tree root.
-        account_curve_tree.store_root()
-            .expect("Account curve tree should be able to store root; qed");
-    }
-
     register_accounts {
         // Number of proofs to batch.
-        let k in 0 .. T::MaxKeysPerRegProof::get();
+        let k in 1 .. T::MaxKeysPerRegProof::get();
 
         // Create an asset issuer and create an asset.
         let user = DartUser::<T>::new("Batched User");
@@ -236,7 +108,7 @@ benchmarks! {
 
     register_account_assets {
         // Number of proofs to batch.
-        let p in 0 .. T::MaxAccountAssetRegProofs::get();
+        let p in 1 .. T::MaxAccountAssetRegProofs::get();
 
         // Offchain prover state.
         let mut off_chain = OffchainProverState::<T>::new();
@@ -244,7 +116,7 @@ benchmarks! {
         // Create an asset issuer and create an asset.
         let user = DartUser::<T>::asset_user("Batching user", 0, 0);
 
-        let mut proofs = BoundedVec::with_bounded_capacity(p as usize);
+        let mut account_assets = Vec::with_capacity(p as usize);
         for idx in 0..p {
             // Create asset issuer and an asset.
             let asset = DartTestAsset::<T>::new(&mut off_chain, "Test Batch reg", idx, 0, 1, None);
@@ -254,14 +126,20 @@ benchmarks! {
             // Register the user's new account.
             account.register_accounts();
 
-            // Asset issuer registers the asset.
-            let (proof, _) = account.register_account_asset_proof(asset.id);
-
-            proofs.try_push(proof).expect("Failed to push proof");
+            account_assets.push((account.keys().acct, asset.id, 0));
         }
 
-        let proof = polymesh_dart::BatchedAccountAssetRegistrationProof {
-            proofs,
+        // Generate the account registration proof.
+        let req = GenerateDartProofRequest::BatchedAccountAssetRegistration {
+            account_assets,
+            did: user.did(),
+        };
+
+        let seed = Pallet::<T>::get_seed(true);
+        let proof = if let Ok(GenerateDartProofResponse::BatchedAccountAssetRegistration { proof, .. }) = req.generate(seed) {
+            proof
+        } else {
+            panic!("Failed to generate account asset registration proofs");
         };
     }: _(user.raw_origin(), proof)
 

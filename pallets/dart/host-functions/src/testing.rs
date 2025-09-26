@@ -10,10 +10,10 @@ use rand_core::SeedableRng;
 use polymesh_dart::{
     ACCOUNT_TREE_L, ACCOUNT_TREE_M, ASSET_TREE_L, ASSET_TREE_M, AccountAssetRegistrationProof,
     AccountAssetState, AccountKeyPair, AccountKeys, AccountRegistrationProof, AssetId,
-    AssetMintingProof, Balance, EncryptionKeyPair, EncryptionKeyRegistrationProof, LegEncrypted,
-    LegRef, MediatorAffirmationProof, PolymeshPrivateLimits, ReceiverAffirmationProof,
-    ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof, SenderReversalProof,
-    SettlementBuilder, SettlementProof,
+    AssetMintingProof, Balance, BatchedAccountAssetRegistrationProof, EncryptionKeyPair,
+    EncryptionKeyRegistrationProof, LegEncrypted, LegRef, MediatorAffirmationProof,
+    PolymeshPrivateLimits, ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof,
+    SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder, SettlementProof,
     curve_tree::{AccountTreeConfig, AssetTreeConfig, LeafPathAndRoot, MultiLeafPathAndRoot},
 };
 #[cfg(feature = "std")]
@@ -41,6 +41,10 @@ pub enum GenerateDartProofRequest {
         did: IdentityId,
         asset_id: AssetId,
         counter: u16,
+    },
+    BatchedAccountAssetRegistration {
+        did: IdentityId,
+        account_assets: Vec<(AccountKeyPair, AssetId, u16)>,
     },
     MintAsset {
         key: AccountKeyPair,
@@ -140,6 +144,23 @@ impl GenerateDartProofRequest {
                 Ok(GenerateDartProofResponse::AccountAssetRegistration {
                     proof,
                     account_state,
+                })
+            }
+            GenerateDartProofRequest::BatchedAccountAssetRegistration {
+                did,
+                account_assets,
+            } => {
+                let params = get_account_curve_tree_parameters();
+                let (proof, account_states) = BatchedAccountAssetRegistrationProof::new(
+                    &mut rng,
+                    &account_assets,
+                    &did.0[..],
+                    params,
+                )
+                .map_err(|_| Error::GenerateProofFailed)?;
+                Ok(GenerateDartProofResponse::BatchedAccountAssetRegistration {
+                    proof,
+                    account_states,
                 })
             }
             GenerateDartProofRequest::MintAsset {
@@ -342,6 +363,10 @@ pub enum GenerateDartProofResponse {
     AccountAssetRegistration {
         proof: AccountAssetRegistrationProof,
         account_state: AccountAssetState,
+    },
+    BatchedAccountAssetRegistration {
+        proof: BatchedAccountAssetRegistrationProof<PolymeshPrivateLimits>,
+        account_states: Vec<AccountAssetState>,
     },
     MintAsset {
         proof: AssetMintingProof,
