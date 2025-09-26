@@ -8,8 +8,9 @@ use codec::{Decode, Encode};
 use polymesh_dart::curve_tree::{AccountTreeConfig, LeafPathAndRoot};
 use polymesh_dart::{
     curve_tree::get_account_curve_tree_parameters, AccountAssetRegistrationProof, AccountKeyPair,
-    AccountPublicKeys, AssetMintingProof, AssetState, Balance as DartBalance, EncryptionPublicKey,
-    LeafIndex, LegBuilder, LegEncrypted, LegRef, LegRole, MediatorAffirmationProof, MediatorId,
+    AccountPublicKeys, AccountRegistrationProof, AssetMintingProof, AssetState,
+    Balance as DartBalance, BatchedAccountAssetRegistrationProof, EncryptionPublicKey, LeafIndex,
+    LegBuilder, LegEncrypted, LegRef, LegRole, MediatorAffirmationProof, MediatorId,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
     SenderReversalProof, SettlementBuilder, SettlementProof, SettlementRef, ACCOUNT_TREE_L,
     ACCOUNT_TREE_M,
@@ -188,12 +189,18 @@ impl DartUserInner {
         if self.registered {
             return Ok(());
         }
-        let keys = self.public_keys();
+        // Generate account registration proof.
+        let proof = {
+            let mut rng = rand::thread_rng();
+            let did = self.did();
+            AccountRegistrationProof::<()>::new(&mut rng, &[self.keys.clone()], &did.0[..])?
+        };
+
         let mut res = self
             .api
             .call()
             .dart_asset()
-            .register_account(to_scale(&keys.acct), to_scale(&keys.enc))?
+            .register_accounts(to_scale(&proof))?
             .submit_and_watch(&mut self.user)
             .await?;
         res.ok().await?;
@@ -230,11 +237,14 @@ impl DartUserInner {
             self.keys.public_keys().acct,
             asset_id
         );
+        let proof = BatchedAccountAssetRegistrationProof::<()> {
+            proofs: vec![proof].try_into().expect("Only one proof"),
+        };
         let mut res = self
             .api
             .call()
             .dart_asset()
-            .register_account_asset(to_scale(&proof))?
+            .register_account_assets(to_scale(&proof))?
             .submit_and_watch(&mut self.user)
             .await?;
         log::debug!(

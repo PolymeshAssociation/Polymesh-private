@@ -646,6 +646,7 @@ pub mod pallet {
             let batch_id = native_dart_assets::create_batch();
             CurrentBatchId::<T>::put(batch_id);
 
+            // TODO: add missing writes to weight.
             <T as Config>::WeightInfo::on_init()
         }
 
