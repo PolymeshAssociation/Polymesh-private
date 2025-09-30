@@ -108,22 +108,28 @@ substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substr
 
 # DART
 # Curve tree dependencies
-curve_tree_bulletproofs = { package = "bulletproofs", path = "../curve-trees/bulletproofs" }
-curve_tree_relations = { package = "relations", path = "../curve-trees/relations" }
+#curve_tree_bulletproofs = { package = "bulletproofs", path = "../curve-trees/bulletproofs" }
+#curve_tree_relations = { package = "relations", path = "../curve-trees/relations" }
 # If want to pull code for curve-trees from git, comment above 2 relations and uncomment below 2
-#bulletproofs = { git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
-#curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+curve_tree_bulletproofs = { package = "bulletproofs", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
 
-dock_crypto_utils = { path = "../crypto/utils" }
-schnorr_pok = { path = "../crypto/schnorr_pok" }
-dock_merlin = { path = "../crypto/merlin" }
-#dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
-#schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
-#dock_merlin = { git = "https://github.com/PolymeshAssociation/crypto" }
+#dock_crypto_utils = { path = "../crypto/utils" }
+#schnorr_pok = { path = "../crypto/schnorr_pok" }
+dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
+schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
 
 polymesh-dart = { path = "../polymesh-dart" }
 polymesh-dart-bp = { path = "../polymesh-dart/dart-bp" }
 polymesh-dart-common = { path = "../polymesh-dart/dart-common" }
+
+# Polymesh changes to Arkworks.
+#ark-serialize = { path = "../arkworks-algebra/serialize" }
+#ark-ec = { path = "../arkworks-algebra/ec" }
+#ark-ff = { path = "../arkworks-algebra/ff" }
+ark-serialize = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
+ark-ec = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
+ark-ff = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
 
 [workspace]
 members = [
