@@ -76,7 +76,6 @@ pub enum VerifyDartAssetRequest {
 
 impl VerifyDartAssetRequest {
     pub fn verify_with_seed(&self, seed: BatchSeed) -> Result<VerifyDartProofResponse, Error> {
-        let mut rng = Rng::from_seed(seed);
         match self {
             Self::AccountRegistration { did, proof } => {
                 proof.verify(&did.0[..]).map_err(|_| Error::VerifyFailed)?;
@@ -85,17 +84,20 @@ impl VerifyDartAssetRequest {
                 proof.verify(&did.0[..]).map_err(|_| Error::VerifyFailed)?;
             }
             Self::BatchedAccountAssetRegistration { did, proof } => {
+                let mut rng = Rng::from_seed(seed);
                 let params = get_account_curve_tree_parameters();
                 proof
                     .batched_verify(&did.0[..], &params, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::MintAsset { did, root, proof } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&did.0[..], root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::CreateSettlement { root, proof } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
@@ -105,6 +107,7 @@ impl VerifyDartAssetRequest {
                 root,
                 proof,
             } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
@@ -114,6 +117,7 @@ impl VerifyDartAssetRequest {
                 root,
                 proof,
             } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
@@ -126,6 +130,7 @@ impl VerifyDartAssetRequest {
                 root,
                 proof,
             } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
@@ -135,6 +140,7 @@ impl VerifyDartAssetRequest {
                 root,
                 proof,
             } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
@@ -144,6 +150,7 @@ impl VerifyDartAssetRequest {
                 root,
                 proof,
             } => {
+                let mut rng = Rng::from_seed(seed);
                 proof
                     .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;

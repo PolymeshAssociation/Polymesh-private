@@ -301,13 +301,15 @@ impl BatchVerifiers {
 
 #[derive(Debug)]
 pub struct BatchVerifier {
-    pub next_id: WorkRequestId,
-    pub tx: Sender<WorkRequestResult>,
-    pub rx: Receiver<WorkRequestResult>,
-    pub pending_count: usize,
-    pub responses: BTreeMap<WorkRequestId, Result<WorkResponse, Error>>,
-    pub use_cache: bool,
-    pub use_thread_pool: bool,
+    tx: Sender<WorkRequestResult>,
+    rx: Receiver<WorkRequestResult>,
+
+    next_id: WorkRequestId,
+    pending_count: usize,
+    responses: BTreeMap<WorkRequestId, Result<WorkResponse, Error>>,
+
+    use_cache: bool,
+    use_thread_pool: bool,
 }
 
 impl BatchVerifier {
