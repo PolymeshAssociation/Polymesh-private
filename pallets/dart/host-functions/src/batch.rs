@@ -209,13 +209,11 @@ impl BatchVerifiers {
             inner.batch_create_execution(id, &req)?
         };
         let execution = ctx.execution.clone();
-        let req_id = execution.req_id;
-        let req_hash = execution.req_hash;
 
         if ctx.use_cache {
             // If the cache is enabled, check the cache first.
-            if let Some(result) = get_cached_work_response(&req_hash) {
-                let _ = ctx.tx.send(WorkRequestResult { id: req_id, result });
+            if let Some(result) = get_cached_work_response(&execution.req_hash) {
+                Self::push_result(id, &execution, result)?;
                 return Ok(execution);
             }
         }
@@ -228,7 +226,7 @@ impl BatchVerifiers {
                 // costs from runtime costs.
                 if ctx.skip_verify {
                     let result = req.skip_verify();
-                    let _ = ctx.tx.send(WorkRequestResult { id: req_id, result });
+                    Self::push_result(id, &execution, result)?;
                     return Ok(execution);
                 }
             }
@@ -270,7 +268,7 @@ impl BatchVerifiers {
         }
     }
 
-    /// Only used when execution falls back to the runtime.
+    /// Only used when execution falls back to the runtime or the response was cached.
     pub fn push_result(
         id: BatchId,
         execution: &WorkRequestExecution,
