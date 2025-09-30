@@ -38,9 +38,7 @@ use polymesh_dart::{
     ACCOUNT_TREE_HEIGHT, ASSET_TREE_HEIGHT, MAX_CURVE_TREE_GENS,
 };
 
-use polymesh_dart_host_functions::{
-    native_dart_assets, BatchId, BatchSeed, VerifyDartAssetRequest,
-};
+use polymesh_dart_host_functions::{native_dart_assets, BatchId, VerifyDartAssetRequest};
 
 type PalletIdentity<T> = pallet_identity::Pallet<T>;
 
@@ -590,11 +588,6 @@ pub mod pallet {
         OptionQuery,
     >;
 
-    /// RngNonce - Nonce used as `subject` to `Randomness`.
-    #[pallet::storage]
-    #[pallet::getter(fn rng_nonce)]
-    pub(super) type RngNonce<T: Config> = StorageValue<_, u64, ValueQuery>;
-
     /// The BatchId for the current block.
     #[pallet::storage]
     pub(crate) type CurrentBatchId<T: Config> = StorageValue<_, BatchId, OptionQuery>;
@@ -643,7 +636,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
             // Get a new batch ID for the block.
-            let batch_id = native_dart_assets::create_batch();
+            let batch_id = native_dart_assets::create_batch(true);
             CurrentBatchId::<T>::put(batch_id);
 
             // TODO: add missing writes to weight.
@@ -706,8 +699,7 @@ pub mod pallet {
                 did: caller_did,
                 proof,
             };
-            let seed = Self::get_seed(true);
-            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+            req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
             Ok(())
         }
@@ -797,8 +789,7 @@ pub mod pallet {
                 did: caller_did,
                 proof,
             };
-            let seed = Self::get_seed(true);
-            req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+            req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
             // Process each registration.
             for (account, asset_id, nullifier, account_state_commitment) in registrations {
@@ -860,14 +851,14 @@ pub mod pallet {
             let asset_id = proof.asset_id;
             let account = proof.pk;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+            Self::handle_account_state_update_proof(proof, |proof, root| {
                 // Verify the proof.
                 let req = VerifyDartAssetRequest::MintAsset {
                     did: caller_did,
                     root,
                     proof,
                 };
-                req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+                req.verify().map_err(|_| Error::<T>::InvalidProof)?;
                 Ok(())
             })?;
 
@@ -1020,12 +1011,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+            Self::handle_account_state_update_proof(proof, |proof, root| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender update proof and update the settlement and leg status.
-                update_settlement.sender_counter_update(proof, root, seed)
+                update_settlement.sender_counter_update(proof, root)
             })?;
 
             // Emit an event for the sender update counter.
@@ -1056,12 +1047,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+            Self::handle_account_state_update_proof(proof, |proof, root| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the sender reversal proof and update the settlement and leg status.
-                update_settlement.sender_reversal(proof, root, seed)
+                update_settlement.sender_reversal(proof, root)
             })?;
 
             // Emit an event for the sender revert.
@@ -1092,12 +1083,12 @@ pub mod pallet {
 
             let leg_ref = proof.leg_ref;
             // Handle the account state update proof and verify the nullifier.
-            Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+            Self::handle_account_state_update_proof(proof, |proof, root| {
                 // Create an update settlement status instance.
                 let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
                 // Verify the receiver claim proof and update the settlement and leg status.
-                update_settlement.receiver_claim(proof, root, seed)
+                update_settlement.receiver_claim(proof, root)
             })?;
 
             // Emit an event for the receiver claim.
@@ -1218,9 +1209,8 @@ impl<T: Config> Pallet<T> {
         // Verify the settlement proof.
         let root =
             AssetCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
-        let seed = Self::get_seed(true);
         let req = VerifyDartAssetRequest::CreateSettlement { root, proof };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // Set the settlement state to pending.
         SettlementState::<T>::insert(settlement_ref, SettlementStatus::Pending);
@@ -1276,12 +1266,12 @@ impl<T: Config> Pallet<T> {
     pub fn base_sender_affirmation(proof: polymesh_dart::SenderAffirmationProof) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+        Self::handle_account_state_update_proof(proof, |proof, root| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the sender affirmation proof and update the settlement and leg status.
-            update_settlement.sender_affirmation(proof, root, seed)
+            update_settlement.sender_affirmation(proof, root)
         })?;
 
         // Emit an event for the sender affirmation.
@@ -1295,12 +1285,12 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let leg_ref = proof.leg_ref;
         // Handle the account state update proof and verify the nullifier.
-        Self::handle_account_state_update_proof(proof, |proof, root, seed| {
+        Self::handle_account_state_update_proof(proof, |proof, root| {
             // Create an update settlement status instance.
             let update_settlement = UpdateSettlementStatus::<T>::new(proof.leg_ref)?;
 
             // Verify the receiver affirmation proof and update the settlement and leg status.
-            update_settlement.receiver_affirmation(proof, root, seed)
+            update_settlement.receiver_affirmation(proof, root)
         })?;
 
         // Emit an event for the receiver affirmation.
@@ -1312,7 +1302,7 @@ impl<T: Config> Pallet<T> {
     /// Handle account state update proof verification and insertion.
     pub fn handle_account_state_update_proof<P: AccountStateUpdate>(
         proof: P,
-        verify: impl FnOnce(P, AccountTreeRoot, BatchSeed) -> DispatchResult,
+        verify: impl FnOnce(P, AccountTreeRoot) -> DispatchResult,
     ) -> DispatchResult {
         let nullifier = proof.nullifier();
         let account_commitment = proof.account_state_commitment();
@@ -1321,10 +1311,9 @@ impl<T: Config> Pallet<T> {
 
         // Verify the account state update proof.
         let root_block: BlockNumberFor<T> = proof.root_block().into();
-        let seed = Self::get_seed(true);
         let root =
             AccountCurveTreeRoots::<T>::get(root_block).ok_or(Error::<T>::CurveTreeRootNotFound)?;
-        verify(proof, root, seed)?;
+        verify(proof, root)?;
 
         // Insert the update account state commitment into the account curve tree.
         Self::insert_account_leaf(account_commitment)?;
@@ -1492,21 +1481,6 @@ impl<T: Config> Pallet<T> {
             Self::ensure_dart_account_encryption_key_registered(key)?;
         }
         Ok(())
-    }
-
-    fn get_seed(update: bool) -> BatchSeed {
-        // Increase the nonce each time.
-        let nonce = RngNonce::<T>::get();
-        if update {
-            RngNonce::<T>::put(nonce.wrapping_add(1));
-        }
-        // Use the `nonce` and chain randomness to generate a new seed.
-        let (random_hash, _) = T::Randomness::random(&(b"ConfidentialAsset", nonce).encode());
-        let s = random_hash.as_ref();
-        let mut seed = [0; 32];
-        let len = seed.len().min(s.len());
-        seed[..len].copy_from_slice(&s[..len]);
-        seed
     }
 
     pub fn update_account_curve_tree_root() {

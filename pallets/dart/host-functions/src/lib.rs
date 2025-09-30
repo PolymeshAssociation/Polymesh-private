@@ -12,6 +12,9 @@ pub use curve_tree::*;
 #[cfg(feature = "std")]
 mod batch;
 
+#[cfg(feature = "std")]
+mod cache;
+
 #[cfg(feature = "testing")]
 mod testing;
 
@@ -31,7 +34,7 @@ mod testing {
 
 pub use testing::*;
 
-use codec::{Compact, Decode, Encode};
+use codec::{Decode, Encode};
 use sp_io::hashing::blake2_256;
 use sp_runtime_interface::{pass_by::PassByCodec, runtime_interface};
 use sp_std::collections::btree_map::BTreeMap;
@@ -42,53 +45,82 @@ use polymesh_dart::{
     curve_tree::{AccountTreeConfig, AssetTreeConfig, CompressedCurveTreeRoot},
 };
 
+pub const MIN_SUPPORTED_VERSION: WorkRequestVersion = 0;
+pub const MAX_SUPPORTED_VERSION: WorkRequestVersion = 1;
+pub const CURRENT_VERSION: WorkRequestVersion = 1;
+
 pub type BatchId = u32;
 
 pub type BatchSeed = [u8; 32];
 
-pub type BatchReqId = u32;
+pub type WorkRequestId = u32;
 
 /// A hash of a request.
-pub type ReqHash = [u8; 32];
+pub type WorkRequestHash = [u8; 32];
 /// The request version number is used to force the runtime to fallback to verifying
 /// the proof in `no_std` environment if the current host node does not support the request version.
-pub type ReqVersion = Compact<u32>;
+pub type WorkRequestVersion = u32;
 
 /// The kind of a batch request.
-#[derive(Clone, Debug, Encode, Decode)]
-pub enum BatchRequestKind {
-    VerifyProof(ReqVersion),
-    GenerateProof(ReqVersion),
+#[derive(Clone, Copy, Debug, Encode, Decode)]
+pub enum WorkRequestKind {
+    VerifyProof(#[codec(compact)] WorkRequestVersion),
+    GenerateProof(#[codec(compact)] WorkRequestVersion),
+}
+
+/// Where to execute a work request.
+#[derive(Clone, Copy, Debug, Encode, Decode)]
+pub enum ExecutionKind {
+    HostPool,
+    Host,
+    Runtime,
+}
+
+impl ExecutionKind {
+    /// Check if the request should be executed in the host pool.
+    pub fn host_pool(&self) -> bool {
+        matches!(self, ExecutionKind::HostPool)
+    }
+
+    /// Check if the request must be executed on the runtime side.
+    pub fn runtime(&self) -> bool {
+        matches!(self, ExecutionKind::Runtime)
+    }
 }
 
 /// Where to execute a batch request.
-#[derive(Debug, Encode, Decode)]
-pub struct BatchRequestExecution {
-    pub req_id: BatchReqId,
-    pub host_side: bool,
-    pub req_hash: ReqHash,
+#[derive(PassByCodec, Clone, Debug, Encode, Decode)]
+pub struct WorkRequestExecution {
+    pub req_id: WorkRequestId,
+    pub kind: ExecutionKind,
+    pub req_hash: WorkRequestHash,
 }
 
-impl BatchRequestExecution {
+impl WorkRequestExecution {
+    /// Check if the request should be executed in the host pool.
+    pub fn host_pool(&self) -> bool {
+        self.kind.host_pool()
+    }
+
     /// Check if the request must be executed on the runtime side.
     pub fn runtime_side(&self) -> bool {
-        !self.host_side
+        self.kind.runtime()
     }
 }
 
 /// A batch request.
-#[derive(PassByCodec, Debug, Encode, Decode)]
-pub struct BatchRequest {
-    pub kind: BatchRequestKind,
+#[derive(PassByCodec, Clone, Debug, Encode, Decode)]
+pub struct WorkRequest {
+    pub kind: WorkRequestKind,
     pub req: Vec<u8>,
 }
 
-impl BatchRequest {
+impl WorkRequest {
     /// Check if the request is supported by the current host node.
     pub fn is_supported(&self) -> bool {
         match &self.kind {
-            BatchRequestKind::VerifyProof(version) | BatchRequestKind::GenerateProof(version) => {
-                version.0 <= 1
+            WorkRequestKind::VerifyProof(version) | WorkRequestKind::GenerateProof(version) => {
+                *version <= MAX_SUPPORTED_VERSION
             }
         }
     }
@@ -96,7 +128,7 @@ impl BatchRequest {
     /// Create a new batch request for verifying a proof.
     pub fn new_verify(req: &VerifyDartAssetRequest) -> Self {
         Self {
-            kind: BatchRequestKind::VerifyProof(Compact(1)),
+            kind: WorkRequestKind::VerifyProof(CURRENT_VERSION),
             req: req.encode(),
         }
     }
@@ -104,17 +136,22 @@ impl BatchRequest {
     /// Create a new batch request for generating a proof.
     pub fn new_generate(req: &GenerateDartProofRequest) -> Self {
         Self {
-            kind: BatchRequestKind::GenerateProof(Compact(1)),
+            kind: WorkRequestKind::GenerateProof(CURRENT_VERSION),
             req: req.encode(),
         }
     }
 
     /// Where to execute the request.
-    pub fn execution(&self, req_id: BatchReqId) -> BatchRequestExecution {
+    pub fn execution(&self, req_id: WorkRequestId, use_pool: bool) -> WorkRequestExecution {
         let req_hash = blake2_256(&self.req);
-        BatchRequestExecution {
+        let kind = match (self.is_supported(), use_pool) {
+            (true, true) => ExecutionKind::HostPool,
+            (true, false) => ExecutionKind::Host,
+            (false, _) => ExecutionKind::Runtime,
+        };
+        WorkRequestExecution {
             req_id,
-            host_side: self.is_supported(),
+            kind,
             req_hash,
         }
     }
@@ -124,22 +161,22 @@ impl BatchRequest {
     }
 
     /// Decode and execute the batch request.
-    pub fn execute(self, hash: ReqHash) -> Result<BatchResponse, Error> {
+    pub fn execute(&self, hash: WorkRequestHash) -> Result<WorkResponse, Error> {
         match self.kind {
-            BatchRequestKind::VerifyProof(_) => {
+            WorkRequestKind::VerifyProof(_) => {
                 let req: VerifyDartAssetRequest = self.decode()?;
-                req.verify(hash)?;
-                Ok(BatchResponse {
+                req.verify_with_seed(hash)?;
+                Ok(WorkResponse {
                     kind: self.kind,
                     resp: Vec::new(),
                 })
             }
-            BatchRequestKind::GenerateProof(_) => {
+            WorkRequestKind::GenerateProof(_) => {
                 #[cfg(feature = "testing")]
                 {
                     let req: GenerateDartProofRequest = self.decode()?;
-                    let proof = req.generate(hash)?;
-                    Ok(BatchResponse {
+                    let proof = req.generate_with_seed(hash)?;
+                    Ok(WorkResponse {
                         kind: self.kind,
                         resp: proof.encode(),
                     })
@@ -153,25 +190,44 @@ impl BatchRequest {
     /// Skip proof verification and return a successful response.
     /// Only available for benchmarking to isolate the proof verification
     #[cfg(feature = "testing")]
-    pub fn skip_verify(self) -> Result<BatchResponse, Error> {
+    pub fn skip_verify(&self) -> Result<WorkResponse, Error> {
         match self.kind {
-            BatchRequestKind::VerifyProof(_) => Ok(BatchResponse {
+            WorkRequestKind::VerifyProof(_) => Ok(WorkResponse {
                 kind: self.kind,
                 resp: Vec::new(),
             }),
-            BatchRequestKind::GenerateProof(_) => Err(Error::GenerateProofFailed),
+            WorkRequestKind::GenerateProof(_) => Err(Error::GenerateProofFailed),
+        }
+    }
+
+    /// Submit the request to a batch for execution.
+    pub fn submit(self, id: BatchId) -> Result<WorkRequestExecution, Error> {
+        #[cfg(feature = "std")]
+        {
+            batch::BatchVerifiers::submit(id, self)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let execution = native_dart_assets::batch_submit(id, self.clone())?;
+            // check for fall back to runtime execution.
+            if execution.runtime_side() {
+                // Execute the work request in the runtime (WASM).
+                let result = self.execute(execution.req_hash);
+                // Push the result back to the batch.
+                native_dart_assets::batch_push_result(id, &execution, result)?;
+            }
+            Ok(execution)
         }
     }
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct BatchResult {
-    pub id: BatchReqId,
-    pub result: Result<BatchResponse, Error>,
-    pub cache_result: Option<ReqHash>,
+pub struct WorkRequestResult {
+    pub id: WorkRequestId,
+    pub result: Result<WorkResponse, Error>,
 }
 
-impl BatchResult {
+impl WorkRequestResult {
     pub fn decode<T: Decode>(&self) -> Result<T, Error> {
         match &self.result {
             Ok(resp) => resp.decode(),
@@ -182,12 +238,12 @@ impl BatchResult {
 
 /// A batch response.
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct BatchResponse {
-    pub kind: BatchRequestKind,
+pub struct WorkResponse {
+    pub kind: WorkRequestKind,
     pub resp: Vec<u8>,
 }
 
-impl BatchResponse {
+impl WorkResponse {
     /// Decode the response.
     pub fn decode<T: Decode>(&self) -> Result<T, Error> {
         T::decode(&mut &self.resp[..]).map_err(|_| Error::DecodingFailed)
@@ -217,58 +273,72 @@ impl From<polymesh_dart::Error> for Error {
 /// Native interface for runtime module for DART Assets
 #[runtime_interface]
 pub trait NativeDARTAssets {
-    fn verify_proof(request: VerifyDartAssetRequest, seed: BatchSeed) -> Result<(), Error> {
-        request.verify(seed)
-    }
-
-    fn verify_mediator(request: VerifyMediatorRequest) -> Result<(), Error> {
+    fn verify_proof(request: VerifyDartAssetRequest) -> Result<VerifyDartProofResponse, Error> {
         request.verify()
     }
 
     fn generate_proof(
         _request: GenerateDartProofRequest,
-        _seed: BatchSeed,
     ) -> Result<GenerateDartProofResponse, Error> {
         #[cfg(feature = "testing")]
         {
-            _request.generate(_seed)
+            _request.generate()
         }
         #[cfg(not(feature = "testing"))]
         Err(Error::GenerateProofFailed)
     }
 
-    fn create_batch() -> BatchId {
-        batch::BatchVerifiers::create_batch()
+    fn create_batch(use_cache: bool) -> BatchId {
+        batch::BatchVerifiers::create_batch(use_cache)
     }
 
-    fn batch_submit(id: BatchId, req: BatchRequest) -> Result<BatchRequestExecution, Error> {
-        batch::BatchVerifiers::batch_submit(id, req)
+    fn batch_use_thread_pool(id: BatchId, use_pool: bool) -> Result<(), Error> {
+        batch::BatchVerifiers::use_thread_pool(id, use_pool)
+    }
+
+    fn batch_use_cache(id: BatchId, use_cache: bool) -> Result<(), Error> {
+        batch::BatchVerifiers::use_cache(id, use_cache)
+    }
+
+    fn batch_submit(id: BatchId, req: WorkRequest) -> Result<WorkRequestExecution, Error> {
+        batch::BatchVerifiers::submit(id, req)
+    }
+
+    fn batch_push_result(
+        id: BatchId,
+        execution: &WorkRequestExecution,
+        result: Result<WorkResponse, Error>,
+    ) -> Result<(), Error> {
+        batch::BatchVerifiers::push_result(id, &execution, result)
+    }
+
+    fn batch_get_or_wait_for_result(
+        id: BatchId,
+        wait_for: WorkRequestId,
+    ) -> Result<Result<WorkResponse, Error>, Error> {
+        batch::BatchVerifiers::get_or_wait_for(id, wait_for)
+    }
+
+    fn batch_process_pending(
+        id: BatchId,
+    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
+        batch::BatchVerifiers::process_pending(id)
     }
 
     fn batch_finish(
         id: BatchId,
-    ) -> Result<BTreeMap<BatchReqId, Result<BatchResponse, Error>>, Error> {
-        let batch = batch::BatchVerifiers::batch_finish(id).ok_or(Error::VerifyFailed)?;
+    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
+        let batch = batch::BatchVerifiers::finish(id).ok_or(Error::VerifyFailed)?;
         batch.finalize()
     }
 
     fn batch_cancel(id: BatchId) {
-        batch::BatchVerifiers::batch_cancel(id);
+        batch::BatchVerifiers::cancel(id);
     }
 
     fn set_skip_verify(_skip: bool) {
         #[cfg(feature = "testing")]
         batch::BatchVerifiers::set_skip_verify(_skip);
-    }
-
-    fn batch_get_proofs(_id: BatchId) -> Result<Vec<GenerateDartProofResponse>, Error> {
-        #[cfg(feature = "testing")]
-        {
-            let batch = batch::BatchVerifiers::batch_finish(_id).ok_or(Error::VerifyFailed)?;
-            batch.get_proofs()
-        }
-        #[cfg(not(feature = "testing"))]
-        Err(Error::VerifyFailed)
     }
 
     fn asset_tree_update_inner_node(

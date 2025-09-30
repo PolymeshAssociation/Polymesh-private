@@ -1,10 +1,10 @@
 use codec::{Decode, Encode};
+#[cfg(feature = "std")]
+use sp_io::hashing::blake2_256;
 use sp_runtime_interface::pass_by::PassByCodec;
 use sp_std::vec::Vec;
 
-#[cfg(feature = "std")]
 use rand_chacha::ChaCha20Rng as Rng;
-#[cfg(feature = "std")]
 use rand_core::SeedableRng;
 
 use polymesh_dart::{
@@ -16,11 +16,10 @@ use polymesh_dart::{
     SenderCounterUpdateProof, SenderReversalProof, SettlementBuilder, SettlementProof,
     curve_tree::{AccountTreeConfig, AssetTreeConfig, LeafPathAndRoot, MultiLeafPathAndRoot},
 };
-#[cfg(feature = "std")]
 use polymesh_dart::{LegRole, curve_tree::get_account_curve_tree_parameters};
 use polymesh_primitives::IdentityId;
 
-use crate::{BatchSeed, Error};
+use crate::{BatchId, BatchSeed, Error, WorkRequest, WorkRequestExecution};
 
 pub type AccountLeafPathAndRoot =
     LeafPathAndRoot<ACCOUNT_TREE_L, ACCOUNT_TREE_M, AccountTreeConfig>;
@@ -104,9 +103,8 @@ pub enum GenerateDartProofRequest {
     },
 }
 
-#[cfg(feature = "std")]
 impl GenerateDartProofRequest {
-    pub fn generate(self, seed: BatchSeed) -> Result<GenerateDartProofResponse, Error> {
+    pub fn generate_with_seed(self, seed: BatchSeed) -> Result<GenerateDartProofResponse, Error> {
         let mut rng = Rng::from_seed(seed);
         match self {
             GenerateDartProofRequest::AccountRegistration { accounts, did } => {
@@ -343,12 +341,25 @@ impl GenerateDartProofRequest {
             }
         }
     }
+
+    pub fn submit(&self, batch_id: BatchId) -> Result<WorkRequestExecution, Error> {
+        let req = WorkRequest::new_generate(self);
+        req.submit(batch_id)
+    }
+}
+
+#[cfg(feature = "std")]
+impl GenerateDartProofRequest {
+    pub fn generate(self) -> Result<GenerateDartProofResponse, Error> {
+        let seed = self.using_encoded(blake2_256);
+        self.generate_with_seed(seed)
+    }
 }
 
 #[cfg(not(feature = "std"))]
 impl GenerateDartProofRequest {
-    pub fn generate(self, seed: BatchSeed) -> Result<GenerateDartProofResponse, Error> {
-        crate::native_dart_assets::generate_proof(self, seed)
+    pub fn generate(self) -> Result<GenerateDartProofResponse, Error> {
+        crate::native_dart_assets::generate_proof(self)
     }
 }
 

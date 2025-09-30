@@ -1,12 +1,11 @@
 use codec::{Decode, Encode};
+#[cfg(feature = "std")]
+use sp_io::hashing::blake2_256;
 use sp_runtime_interface::pass_by::PassByCodec;
 
-#[cfg(feature = "std")]
 use rand_chacha::ChaCha20Rng as Rng;
-#[cfg(feature = "std")]
 use rand_core::SeedableRng;
 
-#[cfg(feature = "std")]
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
     AccountRegistrationProof, AssetMintingProof, BatchedAccountAssetRegistrationProof,
@@ -16,7 +15,9 @@ use polymesh_dart::{
 };
 use polymesh_primitives::IdentityId;
 
-use crate::{AccountTreeRoot, AssetTreeRoot, BatchSeed, Error};
+use crate::{
+    AccountTreeRoot, AssetTreeRoot, BatchId, BatchSeed, Error, WorkRequest, WorkRequestExecution,
+};
 
 /// Verify DART asset proof request.
 #[derive(PassByCodec, Encode, Decode, Clone)]
@@ -52,6 +53,10 @@ pub enum VerifyDartAssetRequest {
         root: AccountTreeRoot,
         proof: ReceiverAffirmationProof,
     },
+    MediatorAffirmation {
+        leg_enc: LegEncrypted,
+        proof: MediatorAffirmationProof,
+    },
     SenderCounterUpdate {
         leg_enc: LegEncrypted,
         root: AccountTreeRoot,
@@ -69,9 +74,8 @@ pub enum VerifyDartAssetRequest {
     },
 }
 
-#[cfg(feature = "std")]
 impl VerifyDartAssetRequest {
-    pub fn verify(self, seed: BatchSeed) -> Result<(), Error> {
+    pub fn verify_with_seed(&self, seed: BatchSeed) -> Result<VerifyDartProofResponse, Error> {
         let mut rng = Rng::from_seed(seed);
         match self {
             Self::AccountRegistration { did, proof } => {
@@ -88,12 +92,12 @@ impl VerifyDartAssetRequest {
             }
             Self::MintAsset { did, root, proof } => {
                 proof
-                    .verify(&did.0[..], &root, &mut rng)
+                    .verify(&did.0[..], root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::CreateSettlement { root, proof } => {
                 proof
-                    .verify(&root, &mut rng)
+                    .verify(root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderAffirmation {
@@ -102,7 +106,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, &root, &mut rng)
+                    .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::ReceiverAffirmation {
@@ -111,8 +115,11 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, &root, &mut rng)
+                    .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
+            }
+            Self::MediatorAffirmation { leg_enc, proof } => {
+                proof.verify(&leg_enc).map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderCounterUpdate {
                 leg_enc,
@@ -120,7 +127,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, &root, &mut rng)
+                    .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::SenderReversal {
@@ -129,7 +136,7 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, &root, &mut rng)
+                    .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
             Self::ReceiverClaim {
@@ -138,39 +145,35 @@ impl VerifyDartAssetRequest {
                 proof,
             } => {
                 proof
-                    .verify(&leg_enc, &root, &mut rng)
+                    .verify(&leg_enc, root, &mut rng)
                     .map_err(|_| Error::VerifyFailed)?;
             }
         }
-        Ok(())
+        Ok(VerifyDartProofResponse::None)
+    }
+
+    pub fn submit(&self, batch_id: BatchId) -> Result<WorkRequestExecution, Error> {
+        let req = WorkRequest::new_verify(self);
+        req.submit(batch_id)
+    }
+}
+
+#[cfg(feature = "std")]
+impl VerifyDartAssetRequest {
+    pub fn verify(&self) -> Result<VerifyDartProofResponse, Error> {
+        let seed = self.using_encoded(blake2_256);
+        self.verify_with_seed(seed)
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl VerifyDartAssetRequest {
-    pub fn verify(self, seed: BatchSeed) -> Result<(), Error> {
-        crate::native_dart_assets::verify_proof(self, seed)
+    pub fn verify(self) -> Result<VerifyDartProofResponse, Error> {
+        crate::native_dart_assets::verify_proof(self)
     }
 }
 
 #[derive(PassByCodec, Encode, Decode, Clone)]
-pub struct VerifyMediatorRequest {
-    pub leg_enc: LegEncrypted,
-    pub proof: MediatorAffirmationProof,
-}
-
-#[cfg(feature = "std")]
-impl VerifyMediatorRequest {
-    pub fn verify(self) -> Result<(), Error> {
-        self.proof
-            .verify(&self.leg_enc)
-            .map_err(|_| Error::VerifyFailed)
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl VerifyMediatorRequest {
-    pub fn verify(self) -> Result<(), Error> {
-        crate::native_dart_assets::verify_mediator(self)
-    }
+pub enum VerifyDartProofResponse {
+    None,
 }

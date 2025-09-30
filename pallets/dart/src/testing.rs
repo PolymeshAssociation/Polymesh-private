@@ -142,8 +142,7 @@ impl<T: Config> DartUserInner<T> {
             accounts: vec![self.keys.clone()],
             did: self.did(),
         };
-        let seed = Pallet::<T>::get_seed(true);
-        if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate(seed) {
+        if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate() {
             return proof;
         } else {
             panic!("Failed to generate account registration proof");
@@ -172,11 +171,10 @@ impl<T: Config> DartUserInner<T> {
             asset_id,
             counter: 0,
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::AccountAssetRegistration {
             proof,
             account_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             return (proof, account_state);
         } else {
@@ -225,11 +223,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::MintAsset {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -289,11 +286,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::SenderAffirmation {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -354,11 +350,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::ReceiverAffirmation {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -420,11 +415,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::ReceiverClaim {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -486,11 +480,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::SenderRevert {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -549,11 +542,10 @@ impl<T: Config> DartUserInner<T> {
                 .expect("Failed to get path to leaf"),
             account_state: account_state.clone(),
         };
-        let seed = Pallet::<T>::get_seed(true);
         if let Ok(GenerateDartProofResponse::SenderCounterUpdate {
             proof,
             account_state: new_state,
-        }) = req.generate(seed)
+        }) = req.generate()
         {
             *account_state = new_state;
             return (proof, account_state);
@@ -608,8 +600,7 @@ impl<T: Config> DartUserInner<T> {
             key_index: 0,
             accept,
         };
-        let seed = Pallet::<T>::get_seed(true);
-        if let Ok(GenerateDartProofResponse::MediatorAffirmation { proof }) = req.generate(seed) {
+        if let Ok(GenerateDartProofResponse::MediatorAffirmation { proof }) = req.generate() {
             return proof;
         } else {
             panic!("Failed to generate mediator affirmation proof");
@@ -1147,8 +1138,7 @@ impl<T: Config> DartSettlementState<T> {
             paths,
             settlement: settlement,
         };
-        let seed = Pallet::<T>::get_seed(true);
-        if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate(seed) {
+        if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate() {
             assert_ok!(Pallet::<T>::create_settlement(issuer.origin(), proof));
         } else {
             panic!("Failed to generate create settlement proof");

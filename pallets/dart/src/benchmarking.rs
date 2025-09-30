@@ -65,8 +65,7 @@ benchmarks! {
             did: user.did(),
         };
 
-        let seed = Pallet::<T>::get_seed(true);
-        let proof = if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate(seed) {
+        let proof = if let Ok(GenerateDartProofResponse::AccountRegistration { proof }) = req.generate() {
             proof
         } else {
             panic!("Failed to generate account registration proof");
@@ -135,8 +134,7 @@ benchmarks! {
             did: user.did(),
         };
 
-        let seed = Pallet::<T>::get_seed(true);
-        let proof = if let Ok(GenerateDartProofResponse::BatchedAccountAssetRegistration { proof, .. }) = req.generate(seed) {
+        let proof = if let Ok(GenerateDartProofResponse::BatchedAccountAssetRegistration { proof, .. }) = req.generate() {
             proof
         } else {
             panic!("Failed to generate account asset registration proofs");
@@ -206,8 +204,7 @@ benchmarks! {
             },
             settlement,
         };
-        let seed = Pallet::<T>::get_seed(true);
-        let proof = if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate(seed) {
+        let proof = if let Ok(GenerateDartProofResponse::CreateSettlement { proof }) = req.generate() {
             proof
         } else {
             panic!("Failed to generate create settlement proof");

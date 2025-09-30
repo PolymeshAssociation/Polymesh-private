@@ -3,7 +3,6 @@ use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     ensure,
 };
-use polymesh_dart_host_functions::VerifyMediatorRequest;
 use scale_info::TypeInfo;
 
 use polymesh_dart::{
@@ -216,7 +215,6 @@ impl<T: Config> UpdateSettlementStatus<T> {
         &self,
         proof: SenderAffirmationProof<AccountTreeConfig>,
         root: AccountTreeRoot,
-        seed: BatchSeed,
     ) -> DispatchResult {
         self.ensure_pending()?;
 
@@ -229,7 +227,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
             root,
             proof: proof.clone(),
         };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // If the sender has affirmed, update the status of the settlement.
         self.check_for_execution(pending)?;
@@ -242,7 +240,6 @@ impl<T: Config> UpdateSettlementStatus<T> {
         &self,
         proof: ReceiverAffirmationProof<AccountTreeConfig>,
         root: AccountTreeRoot,
-        seed: BatchSeed,
     ) -> DispatchResult {
         self.ensure_pending()?;
 
@@ -255,7 +252,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
             root,
             proof: proof.clone(),
         };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // If the receiver has affirmed, update the status of the settlement.
         self.check_for_execution(pending)?;
@@ -272,7 +269,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
         let pending = self.party_affirms(LegAffirmParty::Mediator(mediator_id), accept)?;
 
         // verify the proof.
-        let req = VerifyMediatorRequest {
+        let req = VerifyDartAssetRequest::MediatorAffirmation {
             leg_enc: self.get_leg()?,
             proof,
         };
@@ -293,7 +290,6 @@ impl<T: Config> UpdateSettlementStatus<T> {
         &self,
         proof: SenderCounterUpdateProof<AccountTreeConfig>,
         root: AccountTreeRoot,
-        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender can only update the counter if the settlement has been executed.
         ensure!(
@@ -310,7 +306,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
             root,
             proof: proof.clone(),
         };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // If the sender has finalized the leg, update the status of the settlement.
         self.check_for_finalization(pending_final)?;
@@ -322,7 +318,6 @@ impl<T: Config> UpdateSettlementStatus<T> {
         &self,
         proof: SenderReversalProof<AccountTreeConfig>,
         root: AccountTreeRoot,
-        seed: BatchSeed,
     ) -> DispatchResult {
         // The sender can only reverse if the settlement has been rejected.
         ensure!(
@@ -339,7 +334,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
             root,
             proof: proof.clone(),
         };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // If the sender has finalized the leg, update the status of the settlement.
         self.check_for_finalization(pending_final)?;
@@ -351,7 +346,6 @@ impl<T: Config> UpdateSettlementStatus<T> {
         &self,
         proof: ReceiverClaimProof<AccountTreeConfig>,
         root: AccountTreeRoot,
-        seed: BatchSeed,
     ) -> DispatchResult {
         // The receiver can only claim if the settlement has been executed.
         ensure!(
@@ -368,7 +362,7 @@ impl<T: Config> UpdateSettlementStatus<T> {
             root,
             proof: proof.clone(),
         };
-        req.verify(seed).map_err(|_| Error::<T>::InvalidProof)?;
+        req.verify().map_err(|_| Error::<T>::InvalidProof)?;
 
         // If the receiver has finalized the leg, update the status of the settlement.
         self.check_for_finalization(pending_final)?;
