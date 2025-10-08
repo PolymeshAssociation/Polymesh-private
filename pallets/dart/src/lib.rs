@@ -664,7 +664,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_accounts(proof.len() as u32))]
         pub fn register_accounts(
             origin: OriginFor<T>,
-            proof: polymesh_dart::AccountRegistrationProof,
+            proof: polymesh_dart::AccountRegistrationProof<PolymeshPrivateLimits>,
         ) -> DispatchResult {
             let caller_did = PalletIdentity::<T>::ensure_perms(origin)?;
 

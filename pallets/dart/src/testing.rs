@@ -136,7 +136,7 @@ impl<T: Config> DartUserInner<T> {
         self.user.origin()
     }
 
-    pub fn register_accounts_proof(&self) -> AccountRegistrationProof {
+    pub fn register_accounts_proof(&self) -> AccountRegistrationProof<PolymeshPrivateLimits> {
         // Generate the account registration proof.
         let req = GenerateDartProofRequest::AccountRegistration {
             accounts: vec![self.keys.clone()],

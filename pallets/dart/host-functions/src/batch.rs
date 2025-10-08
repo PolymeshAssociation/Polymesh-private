@@ -153,8 +153,8 @@ impl InnerBatchVerifiers {
         self.batches.remove(&id)
     }
 
-    /// Cancels the batch and removes it from the set of batches.
-    pub fn batch_cancel(&mut self, id: BatchId) {
+    /// Closes the batch and removes it from the set of batches.
+    pub fn batch_close(&mut self, id: BatchId) {
         #[cfg(feature = "testing")]
         if self.skip_verify {
             self.skip_verify = false;
@@ -257,12 +257,12 @@ impl BatchVerifiers {
         }
     }
 
-    pub fn process_pending(
+    pub fn next_result(
         id: BatchId,
-    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
+    ) -> Result<Option<(WorkRequestId, Result<WorkResponse, Error>)>, Error> {
         let mut inner = BATCH_VERIFIERS.inner.write().unwrap();
         if let Some(batch) = inner.batches.get_mut(&id) {
-            batch.process_pending()
+            batch.next_result()
         } else {
             Err(Error::MissingBatch)
         }
@@ -283,9 +283,9 @@ impl BatchVerifiers {
         inner.batch_finish(id)
     }
 
-    pub fn cancel(id: BatchId) {
+    pub fn close(id: BatchId) {
         let mut inner = BATCH_VERIFIERS.inner.write().unwrap();
-        inner.batch_cancel(id);
+        inner.batch_close(id);
     }
 
     /// Only available for benchmarking to isolate the proof verification
@@ -336,15 +336,6 @@ impl BatchVerifier {
         self.responses.insert(result.id, result.result);
     }
 
-    pub fn wait_for_pending(&mut self, wait_for: Option<WorkRequestId>) -> Result<(), Error> {
-        wait_for_pending_results(
-            &mut self.pending_count,
-            &mut self.responses,
-            &self.rx,
-            wait_for,
-        )
-    }
-
     pub fn get_or_wait_for(
         &mut self,
         req_id: WorkRequestId,
@@ -356,50 +347,45 @@ impl BatchVerifier {
             .ok_or(Error::VerifyFailed) // This should never happen.
     }
 
-    pub fn process_pending(
+    pub fn next_result(
         &mut self,
-    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
-        wait_for_pending_results(&mut self.pending_count, &mut self.responses, &self.rx, None)?;
-        Ok(self.responses.clone())
+    ) -> Result<Option<(WorkRequestId, Result<WorkResponse, Error>)>, Error> {
+        self.wait_for_pending(None)?;
+        Ok(self.responses.pop_first())
     }
 
-    pub fn finalize(self) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
-        let Self {
-            rx,
-            tx,
-            mut pending_count,
-            mut responses,
-            ..
-        } = self;
+    pub fn finalize(
+        mut self,
+    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
+        self.wait_for_pending(None)?;
+        let Self { tx, responses, .. } = self;
         drop(tx);
-        wait_for_pending_results(&mut pending_count, &mut responses, &rx, None)?;
         Ok(responses)
     }
-}
 
-fn wait_for_pending_results(
-    pending_count: &mut usize,
-    responses: &mut BTreeMap<WorkRequestId, Result<WorkResponse, Error>>,
-    rx: &Receiver<WorkRequestResult>,
-    wait_for: Option<WorkRequestId>,
-) -> Result<(), Error> {
-    if let Some(wait_for) = wait_for {
-        if responses.contains_key(&wait_for) {
+    pub fn wait_for_pending(&mut self, wait_for: Option<WorkRequestId>) -> Result<(), Error> {
+        // If nothing is pending, return immediately.
+        if self.pending_count == 0 {
             return Ok(());
         }
-    }
-    while *pending_count > 0 {
-        let res = rx.recv().map_err(|err| {
-            log::error!("Failed to recv Proof response: {err:?}");
-            Error::VerifyFailed
-        })?;
-        *pending_count = pending_count.saturating_sub(1);
-        responses.insert(res.id, res.result);
         if let Some(wait_for) = wait_for {
-            if res.id == wait_for {
-                break;
+            if self.responses.contains_key(&wait_for) {
+                return Ok(());
             }
         }
+        while self.pending_count > 0 {
+            let res = self.rx.recv().map_err(|err| {
+                log::error!("Failed to recv Proof response: {err:?}");
+                Error::VerifyFailed
+            })?;
+            self.pending_count = self.pending_count.saturating_sub(1);
+            self.responses.insert(res.id, res.result);
+            if let Some(wait_for) = wait_for {
+                if res.id == wait_for {
+                    break;
+                }
+            }
+        }
+        Ok(())
     }
-    Ok(())
 }

@@ -933,12 +933,14 @@ dependencies = [
 [[package]]
 name = "bulletproofs"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#35132333092b68750c45d96e1f9ddf7dd15d9000"
+source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#ac0a738472e7e8c4ec2ae2ee7b8207bbb9544968"
 dependencies = [
  "ark-ec",
  "ark-ff",
+ "ark-pallas",
  "ark-serialize",
  "ark-std",
+ "ark-vesta",
  "byteorder",
  "digest 0.9.0",
  "dock_crypto_utils",
@@ -946,6 +948,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_core 0.6.4",
  "rayon",
+ "sha2 0.10.9",
  "sha3 0.9.1",
  "thiserror 2.0.12",
  "zeroize",
@@ -2011,9 +2014,10 @@ dependencies = [
 [[package]]
 name = "dock_crypto_utils"
 version = "0.22.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "aead 0.5.2",
+ "ahash 0.8.12",
  "ark-ec",
  "ark-ff",
  "ark-poly 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2022,6 +2026,7 @@ dependencies = [
  "cfg_eval",
  "digest 0.10.7",
  "dock_merlin",
+ "hashbrown 0.16.0",
  "hkdf",
  "integer-sqrt",
  "itertools 0.14.0",
@@ -2035,7 +2040,7 @@ dependencies = [
 [[package]]
 name = "dock_merlin"
 version = "3.0.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "ark-serialize",
  "ark-std",
@@ -3049,6 +3054,12 @@ name = "hashbrown"
 version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5971ac85611da7067dbfcabef3c70ebb5606018acd9e2a3903a0da507521e0d5"
+
+[[package]]
+name = "hashbrown"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
 
 [[package]]
 name = "heck"
@@ -6488,6 +6499,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -6524,6 +6536,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart-bp"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ec",
@@ -6553,6 +6566,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart-common"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 
 [[package]]
 name = "polymesh-dart-host-functions"
@@ -6564,6 +6578,7 @@ dependencies = [
  "log",
  "parity-scale-codec",
  "polymesh-dart",
+ "polymesh-dart-common",
  "polymesh-primitives",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -7649,13 +7664,15 @@ dependencies = [
 [[package]]
 name = "relations"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#35132333092b68750c45d96e1f9ddf7dd15d9000"
+source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#ac0a738472e7e8c4ec2ae2ee7b8207bbb9544968"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ec",
  "ark-ff",
+ "ark-pallas",
  "ark-serialize",
  "ark-std",
+ "ark-vesta",
  "blake2",
  "bulletproofs 2.0.0",
  "digest 0.10.7",
@@ -9064,7 +9081,7 @@ dependencies = [
 [[package]]
 name = "schnorr_pok"
 version = "0.22.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -9364,6 +9381,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest 0.10.7",
+ "sha2-asm",
+]
+
+[[package]]
+name = "sha2-asm"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b845214d6175804686b2bd482bcffe96651bb2d1200742b712003504a2dac1ab"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

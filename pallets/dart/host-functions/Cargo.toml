@@ -20,6 +20,7 @@ polymesh-primitives = { workspace = true, default-features = false }
 polymesh-dart = { workspace = true, default-features = false, features = [
   "backend_bp",
 ] }
+polymesh-dart-common = { workspace = true, default-features = false }
 ark-ec = { workspace = true, default-features = false }
 lazy_static = "1.4.0"
 crossbeam = "0.8"

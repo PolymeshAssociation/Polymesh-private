@@ -853,12 +853,14 @@ dependencies = [
 [[package]]
 name = "bulletproofs"
 version = "2.0.0"
-source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#35132333092b68750c45d96e1f9ddf7dd15d9000"
+source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#ac0a738472e7e8c4ec2ae2ee7b8207bbb9544968"
 dependencies = [
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
+ "ark-pallas",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
+ "ark-vesta",
  "byteorder",
  "digest 0.9.0",
  "dock_crypto_utils",
@@ -866,6 +868,7 @@ dependencies = [
  "rand",
  "rand_core",
  "rayon",
+ "sha2 0.10.9",
  "sha3 0.9.1",
  "thiserror 2.0.12",
  "zeroize",
@@ -1365,9 +1368,10 @@ dependencies = [
 [[package]]
 name = "dock_crypto_utils"
 version = "0.22.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "aead",
+ "ahash",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
  "ark-poly 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1376,6 +1380,7 @@ dependencies = [
  "cfg_eval",
  "digest 0.10.7",
  "dock_merlin",
+ "hashbrown 0.16.0",
  "hkdf",
  "integer-sqrt",
  "itertools 0.14.0",
@@ -1389,7 +1394,7 @@ dependencies = [
 [[package]]
 name = "dock_merlin"
 version = "3.0.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
@@ -2042,6 +2047,12 @@ dependencies = [
  "equivalent",
  "foldhash",
 ]
+
+[[package]]
+name = "hashbrown"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
 
 [[package]]
 name = "hashlink"
@@ -3586,6 +3597,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 dependencies = [
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
@@ -3621,6 +3633,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart-bp"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ec 0.4.2",
@@ -3650,6 +3663,7 @@ dependencies = [
 [[package]]
 name = "polymesh-dart-common"
 version = "0.1.0"
+source = "git+https://github.com/PolymeshAssociation/polymesh-dart?branch=main#84b309e9faa14d55b40b0f287c7b7389e67f9ea3"
 
 [[package]]
 name = "portable-atomic"
@@ -3926,13 +3940,15 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 [[package]]
 name = "relations"
 version = "0.1.0"
-source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#35132333092b68750c45d96e1f9ddf7dd15d9000"
+source = "git+https://github.com/PolymeshAssociation/curve-trees?branch=polymesh#ac0a738472e7e8c4ec2ae2ee7b8207bbb9544968"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
+ "ark-pallas",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
+ "ark-vesta",
  "blake2",
  "bulletproofs 2.0.0",
  "digest 0.10.7",
@@ -4201,7 +4217,7 @@ dependencies = [
 [[package]]
 name = "schnorr_pok"
 version = "0.22.0"
-source = "git+https://github.com/PolymeshAssociation/crypto#992734d80ab04e29b462b6cb88535f6784615512"
+source = "git+https://github.com/PolymeshAssociation/crypto#6ee646ae1f8f66443b0580507fb53fe22229cd28"
 dependencies = [
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
@@ -4503,6 +4519,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest 0.10.7",
+ "sha2-asm",
+]
+
+[[package]]
+name = "sha2-asm"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b845214d6175804686b2bd482bcffe96651bb2d1200742b712003504a2dac1ab"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

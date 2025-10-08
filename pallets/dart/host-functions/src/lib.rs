@@ -165,10 +165,10 @@ impl WorkRequest {
         match self.kind {
             WorkRequestKind::VerifyProof(_) => {
                 let req: VerifyDartAssetRequest = self.decode()?;
-                req.verify_with_seed(hash)?;
+                let resp = req.verify_with_seed(hash)?;
                 Ok(WorkResponse {
                     kind: self.kind,
-                    resp: Vec::new(),
+                    resp: resp.encode(),
                 })
             }
             WorkRequestKind::GenerateProof(_) => {
@@ -192,10 +192,14 @@ impl WorkRequest {
     #[cfg(feature = "testing")]
     pub fn skip_verify(&self) -> Result<WorkResponse, Error> {
         match self.kind {
-            WorkRequestKind::VerifyProof(_) => Ok(WorkResponse {
-                kind: self.kind,
-                resp: Vec::new(),
-            }),
+            WorkRequestKind::VerifyProof(_) => {
+                let req: VerifyDartAssetRequest = self.decode()?;
+                let resp = req.get_response()?;
+                Ok(WorkResponse {
+                    kind: self.kind,
+                    resp: resp.encode(),
+                })
+            }
             WorkRequestKind::GenerateProof(_) => Err(Error::GenerateProofFailed),
         }
     }
@@ -319,10 +323,10 @@ pub trait NativeDARTAssets {
         batch::BatchVerifiers::get_or_wait_for(id, wait_for)
     }
 
-    fn batch_process_pending(
+    fn batch_next_result(
         id: BatchId,
-    ) -> Result<BTreeMap<WorkRequestId, Result<WorkResponse, Error>>, Error> {
-        batch::BatchVerifiers::process_pending(id)
+    ) -> Result<Option<(WorkRequestId, Result<WorkResponse, Error>)>, Error> {
+        batch::BatchVerifiers::next_result(id)
     }
 
     fn batch_finish(
@@ -332,8 +336,8 @@ pub trait NativeDARTAssets {
         batch.finalize()
     }
 
-    fn batch_cancel(id: BatchId) {
-        batch::BatchVerifiers::cancel(id);
+    fn batch_close(id: BatchId) {
+        batch::BatchVerifiers::close(id);
     }
 
     fn set_skip_verify(_skip: bool) {

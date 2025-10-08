@@ -1,18 +1,23 @@
 use codec::{Decode, Encode};
+use sp_core::bounded::BoundedVec;
 #[cfg(feature = "std")]
 use sp_io::hashing::blake2_256;
 use sp_runtime_interface::pass_by::PassByCodec;
+use sp_std::vec::Vec;
 
 use rand_chacha::ChaCha20Rng as Rng;
 use rand_core::SeedableRng;
 
 use polymesh_dart::curve_tree::get_account_curve_tree_parameters;
 use polymesh_dart::{
-    AccountRegistrationProof, AssetMintingProof, BatchedAccountAssetRegistrationProof,
-    EncryptionKeyRegistrationProof, LegEncrypted, MediatorAffirmationProof, PolymeshPrivateLimits,
+    AccountPublicKey, AccountPublicKeys, AccountRegistrationProof, AccountStateCommitment,
+    AccountStateNullifier, AccountStateUpdate, AssetId, AssetMintingProof, Balance,
+    BatchedAccountAssetRegistrationProof, DartLimits, EncryptionKeyRegistrationProof,
+    EncryptionPublicKey, LegEncrypted, LegRef, MediatorAffirmationProof, PolymeshPrivateLimits,
     ReceiverAffirmationProof, ReceiverClaimProof, SenderAffirmationProof, SenderCounterUpdateProof,
-    SenderReversalProof, SettlementProof,
+    SenderReversalProof, SettlementHash, SettlementProof,
 };
+use polymesh_dart_common::NullifierSkGenCounter;
 use polymesh_primitives::IdentityId;
 
 use crate::{
@@ -24,11 +29,11 @@ use crate::{
 pub enum VerifyDartAssetRequest {
     AccountRegistration {
         did: IdentityId,
-        proof: AccountRegistrationProof,
+        proof: AccountRegistrationProof<PolymeshPrivateLimits>,
     },
     EncryptionKeyRegistration {
         did: IdentityId,
-        proof: EncryptionKeyRegistrationProof,
+        proof: EncryptionKeyRegistrationProof<PolymeshPrivateLimits>,
     },
     BatchedAccountAssetRegistration {
         did: IdentityId,
@@ -156,7 +161,100 @@ impl VerifyDartAssetRequest {
                     .map_err(|_| Error::VerifyFailed)?;
             }
         }
-        Ok(VerifyDartProofResponse::None)
+        self.get_response()
+    }
+
+    pub fn get_response(&self) -> Result<VerifyDartProofResponse, Error> {
+        match self {
+            Self::AccountRegistration { did, proof } => {
+                return Ok(VerifyDartProofResponse::AccountRegistration {
+                    did: *did,
+                    accounts: proof.accounts.clone(),
+                });
+            }
+            Self::EncryptionKeyRegistration { did, proof } => {
+                return Ok(VerifyDartProofResponse::EncryptionKeyRegistration {
+                    did: *did,
+                    keys: proof.keys.clone(),
+                });
+            }
+            Self::BatchedAccountAssetRegistration { did, proof } => {
+                let registrations = proof
+                    .proofs
+                    .iter()
+                    .map(|state| RegisterAccountAsset {
+                        account: state.account,
+                        asset_id: state.asset_id,
+                        counter: state.counter,
+                        account_state_commitment: state.account_state_commitment,
+                        nullifier: state.nullifier,
+                    })
+                    .collect();
+                return Ok(VerifyDartProofResponse::BatchedAccountAssetRegistration {
+                    did: *did,
+                    registrations,
+                });
+            }
+            Self::MintAsset { did, proof, .. } => {
+                return Ok(VerifyDartProofResponse::MintAsset {
+                    did: *did,
+                    account: proof.pk,
+                    asset_id: proof.asset_id,
+                    amount: proof.amount,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+            Self::CreateSettlement { proof, .. } => {
+                let legs = proof.legs.iter().map(|leg| leg.leg_enc.clone()).collect();
+                return Ok(VerifyDartProofResponse::CreateSettlement {
+                    id: proof.hash(),
+                    memo: proof.memo.clone(),
+                    legs,
+                });
+            }
+            Self::SenderAffirmation { proof, .. } => {
+                return Ok(VerifyDartProofResponse::SenderAffirmation {
+                    leg_ref: proof.leg_ref,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+            Self::ReceiverAffirmation { proof, .. } => {
+                return Ok(VerifyDartProofResponse::ReceiverAffirmation {
+                    leg_ref: proof.leg_ref,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+            Self::MediatorAffirmation { proof, .. } => {
+                return Ok(VerifyDartProofResponse::MediatorAffirmation {
+                    leg_ref: proof.leg_ref,
+                    accept: proof.accept,
+                });
+            }
+            Self::SenderCounterUpdate { proof, .. } => {
+                return Ok(VerifyDartProofResponse::SenderCounterUpdate {
+                    leg_ref: proof.leg_ref,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+            Self::SenderReversal { proof, .. } => {
+                return Ok(VerifyDartProofResponse::SenderReversal {
+                    leg_ref: proof.leg_ref,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+            Self::ReceiverClaim { proof, .. } => {
+                return Ok(VerifyDartProofResponse::ReceiverClaim {
+                    leg_ref: proof.leg_ref,
+                    account_state_commitment: proof.account_state_commitment(),
+                    nullifier: proof.nullifier,
+                });
+            }
+        }
     }
 
     pub fn submit(&self, batch_id: BatchId) -> Result<WorkRequestExecution, Error> {
@@ -180,7 +278,69 @@ impl VerifyDartAssetRequest {
     }
 }
 
-#[derive(PassByCodec, Encode, Decode, Clone)]
-pub enum VerifyDartProofResponse {
-    None,
+#[derive(Encode, Decode, Clone)]
+pub struct RegisterAccountAsset {
+    pub account: AccountPublicKey,
+    pub asset_id: AssetId,
+    pub counter: NullifierSkGenCounter,
+    pub account_state_commitment: AccountStateCommitment,
+    pub nullifier: AccountStateNullifier,
+}
+
+#[derive(Encode, Decode, Clone)]
+pub enum VerifyDartProofResponse<T: DartLimits = PolymeshPrivateLimits> {
+    AccountRegistration {
+        did: IdentityId,
+        accounts: BoundedVec<AccountPublicKeys, T::MaxKeysPerRegProof>,
+    },
+    EncryptionKeyRegistration {
+        did: IdentityId,
+        keys: BoundedVec<EncryptionPublicKey, T::MaxKeysPerRegProof>,
+    },
+    BatchedAccountAssetRegistration {
+        did: IdentityId,
+        registrations: Vec<RegisterAccountAsset>,
+    },
+    MintAsset {
+        did: IdentityId,
+        account: AccountPublicKey,
+        asset_id: AssetId,
+        amount: Balance,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
+    CreateSettlement {
+        id: SettlementHash,
+        memo: BoundedVec<u8, T::MaxSettlementMemoLength>,
+        legs: Vec<LegEncrypted>,
+    },
+    SenderAffirmation {
+        leg_ref: LegRef,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
+    ReceiverAffirmation {
+        leg_ref: LegRef,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
+    MediatorAffirmation {
+        leg_ref: LegRef,
+        accept: bool,
+    },
+    SenderCounterUpdate {
+        leg_ref: LegRef,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
+    SenderReversal {
+        leg_ref: LegRef,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
+    ReceiverClaim {
+        leg_ref: LegRef,
+        account_state_commitment: AccountStateCommitment,
+        nullifier: AccountStateNullifier,
+    },
 }

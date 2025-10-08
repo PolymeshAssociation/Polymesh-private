@@ -366,10 +366,10 @@ impl GenerateDartProofRequest {
 #[derive(PassByCodec, Encode, Decode, Clone)]
 pub enum GenerateDartProofResponse {
     AccountRegistration {
-        proof: AccountRegistrationProof,
+        proof: AccountRegistrationProof<PolymeshPrivateLimits>,
     },
     EncryptionKeyRegistration {
-        proof: EncryptionKeyRegistrationProof,
+        proof: EncryptionKeyRegistrationProof<PolymeshPrivateLimits>,
     },
     AccountAssetRegistration {
         proof: AccountAssetRegistrationProof,
