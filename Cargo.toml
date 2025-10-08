@@ -106,18 +106,46 @@ confidential_assets = { git = "https://github.com/PolymeshAssociation/confidenti
 
 substrate-validator-set = { git = "https://github.com/PolymeshAssociation/substrate-validator-set", branch = "polymesh-v6-monthly-2023-03" }
 
+# DART
+# Curve tree dependencies
+#curve_tree_bulletproofs = { package = "bulletproofs", path = "../curve-trees/bulletproofs" }
+#curve_tree_relations = { package = "relations", path = "../curve-trees/relations" }
+# If want to pull code for curve-trees from git, comment above 2 relations and uncomment below 2
+curve_tree_bulletproofs = { package = "bulletproofs", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+curve_tree_relations = { package = "relations", git = "https://github.com/PolymeshAssociation/curve-trees", branch = "polymesh" }
+
+#dock_crypto_utils = { path = "../crypto/utils" }
+#schnorr_pok = { path = "../crypto/schnorr_pok" }
+dock_crypto_utils = { git = "https://github.com/PolymeshAssociation/crypto" }
+schnorr_pok = { git = "https://github.com/PolymeshAssociation/crypto" }
+
+#polymesh-dart = { path = "../polymesh-dart" }
+#polymesh-dart-bp = { path = "../polymesh-dart/dart-bp" }
+#polymesh-dart-common = { path = "../polymesh-dart/dart-common" }
+polymesh-dart = { git = "https://github.com/PolymeshAssociation/polymesh-dart", branch = "main" }
+polymesh-dart-bp = { git = "https://github.com/PolymeshAssociation/polymesh-dart", branch = "main" }
+polymesh-dart-common = { git = "https://github.com/PolymeshAssociation/polymesh-dart", branch = "main" }
+
+# Polymesh changes to Arkworks.
+#ark-serialize = { path = "../arkworks-algebra/serialize" }
+#ark-ec = { path = "../arkworks-algebra/ec" }
+#ark-ff = { path = "../arkworks-algebra/ff" }
+ark-serialize = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
+ark-ec = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
+ark-ff = { git = "https://github.com/PolymeshAssociation/arkworks-algebra.git", branch = "polymesh-v0.4" }
+
 [workspace]
 members = [
   "pallets/confidential-asset",
+  "pallets/dart",
+  "pallets/dart/host-functions",
   "runtime/common",
   "runtime/develop",
   "runtime/production",
   "runtime/tests",
-	"host-functions",
+  "host-functions",
 ]
-exclude = [
-	"integration",
-]
+exclude = ["integration"]
 
 ## Keep common dependencies here.
 [workspace.dependencies]
@@ -130,6 +158,8 @@ pallet-compliance-manager = { git = "https://github.com/PolymeshAssociation/Poly
 pallet-confidential-asset = { path = "pallets/confidential-asset/", default-features = false }
 polymesh-host-functions = { path = "host-functions/", default-features = false }
 pallet-corporate-actions = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
+pallet-dart = { path = "pallets/dart/", default-features = false }
+polymesh-dart-host-functions = { path = "pallets/dart/host-functions/", default-features = false }
 pallet-external-agents = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-group = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-identity = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -143,7 +173,9 @@ pallet-relayer = { git = "https://github.com/PolymeshAssociation/Polymesh.git", 
 pallet-sto = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-settlement = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-statistics = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
-pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false, features = ["disable_fees"]}
+pallet-transaction-payment = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false, features = [
+  "disable_fees",
+] }
 pallet-treasury = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-utility = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 pallet-sudo = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
@@ -167,7 +199,10 @@ pallet-protocol-fee-rpc-runtime-api = { git = "https://github.com/PolymeshAssoci
 polymesh-build-tool = { git = "https://github.com/PolymeshAssociation/Polymesh.git", branch = "develop", default-features = false }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
+  "derive",
+  "max-encoded-len",
+] }
 frame-support = { version = "4.0.0-dev", default-features = false }
 frame-system = { version = "4.0.0-dev", default-features = false }
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false }
@@ -175,7 +210,7 @@ pallet-authority-discovery = { version = "4.0.0-dev", default-features = false }
 pallet-authorship = { version = "4.0.0-dev", default-features = false }
 pallet-babe = { version = "4.0.0-dev", default-features = false }
 pallet-contracts = { version = "4.0.0-dev", default-features = false }
-pallet-contracts-primitives = { version = "7.0.0", default-features = false}
+pallet-contracts-primitives = { version = "7.0.0", default-features = false }
 pallet-executive = { package = "frame-executive", version = "4.0.0-dev", default-features = false }
 pallet-grandpa = { version = "4.0.0-dev", default-features = false }
 pallet-im-online = { version = "4.0.0-dev", default-features = false }
@@ -186,7 +221,9 @@ pallet-insecure-randomness-collective-flip = { version = "4.0.0-dev", default-fe
 pallet-scheduler = { version = "4.0.0-dev", default-features = false }
 pallet-session = { version = "4.0.0-dev", default-features = false }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false }
-scale-info = { version = "2.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.0", default-features = false, features = [
+  "derive",
+] }
 sp-api = { version = "4.0.0-dev", default-features = false }
 sp-arithmetic = { version = "6.0.0", default-features = false }
 sp-authority-discovery = { version = "4.0.0-dev", default-features = false }
@@ -216,6 +253,11 @@ rand_core = { version = "0.6", default-features = false }
 rand_chacha = { version = "0.3", default-features = false }
 confidential_assets = { version = "1.0.0", default-features = false }
 
+# DART
+polymesh-dart = { version = "0.1.0", default-features = false }
+polymesh-dart-common = { version = "0.1.0", default-features = false }
+ark-ec = { version = "0.4", default-features = false }
+
 # Validator set (PoA)
 validator-set = { version = "0.9.42", package = "substrate-validator-set", default-features = false }
 
@@ -229,6 +271,7 @@ pallet-compliance-manager = { workspace = true, default-features = false }
 pallet-confidential-asset = { workspace = true, default-features = false }
 pallet-grandpa = { workspace = true, default-features = false }
 polymesh-host-functions = { workspace = true, default-features = false }
+polymesh-dart-host-functions = { workspace = true, default-features = false }
 pallet-corporate-actions = { workspace = true, default-features = false }
 pallet-external-agents = { workspace = true, default-features = false }
 pallet-group = { workspace = true, default-features = false }
@@ -307,7 +350,10 @@ substrate-frame-rpc-system = { version = "4.0.0-dev" }
 substrate-state-trie-migration-rpc = { version = "4.0.0-dev" }
 
 # Substrate
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive", "max-encoded-len"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
+  "derive",
+  "max-encoded-len",
+] }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
 frame-system-rpc-runtime-api = { workspace = true }
@@ -344,18 +390,20 @@ substrate-build-script-utils = { version = "3.0.0" }
 [features]
 default = ["std"]
 
-running-ci = [ "polymesh-private-runtime-develop/running-ci" ]
+running-ci = ["polymesh-private-runtime-develop/running-ci"]
 runtime-benchmarks = [
   "sc-service/runtime-benchmarks",
   "polymesh-private-runtime-develop/runtime-benchmarks",
   "polymesh-host-functions/runtime-benchmarks",
+  "polymesh-dart-host-functions/runtime-benchmarks",
 ]
 
 # Only build a "ci" runtime.
-ci-runtime = [ "polymesh-private-runtime-develop/ci-runtime" ]
+ci-runtime = ["polymesh-private-runtime-develop/ci-runtime"]
 
 std = [
   "polymesh-common-utilities/std",
   "polymesh-host-functions/std",
-  "serde/std"
+  "polymesh-dart-host-functions/std",
+  "serde/std",
 ]

@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use integration::confidential_assets_helper::*;
 
 #[tokio::test]
+#[test_log::test]
 async fn confidential_moves() -> Result<()> {
     let mut rng = rand::thread_rng();
 

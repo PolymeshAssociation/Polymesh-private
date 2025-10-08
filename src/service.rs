@@ -64,6 +64,7 @@ macro_rules! native_executor_instance {
 type EHF = (
     frame_benchmarking::benchmarking::HostFunctions,
     polymesh_host_functions::native_confidential_assets::HostFunctions,
+    polymesh_dart_host_functions::native_dart_assets::HostFunctions,
 );
 
 native_executor_instance!(

@@ -145,6 +145,9 @@ parameter_types! {
     // Confidential asset.
     pub const MaxTotalSupply: Balance = 10_000_000_000_000;
 
+    // DART asset parameters
+    pub const DartMaxTotalSupply: Balance = 10_000_000_000_000;
+
     // Multisig
     pub const MaxMultiSigSigners: u32 = 50;
 
@@ -180,6 +183,18 @@ type ConfidentialAssetMaxAssetsPerMoveFunds = ConstSize<100>;
 type ConfidentialAssetMaxMoveFunds = ConstSize<2000>;
 
 type ConfidentialAssetBatchHostThreads = ConstSize<8>;
+
+/// Dart parameters
+type DartMaxAssetDataLength = ConstSize<8192>;
+
+type DartMaxSettlementLegs = ConstSize<16>;
+
+type DartMaxKeysPerRegProof = ConstSize<100>;
+
+type DartMaxAccountAssetRegProofs = ConstSize<50>;
+type DartMaxSettlementMemoLength = ConstSize<256>;
+type DartMaxAssetAuditors = ConstSize<2>;
+type DartMaxAssetMediators = ConstSize<2>;
 
 /// 100% goes to the block author.
 pub type DealWithFees = Author<Runtime>;
@@ -310,6 +325,24 @@ impl pallet_confidential_asset::Config for Runtime {
     type BatchHostThreads = ConfidentialAssetBatchHostThreads;
 }
 
+impl pallet_dart::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+    type WeightInfo = pallet_dart::weights::SubstrateWeight;
+
+    type MaxTotalSupply = MaxTotalSupply;
+    type MaxAssetDataLength = DartMaxAssetDataLength;
+}
+
+impl polymesh_dart::DartLimits for Runtime {
+    type MaxKeysPerRegProof = DartMaxKeysPerRegProof;
+    type MaxAccountAssetRegProofs = DartMaxAccountAssetRegProofs;
+    type MaxSettlementLegs = DartMaxSettlementLegs;
+    type MaxSettlementMemoLength = DartMaxSettlementMemoLength;
+    type MaxAssetAuditors = DartMaxAssetAuditors;
+    type MaxAssetMediators = DartMaxAssetMediators;
+}
+
 #[cfg(feature = "runtime-benchmarks")]
 #[macro_use]
 mod benches {
@@ -332,6 +365,7 @@ mod benches {
         [pallet_corporate_actions, CorporateAction]
         [pallet_corporate_ballot, CorporateBallot]
         [pallet_capital_distribution, CapitalDistribution]
+        [pallet_dart, DartAsset]
         [pallet_external_agents, ExternalAgents]
         [pallet_relayer, Relayer]
         [pallet_committee, PolymeshCommittee]
@@ -443,6 +477,9 @@ construct_runtime!(
 
         // Confidential Asset pallets.
         ConfidentialAsset: pallet_confidential_asset::{Pallet, Call, Storage, Event<T>, Config} = 60,
+
+        // Dart pallets.
+        DartAsset: pallet_dart::{Pallet, Call, Storage, Event<T>, Config} = 70,
     }
 );
 
